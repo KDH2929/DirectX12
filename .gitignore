@@ -1,0 +1,18 @@
+# 빌드 디렉터리
+x64/
+x86/
+build/
+bin/
+obj/
+Debug/
+Release/
+
+# Visual Studio 관련
+.vs/
+*.vcxproj.user
+*.VC.db
+*.VC.opendb
+
+# 게임 프로젝트 리소스
+Assets/
+*.ini
