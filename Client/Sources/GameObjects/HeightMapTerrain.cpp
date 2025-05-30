@@ -215,22 +215,34 @@ void HeightMapTerrain::CreateMeshFromHeightMap()
     }
 }
 
-// 주변 정점들로부터 법선 벡터 계산
 XMFLOAT3 HeightMapTerrain::CalculateNormal(int x, int z)
 {
-    // 경계 검사를 통한 인덱스 범위 초과 방지
-    float heightL = (x > 0) ? heightData[z * mapWidth + (x - 1)] : heightData[z * mapWidth + x]; // 왼쪽
-    float heightR = (x < mapWidth - 1) ? heightData[z * mapWidth + (x + 1)] : heightData[z * mapWidth + x]; // 오른쪽
-    float heightD = (z > 0) ? heightData[(z - 1) * mapWidth + x] : heightData[z * mapWidth + x]; // 아래
-    float heightU = (z < mapHeight - 1) ? heightData[(z + 1) * mapWidth + x] : heightData[z * mapWidth + x]; // 위
+    // 중심 높이
+    float centerY = heightData[z * mapWidth + x] * heightScale;
 
-    // 경사 계산 (이웃과의 높이 차이)
-    float dx = (heightR - heightL) * heightScale;
-    float dz = (heightU - heightD) * heightScale;
+    // 월드 좌표 보간을 위해 정점 간 거리 사용
+    float vx = static_cast<float>(x) * vertexDistance;
+    float vz = static_cast<float>(z) * vertexDistance;
 
-    // 법선 벡터 계산
-    XMFLOAT3 normal = { dx, 1.0f, dz };
-    XMStoreFloat3(&normal, XMVector3Normalize(XMLoadFloat3(&normal)));  // 벡터 정규화
+    XMFLOAT3 pCenter = { vx, centerY, vz };
 
-    return normal;
+    // 오른쪽 (x+1, z)
+    float rightY = (x < mapWidth - 1) ? heightData[z * mapWidth + (x + 1)] * heightScale : centerY;
+    XMFLOAT3 pRight = { (x + 1) * vertexDistance, rightY, vz };
+
+    // 위쪽 (x, z+1)
+    float upY = (z < mapHeight - 1) ? heightData[(z + 1) * mapWidth + x] * heightScale : centerY;
+    XMFLOAT3 pUp = { vx, upY, (z + 1) * vertexDistance };
+
+    // 두 벡터 생성: 오른쪽, 위쪽
+    XMVECTOR vecRight = XMVectorSubtract(XMLoadFloat3(&pRight), XMLoadFloat3(&pCenter));
+    XMVECTOR vecUp = XMVectorSubtract(XMLoadFloat3(&pUp), XMLoadFloat3(&pCenter));
+
+    // 외적 -> 노멀 벡터
+    XMVECTOR normal = XMVector3Cross(vecUp, vecRight);
+    normal = XMVector3Normalize(normal);
+
+    XMFLOAT3 normalOut;
+    XMStoreFloat3(&normalOut, normal);
+    return normalOut;
 }
