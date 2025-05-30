@@ -68,8 +68,8 @@ bool BillboardMuzzleSmoke::CreateRasterizerState(ID3D11Device* device)
 bool BillboardMuzzleSmoke::CreateDepthState(ID3D11Device* device)
 {
     D3D11_DEPTH_STENCIL_DESC dsDesc = {};
-    dsDesc.DepthEnable = TRUE;          // ±íÀÌ Å×½ºÆ® ¼öÇà X
-    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; // ±íÀÌ ±â·Ï ¾È ÇÔ
+    dsDesc.DepthEnable = TRUE;          // ê¹Šì´ í…ŒìŠ¤íŠ¸ ìˆ˜í–‰
+    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; // ê¹Šì´ ê¸°ë¡ ì•ˆ í•¨
     dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 
     dsDesc.StencilEnable = FALSE;
