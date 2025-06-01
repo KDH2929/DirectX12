@@ -64,6 +64,7 @@ void BillboardObject::Render(Renderer* renderer)
 
     if (enableBillboarding)
     {
+        /*
         XMMATRIX invView = XMMatrixInverse(nullptr, view);
         XMVECTOR camRight = invView.r[0];
         XMVECTOR camUp = invView.r[1];
@@ -74,10 +75,33 @@ void BillboardObject::Render(Renderer* renderer)
         R.r[1] = camUp;
         R.r[2] = camForward;
         R.r[3] = XMVectorSet(0, 0, 0, 1);
+        */
+
+
+        // 빌보딩 회전 행렬 계산
+        XMFLOAT3 pos = GetPosition();
+        XMFLOAT3 camPosF = renderer->GetCamera()->GetPosition();
+
+        XMVECTOR objPos = XMLoadFloat3(&pos);
+        XMVECTOR camPos = XMLoadFloat3(&camPosF);
+
+        XMVECTOR toCamera = XMVector3Normalize(camPos - objPos);
+        XMVECTOR worldUp = XMVectorSet(0, 1, 0, 0);
+
+        XMVECTOR billboardRight = XMVector3Normalize(XMVector3Cross(worldUp, toCamera));
+        XMVECTOR billboardUp = XMVector3Cross(toCamera, billboardRight);
+
+        XMMATRIX R;
+        R.r[0] = billboardRight;
+        R.r[1] = billboardUp;
+        R.r[2] = toCamera;
+        R.r[3] = XMVectorSet(0, 0, 0, 1);
 
         XMMATRIX S = XMMatrixScaling(scale.x, scale.y, scale.z);
         XMMATRIX T = XMMatrixTranslation(position.x, position.y, position.z);
+
         worldMatrix = S * R * T;
+        
     }
 
     // MVP 상수 버퍼 업데이트

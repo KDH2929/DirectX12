@@ -57,7 +57,7 @@ bool BillboardMuzzleSmoke::CreateBlendState(ID3D11Device* device)
 bool BillboardMuzzleSmoke::CreateRasterizerState(ID3D11Device* device)
 {
     D3D11_RASTERIZER_DESC rsDesc = {};
-    rsDesc.CullMode = D3D11_CULL_NONE;
+    rsDesc.CullMode = D3D11_CULL_BACK;
     rsDesc.FillMode = D3D11_FILL_SOLID;
     rsDesc.FrontCounterClockwise = FALSE;
     rsDesc.DepthClipEnable = TRUE;
