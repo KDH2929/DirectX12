@@ -197,7 +197,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height) {
         return false;
     }
 
-    // 생성한 Depth Stencil 버퍼로부터 Render Target View 생성 
+    // 생성한 Depth Stencil 버퍼로부터 Depth Stencil View 생성 
     hr = device->CreateDepthStencilView(depthStencilBuffer.Get(), nullptr, &depthStencilView);
     if (FAILED(hr)) {
         MessageBox(nullptr, L"Failed to create depth stencil view.", L"Error", MB_OK | MB_ICONERROR);
@@ -274,9 +274,6 @@ void Renderer::Render() {
     for (auto& obj : gameObjects) {
         obj->Render(this);
     }
-
-    // 2D UI 렌더링 (UIManager 사용)
-
 
 
     DebugRenderer::GetInstance().Render(this);

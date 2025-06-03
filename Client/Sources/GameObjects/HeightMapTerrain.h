@@ -20,6 +20,9 @@ public:
     void SetVertexDistance(float vertexDist);
 
 private:
+
+    bool CreateRasterizerState(ID3D11Device* device);
+
     void LoadHeightMap();
     void CreateMeshFromHeightMap();
     XMFLOAT3 CalculateNormal(int x, int z);  // 법선 벡터 계산
@@ -28,9 +31,9 @@ private:
     std::wstring heightMapPath;
     int mapWidth, mapHeight;
     float heightScale;
-    float vertexDistance;  // vertexDistance를 멤버 변수로 추가
+    float vertexDistance;
 
-    std::vector<unsigned char> heightData;
+    std::vector<uint8_t> heightData;
 
     std::vector<MeshVertex> vertices;
     std::vector<UINT> indices;

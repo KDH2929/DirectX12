@@ -3,6 +3,7 @@
 #include "DebugManager.h"
 
 #include <fstream>
+#include <DirectXTex.h>
 
 HeightMapTerrain::HeightMapTerrain(const std::wstring& path, int width, int height, float scale, float vertexDist)
     : heightMapPath(path), mapWidth(width), mapHeight(height), heightScale(scale), vertexDistance(vertexDist)
@@ -49,13 +50,9 @@ bool HeightMapTerrain::Initialize(Renderer* renderer)
     inputLayout = shaderManager->GetInputLayout(shaderInfo.vertexShaderName);
 
     // Rasterizer 설정
-    D3D11_RASTERIZER_DESC rsDesc = {};
-    rsDesc.CullMode = shaderInfo.cullMode;
-    rsDesc.FillMode = D3D11_FILL_SOLID;
-    rsDesc.FrontCounterClockwise = FALSE;
-    rsDesc.DepthClipEnable = true;
-
-    device->CreateRasterizerState(&rsDesc, rasterizerState.GetAddressOf());
+    if (!CreateRasterizerState(device)) { 
+        return false; 
+    }
 
     // Material 기본값
     materialData.ambient = XMFLOAT3(0.2f, 0.2f, 0.2f);
@@ -111,6 +108,12 @@ void HeightMapTerrain::Render(Renderer* renderer)
     context->PSSetShader(pixelShader.Get(), nullptr, 0);
     context->RSSetState(rasterizerState.Get());
 
+    ID3D11DepthStencilState* prevDepthState = nullptr;
+    UINT stencilRef = 0;
+    context->OMGetDepthStencilState(&prevDepthState, &stencilRef);
+    context->OMSetDepthStencilState(depthStencilState.Get(), 0);
+
+
     // 정점/인덱스 버퍼 설정
     UINT stride = sizeof(MeshVertex);
     UINT offset = 0;
@@ -141,6 +144,10 @@ void HeightMapTerrain::Render(Renderer* renderer)
 
     // 드로우
     context->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
+
+
+    context->OMSetDepthStencilState(prevDepthState, stencilRef);
+    if (prevDepthState) prevDepthState->Release();
 }
 
 void HeightMapTerrain::SetVertexDistance(float vertexDist)
@@ -148,21 +155,49 @@ void HeightMapTerrain::SetVertexDistance(float vertexDist)
     vertexDistance = vertexDist;
 }
 
+bool HeightMapTerrain::CreateRasterizerState(ID3D11Device* device)
+{
+    D3D11_RASTERIZER_DESC rsDesc = {};
+    rsDesc.CullMode = D3D11_CULL_NONE;
+    rsDesc.FillMode = D3D11_FILL_SOLID;
+    // rsDesc.FillMode = D3D11_FILL_WIREFRAME;
+    rsDesc.FrontCounterClockwise = FALSE;
+    rsDesc.DepthClipEnable = TRUE;
+
+    return SUCCEEDED(device->CreateRasterizerState(&rsDesc, rasterizerState.GetAddressOf()));
+}
+
 void HeightMapTerrain::LoadHeightMap()
 {
-    FILE* file = nullptr;
-    _wfopen_s(&file, heightMapPath.c_str(), L"rb");
 
-    if (!file) {
+    ScratchImage image;
+    HRESULT hr = LoadFromWICFile(heightMapPath.c_str(), WIC_FLAGS_NONE, nullptr, image);
+    if (FAILED(hr))
+    {
+        // 로드 실패 시 그냥 리턴
         return;
     }
 
-    heightData.resize(mapWidth * mapHeight);
-    fread(heightData.data(), 1, heightData.size(), file);
-    fclose(file);
+    const Image* img = image.GetImage(0, 0, 0);
+    mapWidth = static_cast<int>(img->width);
+    mapHeight = static_cast<int>(img->height);
 
-    if (heightData.empty()) {
-        throw std::runtime_error("Failed to load heightmap data.");
+    heightData.clear();
+    heightData.reserve(mapWidth * mapHeight);
+
+    // DirectXTex 기본으로 R8G8B8A8_UNORM으로 올라온다고 가정
+    const int bytesPerPixel = 4;
+    for (int y = 0; y < mapHeight; ++y)
+    {
+        // 한 행(row)의 메모리 시작 주소
+        uint8_t* row = reinterpret_cast<uint8_t*>(img->pixels + img->rowPitch * y);
+
+        for (int x = 0; x < mapWidth; ++x)
+        {
+            // x번째 픽셀의 Red 채널(또는 그냥 그레이스케일로 가정했을 때 한 채널)을 읽는다
+            uint8_t gray = row[x * bytesPerPixel + 0];
+            heightData.push_back(gray);
+        }
     }
 }
 
@@ -218,7 +253,7 @@ void HeightMapTerrain::CreateMeshFromHeightMap()
 XMFLOAT3 HeightMapTerrain::CalculateNormal(int x, int z)
 {
     // 중심 높이
-    float centerY = heightData[z * mapWidth + x] * heightScale;
+    float centerY = heightData[z * mapWidth + x] / 255.0f * heightScale;
 
     // 월드 좌표 보간을 위해 정점 간 거리 사용
     float vx = static_cast<float>(x) * vertexDistance;
@@ -227,11 +262,11 @@ XMFLOAT3 HeightMapTerrain::CalculateNormal(int x, int z)
     XMFLOAT3 pCenter = { vx, centerY, vz };
 
     // 오른쪽 (x+1, z)
-    float rightY = (x < mapWidth - 1) ? heightData[z * mapWidth + (x + 1)] * heightScale : centerY;
+    float rightY = (x < mapWidth - 1) ? heightData[z * mapWidth + (x + 1)] / 255.0f * heightScale : centerY;
     XMFLOAT3 pRight = { (x + 1) * vertexDistance, rightY, vz };
 
     // 위쪽 (x, z+1)
-    float upY = (z < mapHeight - 1) ? heightData[(z + 1) * mapWidth + x] * heightScale : centerY;
+    float upY = (z < mapHeight - 1) ? heightData[(z + 1) * mapWidth + x] / 255.0f * heightScale : centerY;
     XMFLOAT3 pUp = { vx, upY, (z + 1) * vertexDistance };
 
     // 두 벡터 생성: 오른쪽, 위쪽

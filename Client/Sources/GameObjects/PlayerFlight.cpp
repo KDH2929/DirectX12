@@ -265,11 +265,63 @@ void PlayerFlight::Update(float deltaTime) {
     cameraController.Update(camera.get(), updatedPos, deltaTime);
 
     // 카메라 회전을 기준으로 비행기 회전 보간 적용
-    XMVECTOR cameraQuat = camera->GetRotationQuat();
-    float followSpeed = 2.0f; // 보간 속도 계수
-    rotationQuat = XMQuaternionSlerp(rotationQuat, cameraQuat, followSpeed * deltaTime);
-    rotationQuat = XMQuaternionNormalize(rotationQuat);
-    SetRotationQuat(rotationQuat);
+
+    if (rollInput == 0.0f) {
+
+        XMVECTOR cameraQuat = camera->GetRotationQuat();
+        float followSpeed = 2.0f; // 보간 속도 계수
+        rotationQuat = XMQuaternionSlerp(rotationQuat, cameraQuat, followSpeed * deltaTime);
+        rotationQuat = XMQuaternionNormalize(rotationQuat);
+        SetRotationQuat(rotationQuat);
+        
+
+
+        /*
+        // 각도에 따라 자연스러운 Slerp 비율 계산
+        XMVECTOR currentQuat = rotationQuat;
+        XMVECTOR targetQuat = camera->GetRotationQuat();
+
+        // 내적 및 반전 처리
+        float dot = XMVectorGetX(XMQuaternionDot(currentQuat, targetQuat));
+        if (dot < 0.0f)
+        {
+            targetQuat = XMVectorNegate(targetQuat);
+            dot = -dot;
+        }
+        dot = std::clamp(dot, -1.0f, 1.0f);
+
+        // 각도 계산
+        float angle = acosf(dot) * 2.0f;
+        if (angle < 1e-5f)
+            return;
+
+        // 1. Slerp 보간 비율 계산 (감속 느낌 살림)
+        float slerpSpeed = 2.0f; // 감속 보간 계수
+        float t = slerpSpeed * deltaTime;
+        t = std::min(t, 1.0f); 
+
+        // 2. Slerp 수행
+        XMVECTOR newQuat = XMQuaternionSlerp(currentQuat, targetQuat, t);
+
+        // 3. 실제 회전된 각도 측정
+        float newDot = XMVectorGetX(XMQuaternionDot(currentQuat, newQuat));
+        float newAngle = acosf(std::clamp(newDot, -1.0f, 1.0f)) * 2.0f;
+
+        // 4. 최대 회전량 제한
+        float maxAnglePerSecond = XMConvertToRadians(90.0f);
+        float maxStep = maxAnglePerSecond * deltaTime;
+
+        if (newAngle > maxStep)
+        {
+            float limitedT = maxStep / angle;
+            newQuat = XMQuaternionSlerp(currentQuat, targetQuat, limitedT);
+        }
+
+        rotationQuat = XMQuaternionNormalize(newQuat);
+        SetRotationQuat(rotationQuat);
+        */
+    }
+
     
     UpdateWorldMatrix();
     ApplyTransformToPhysics();

@@ -156,8 +156,13 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
 
 
     // HeightMapTerrain 생성
-    // 텍스쳐는 raw파일로 넘겨줄 것
-    terrain = std::make_shared<HeightMapTerrain>(L"Assets/Heightmaps/HeightMap1.raw", 1500, 1500, 100.0f, 100.0f);
+    terrain = std::make_shared<HeightMapTerrain>(
+        L"Assets/Heightmaps/iceland_heightmap.png",
+        0, 0,                                 // width, height
+        50.0f,                                 // heightScale
+        1.0f                                  // vertexDistance
+    );
+
     // terrain->SetPosition(XMFLOAT3(-512.0f, -40.0f, -512.0f));
     terrain->SetPosition(XMFLOAT3(-40.0f, -40.0f, -40.0f));
     terrain->Initialize(&renderer);
