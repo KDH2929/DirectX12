@@ -1,23 +1,26 @@
 #include "GameRoom.h"
-#include <algorithm>
+#include <iostream>
 
 GameRoom::GameRoom(int roomId) : roomId(roomId) {}
 
-void GameRoom::AddPlayer(SOCKET sock) {
+void GameRoom::AddPlayer(ClientSession* client) {
     std::lock_guard<std::mutex> lock(mutex);
-    players.push_back(sock);
+    players.insert(client);
+    client->roomId = roomId;
+    std::cout << "[Room " << roomId << "] " << client->nickname << " joined.\n";
 }
 
-void GameRoom::RemovePlayer(SOCKET sock) {
+void GameRoom::RemovePlayer(ClientSession* client) {
     std::lock_guard<std::mutex> lock(mutex);
-    players.erase(std::remove(players.begin(), players.end(), sock), players.end());
+    players.erase(client);
+    std::cout << "[Room " << roomId << "] " << client->nickname << " left.\n";
 }
 
-void GameRoom::Broadcast(const char* data, int size, SOCKET excludeSock) {
+void GameRoom::Broadcast(const game::Packet& packet, ClientSession* excludeClient) {
     std::lock_guard<std::mutex> lock(mutex);
-    for (SOCKET player : players) {
-        if (player != excludeSock) {
-            send(player, data, size, 0);
+    for (ClientSession* player : players) {
+        if (player != excludeClient) {
+            player->SendPacket(packet);
         }
     }
 }
@@ -26,6 +29,11 @@ int GameRoom::GetRoomId() const {
     return roomId;
 }
 
-const std::vector<SOCKET>& GameRoom::GetPlayers() const {
+const std::unordered_set<ClientSession*>& GameRoom::GetPlayers() const {
     return players;
+}
+
+int GameRoom::GetPlayerCount() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    return static_cast<int>(players.size());
 }

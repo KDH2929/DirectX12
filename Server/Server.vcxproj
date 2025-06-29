@@ -20,16 +20,29 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ClientManager.cpp" />
+    <ClCompile Include="ClientSession.cpp" />
     <ClCompile Include="GameRoom.cpp" />
     <ClCompile Include="GameServer.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MessageDispatcher.cpp" />
+    <ClCompile Include="MessageHandler.cpp" />
+    <ClCompile Include="packet.pb.cc" />
+    <ClCompile Include="PacketParser.cpp" />
     <ClCompile Include="RoomManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ClientManager.h" />
+    <ClInclude Include="ClientSession.h" />
     <ClInclude Include="GameRoom.h" />
     <ClInclude Include="GameServer.h" />
+    <ClInclude Include="MessageDispatcher.h" />
+    <ClInclude Include="MessageHandler.h" />
+    <ClInclude Include="packet.pb.h" />
+    <ClInclude Include="PacketParser.h" />
     <ClInclude Include="RoomManager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packet.proto" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

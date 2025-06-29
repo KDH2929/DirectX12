@@ -16,12 +16,11 @@ PixelInput VSMain(VertexInput input)
 {
     PixelInput output;
 
+    // 월드·뷰·투영 변환
     float4 worldPos = mul(float4(input.position, 1.0f), model);
     float4 viewPos = mul(worldPos, view);
-    float4 projPos = mul(viewPos, projection);
+    output.position = mul(viewPos, projection);
 
-    output.position = projPos;
     output.color = input.color;
-
     return output;
 }

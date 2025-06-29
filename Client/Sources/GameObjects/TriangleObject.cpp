@@ -1,73 +1,124 @@
 #include "TriangleObject.h"
 #include "Renderer.h"
-#include "InputManager.h"
-#include "DebugManager.h"
 
-#include <iostream>
-
-TriangleObject::TriangleObject()
-    : GameObject()
-{
-}
-
-bool TriangleObject::Initialize(Renderer* renderer)
-{
-    GameObject::Initialize(renderer);
-
-    CreateGeometry();
-
-    auto device = renderer->GetDevice();
-    auto shaderManager = renderer->GetShaderManager();
-
-    shaderInfo.vertexShaderName = L"TriangleVertexShader";
-    shaderInfo.pixelShaderName = L"TrianglePixelShader";
-
-    vertexShader = shaderManager->GetVertexShader(shaderInfo.vertexShaderName);
-    pixelShader = shaderManager->GetPixelShader(shaderInfo.pixelShaderName);
-    inputLayout = shaderManager->GetInputLayout(shaderInfo.vertexShaderName);
-
-
-    // Vertex Buffer 생성
-    D3D11_BUFFER_DESC vbd = {};
-    vbd.Usage = D3D11_USAGE_DEFAULT;
-    vbd.ByteWidth = UINT(sizeof(SimpleVertex) * vertices.size());
-    vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    vbd.CPUAccessFlags = 0;
-
-    D3D11_SUBRESOURCE_DATA vinitData = {};
-    vinitData.pSysMem = vertices.data();
-
-    HRESULT hr = device->CreateBuffer(&vbd, &vinitData, vertexBuffer.GetAddressOf());
-    if (FAILED(hr))
+bool TriangleObject::Initialize(Renderer* renderer) {
+    if (!GameObject::Initialize(renderer))
         return false;
 
-    // Index Buffer 생성
-    D3D11_BUFFER_DESC ibd = {};
-    ibd.Usage = D3D11_USAGE_DEFAULT;
-    ibd.ByteWidth = UINT(sizeof(UINT) * indices.size());
-    ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    ibd.CPUAccessFlags = 0;
-
-    D3D11_SUBRESOURCE_DATA iinitData = {};
-    iinitData.pSysMem = indices.data();
-
-    hr = device->CreateBuffer(&ibd, &iinitData, indexBuffer.GetAddressOf());
-    if (FAILED(hr))
-        return false;
-
+    // Build geometry and upload to GPU
+    CreateGeometry(renderer);
     return true;
 }
 
-void TriangleObject::CreateGeometry()
-{
-    // 간단한 평면 삼각형 만들기
+void TriangleObject::CreateGeometry(Renderer* renderer) {
+    // 1) 버텍스/인덱스 데이터 준비
     vertices = {
-        { XMFLOAT3(0.0f, 0.5f, 0.0f), XMFLOAT4(1,0,0,1) }, // top (빨간색)
-        { XMFLOAT3(0.5f, -0.5f, 0.0f), XMFLOAT4(0,1,0,1) }, // right (초록색)
-        { XMFLOAT3(-0.5f, -0.5f, 0.0f), XMFLOAT4(0,0,1,1) } // left (파란색)
+        {{ 0.0f,  0.5f, 0.0f}, {1,0,0,1}},
+        {{ 0.5f, -0.5f, 0.0f}, {0,1,0,1}},
+        {{-0.5f, -0.5f, 0.0f}, {0,0,1,1}},
     };
+    indices = { 0,1,2 };
 
-    indices = { 0, 1, 2 };
+    const UINT vbSize = UINT(vertices.size() * sizeof(SimpleVertex));
+    const UINT ibSize = UINT(indices.size() * sizeof(UINT));
+
+    ID3D12Device* device = renderer->GetDevice();
+    auto queue = renderer->GetCommandQueue();
+    auto uploadAllocator = renderer->GetUploadCommandAllocator();
+    auto uploadCommandList = renderer->GetUploadCommandList();
+
+    // 2) 업로드 커맨드 리스트 Reset
+    uploadAllocator->Reset();
+    uploadCommandList->Reset(uploadAllocator, nullptr);
+
+    // 3) 업로드 힙에 데이터 올리기 (Map → memcpy)
+    ComPtr<ID3D12Resource> vbUpload;
+    {
+        CD3DX12_HEAP_PROPERTIES upProps(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC    bufDesc = CD3DX12_RESOURCE_DESC::Buffer(vbSize);
+        device->CreateCommittedResource(
+            &upProps, D3D12_HEAP_FLAG_NONE, &bufDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+            IID_PPV_ARGS(&vbUpload));
+
+        UINT8* pData;
+        vbUpload->Map(0, nullptr, reinterpret_cast<void**>(&pData));
+        memcpy(pData, vertices.data(), vbSize);
+        vbUpload->Unmap(0, nullptr);
+    }
+
+    // 4) 디폴트 힙에 버텍스 버퍼 생성
+    {
+        CD3DX12_HEAP_PROPERTIES defProps(D3D12_HEAP_TYPE_DEFAULT);
+        CD3DX12_RESOURCE_DESC    bufDesc = CD3DX12_RESOURCE_DESC::Buffer(vbSize);
+        device->CreateCommittedResource(
+            &defProps, D3D12_HEAP_FLAG_NONE, &bufDesc,
+            D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+            IID_PPV_ARGS(&vertexBuffer));
+    }
+
+    // 5) 버텍스 복사 + 상태 전환
+    uploadCommandList->CopyResource(vertexBuffer.Get(), vbUpload.Get());
+    {
+        D3D12_RESOURCE_BARRIER barrier =
+            CD3DX12_RESOURCE_BARRIER::Transition(
+                vertexBuffer.Get(),
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+        uploadCommandList->ResourceBarrier(1, &barrier);
+    }
+
+    // 6) 인덱스 업로드 힙 & 복사 준비
+    ComPtr<ID3D12Resource> ibUpload;
+    {
+        CD3DX12_HEAP_PROPERTIES upProps(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC    bufDesc = CD3DX12_RESOURCE_DESC::Buffer(ibSize);
+        device->CreateCommittedResource(
+            &upProps, D3D12_HEAP_FLAG_NONE, &bufDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+            IID_PPV_ARGS(&ibUpload));
+
+        UINT8* pData;
+        ibUpload->Map(0, nullptr, reinterpret_cast<void**>(&pData));
+        memcpy(pData, indices.data(), ibSize);
+        ibUpload->Unmap(0, nullptr);
+    }
+
+    // 7) 디폴트 힙에 인덱스 버퍼 생성
+    {
+        CD3DX12_HEAP_PROPERTIES defProps(D3D12_HEAP_TYPE_DEFAULT);
+        CD3DX12_RESOURCE_DESC    bufDesc = CD3DX12_RESOURCE_DESC::Buffer(ibSize);
+        device->CreateCommittedResource(
+            &defProps, D3D12_HEAP_FLAG_NONE, &bufDesc,
+            D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+            IID_PPV_ARGS(&indexBuffer));
+    }
+
+    // 8) 인덱스 복사 + 상태 전환
+    uploadCommandList->CopyResource(indexBuffer.Get(), ibUpload.Get());
+    {
+        D3D12_RESOURCE_BARRIER barrier =
+            CD3DX12_RESOURCE_BARRIER::Transition(
+                indexBuffer.Get(),
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_INDEX_BUFFER);
+        uploadCommandList->ResourceBarrier(1, &barrier);
+    }
+
+    // 9) 업로드 커맨드 실행 & 완료 대기
+    uploadCommandList->Close();
+    ID3D12CommandList* lists[] = { uploadCommandList };
+    queue->ExecuteCommandLists(_countof(lists), lists);
+    renderer->WaitForPreviousFrame();
+
+    // 10) GPU 뷰 설정
+    vbView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
+    vbView.StrideInBytes = sizeof(SimpleVertex);
+    vbView.SizeInBytes = vbSize;
+
+    ibView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+    ibView.Format = DXGI_FORMAT_R32_UINT;
+    ibView.SizeInBytes = ibSize;
 }
 
 void TriangleObject::Update(float deltaTime)
@@ -89,36 +140,44 @@ void TriangleObject::Update(float deltaTime)
         position.y -= 1.0f * deltaTime;
     }
 
-    UpdateWorldMatrix();
+    GameObject::Update(deltaTime);
 }
 
 void TriangleObject::Render(Renderer* renderer) {
+    auto commandList = renderer->GetCommandList();
 
-    auto context = renderer->GetDeviceContext();
-
-    UINT stride = sizeof(SimpleVertex);
-    UINT offset = 0;
-
-    context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-    context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    context->IASetInputLayout(inputLayout.Get());
-    context->VSSetShader(vertexShader.Get(), nullptr, 0);
-    context->PSSetShader(pixelShader.Get(), nullptr, 0);
+    // 1) PSO & RootSignature 바인딩
+    commandList->SetPipelineState(renderer->GetPSOManager()->Get(L"TrianglePSO"));
+    commandList->SetGraphicsRootSignature(renderer->GetRootSignatureManager()->Get(L"TriangleRS"));
 
 
-    XMMATRIX view = renderer->GetCamera()->GetViewMatrix();
-    XMMATRIX proj = renderer->GetCamera()->GetProjectionMatrix();
 
-    CB_MVP mvpData;
-    mvpData.model = XMMatrixTranspose(worldMatrix);
-    mvpData.view = XMMatrixTranspose(view);
-    mvpData.projection = XMMatrixTranspose(proj);
-    mvpData.modelInvTranspose = XMMatrixTranspose(XMMatrixInverse(nullptr, worldMatrix));
+    // 2) XMMATRIX 연산값을 XMFLOAT4X4에 저장
+    CB_MVP cb;
 
-    context->UpdateSubresource(constantMVPBuffer.Get(), 0, nullptr, &mvpData, 0, 0);
-    context->VSSetConstantBuffers(0, 1, constantMVPBuffer.GetAddressOf());
+    // worldMatrix는 XMMATRIX 타입으로 멤버에 저장돼 있다고 가정
+    XMStoreFloat4x4(&cb.model, XMMatrixTranspose(worldMatrix));
 
-    context->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
+    // 카메라 뷰·투영도 마찬가지로 transpose
+    XMMATRIX V = renderer->GetCamera()->GetViewMatrix();
+    XMMATRIX P = renderer->GetCamera()->GetProjectionMatrix();
+    XMStoreFloat4x4(&cb.view, XMMatrixTranspose(V));
+    XMStoreFloat4x4(&cb.projection, XMMatrixTranspose(P));
+
+    // 법선 변환용 역전치 매트릭스
+    XMMATRIX invT = XMMatrixInverse(nullptr, worldMatrix);
+    XMStoreFloat4x4(&cb.modelInvTranspose, XMMatrixTranspose(invT));
+
+    // memcpy 로 MVP 상수버퍼 업데이트
+    memcpy(mappedMVPData, &cb, sizeof(cb));
+
+
+    // 3) 상수 버퍼 뷰 바인딩 (b0)
+    commandList->SetGraphicsRootConstantBufferView(0, constantMVPBuffer->GetGPUVirtualAddress());
+
+    // 4) IA 셋업 & 드로우
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->IASetVertexBuffers(0, 1, &vbView);
+    commandList->IASetIndexBuffer(&ibView);
+    commandList->DrawIndexedInstanced((UINT)indices.size(), 1, 0, 0, 0);
 }

@@ -1,86 +1,46 @@
 #pragma once
 
-#include "ConstantBuffers.h"
-#include "ShaderInfo.h"
-#include "Mesh.h"
-#include "Texture.h"
-#include "TextureManager.h"
-#include "PhysicsManager.h"
-#include "ModelLoader.h"
-
-#include <d3d11.h>
-#include <memory>
+#include <d3d12.h>
+#include <directx/d3dx12.h>
+#include <wrl.h>
 #include <DirectXMath.h>
+#include <memory>
+#include "InputManager.h"
 
+using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
 class Renderer;
 
+// 최소한의 GameObject: 변환 및 상수 버퍼만 관리
 class GameObject {
 public:
     GameObject();
-    virtual ~GameObject() = default;
+    virtual ~GameObject();
 
+    // 초기화: 상수 버퍼 생성
     virtual bool Initialize(Renderer* renderer);
-    virtual void Update(float deltaTime) = 0;
+    // 위치/회전/스케일 업데이트
+    virtual void Update(float deltaTime);
+    // 렌더링: 상수 버퍼를 바인딩하고 드로우 호출
     virtual void Render(Renderer* renderer) = 0;
 
-    void UpdateWorldMatrix();
-    void SetPosition(const XMFLOAT3& position);
+    // 변환 설정
+    void SetPosition(const XMFLOAT3& pos);
     void SetScale(const XMFLOAT3& scale);
-
-    void SetRotationEuler(const XMFLOAT3& eulerAngles);    // Euler -> Quaternion 변환
-    void SetRotationQuat(const XMVECTOR& quat);            // Quaternion 설정
-
-    XMFLOAT3 GetPosition() const;
-    XMFLOAT3 GetScale() const;
-
-    XMFLOAT3 GetRotationEuler() const;
-    XMVECTOR GetRotationQuat() const;
-
-    void AddForce(const XMFLOAT3& force);
-
-    void SetColliderOffset(const XMFLOAT3& offset);
-    XMFLOAT3 GetColliderOffset() const;
-
-    physx::PxRigidActor* GetPhysicsActor() const;
-    void SetCollisionLayer(CollisionLayer layer);
+    void SetRotationQuat(const XMVECTOR& quat);
 
 protected:
+    // 월드 행렬 계산
+    void UpdateWorldMatrix();
 
-    void BindPhysicsActor(physx::PxRigidActor* actor);
-    void SyncFromPhysics();
-    void ApplyTransformToPhysics();
-    void DrawPhysicsColliderDebug();
+    // D3D12 상수 버퍼
+    ComPtr<ID3D12Resource>       constantMVPBuffer;
+    UINT8* mappedMVPData = nullptr;
 
-
-protected:
-    XMFLOAT3 position;
-    XMFLOAT3 scale;
-
-    XMFLOAT3 rotationEuler;
-    XMVECTOR rotationQuat;          // 실제 회전 값
-
+    // 변환 정보
+    XMFLOAT3 position    = {0,0,0};
+    XMFLOAT3 scale       = {1,1,1};
+    XMVECTOR rotation    = XMQuaternionIdentity();
     XMMATRIX worldMatrix = XMMatrixIdentity();
-
-    ComPtr<ID3D11Buffer> constantMVPBuffer;
-    ComPtr<ID3D11Buffer> constantMaterialBuffer;
-
-    ComPtr<ID3D11VertexShader> vertexShader;
-    ComPtr<ID3D11PixelShader> pixelShader;
-    ComPtr<ID3D11InputLayout> inputLayout;
-    ComPtr<ID3D11RasterizerState> rasterizerState;
-    ComPtr<ID3D11BlendState> blendState;
-    ComPtr<ID3D11DepthStencilState> depthStencilState;
-
-    CB_Material materialData;
-    std::shared_ptr<Texture> diffuseTexture;
-
-    ShaderInfo shaderInfo;
-    TextureManager textureManager;
-    ModelLoader modelLoader;
-
-    physx::PxRigidActor* physicsActor = nullptr;
-    XMFLOAT3 colliderOffset = { 0, 0, 0 };
-
 };

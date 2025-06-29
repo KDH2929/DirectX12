@@ -1,23 +1,23 @@
 #pragma once
 
-#include <vector>
+#include <unordered_set>
 #include <mutex>
-#include <winsock2.h>
-
+#include "ClientSession.h"
 
 class GameRoom {
 public:
     explicit GameRoom(int roomId);
 
-    void AddPlayer(SOCKET sock);
-    void RemovePlayer(SOCKET sock);
-    void Broadcast(const char* data, int size, SOCKET excludeSock = INVALID_SOCKET);
+    void AddPlayer(ClientSession* client);
+    void RemovePlayer(ClientSession* client);
+    void Broadcast(const game::Packet& packet, ClientSession* excludeClient = nullptr);
 
     int GetRoomId() const;
-    const std::vector<SOCKET>& GetPlayers() const;
+    const std::unordered_set<ClientSession*>& GetPlayers() const;
+    int GetPlayerCount() const;
 
 private:
     int roomId;
-    std::vector<SOCKET> players;
-    std::mutex mutex;
+    std::unordered_set<ClientSession*> players;
+    mutable std::mutex mutex;
 };

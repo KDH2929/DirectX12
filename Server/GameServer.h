@@ -4,6 +4,10 @@
 #include <thread>
 #include <atomic>
 
+#include "packet.pb.h"
+#include "PacketParser.h"
+#include "MessageDispatcher.h"
+
 #include "ClientManager.h"
 #include "RoomManager.h"
 
@@ -13,6 +17,10 @@ public:
     bool Start(int port);
     void Stop();
 
+    RoomManager* GetRoomManager();
+    ClientManager* GetClientManager();
+
+
 private:
     SOCKET serverSocket = INVALID_SOCKET;
     std::thread acceptThread;
@@ -21,8 +29,10 @@ private:
 
     ClientManager clientManager;
     RoomManager roomManager;
+    MessageDispatcher dispatcher;
 
     void AcceptLoop();
     void HandleClient(SOCKET clientSocket);
     void GameLoop();
+
 };

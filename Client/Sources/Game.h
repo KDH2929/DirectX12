@@ -5,15 +5,9 @@
 #include "Renderer.h"
 #include "ModelLoader.h"
 #include "TextureManager.h"
-#include "HeightMapTerrain.h"
-#include "PlayerFlight.h"
-#include "EnemyFlight.h"
-#include "Bullet.h"
-#include "Skybox.h"
-#include "UI2D.h"
 
 #include <imgui.h>
-#include <imgui_impl_dx11.h>
+//#include <imgui_impl_dx12.h>
 #include <imgui_impl_win32.h>
 #include <windows.h>
 
@@ -49,10 +43,6 @@ private:
     // Meshes
     std::shared_ptr<Mesh> flight1Mesh;
     std::shared_ptr<Texture> flight1Texture;
-    std::shared_ptr<Flight> playerFlight1;
-
-    // EnemyFlight
-    std::vector<std::shared_ptr<EnemyFlight>> enemyFlights;
 
     std::vector<XMFLOAT3> enemyPositions = {
         { -60.0f, 50.0f, 100.0f },
@@ -62,13 +52,10 @@ private:
         {  60.0f, 50.0f, 100.0f },
     };
 
-    std::shared_ptr<HeightMapTerrain> terrain;
-    std::shared_ptr<Skybox> skybox;
 
     std::shared_ptr<Mesh> bulletMesh;
     std::shared_ptr<Texture> bulletTexture;
 
-    std::shared_ptr<UI2D> crosshair;
 
     void LoadModel();
     void LoadTexture();

@@ -4,32 +4,31 @@
 #include <wrl.h>
 #include <vector>
 
-using namespace DirectX;
-using namespace Microsoft::WRL;
+using Microsoft::WRL::ComPtr;
 
-struct SimpleVertex
-{
-    XMFLOAT3 position;
-    XMFLOAT4 color;
+struct SimpleVertex {
+    DirectX::XMFLOAT3 pos;
+    DirectX::XMFLOAT4 color;
 };
 
-class TriangleObject : public GameObject
-{
+class TriangleObject : public GameObject {
 public:
-    TriangleObject();
+    TriangleObject() = default;
     virtual ~TriangleObject() = default;
 
-    bool Initialize(Renderer* renderer);
+    bool Initialize(Renderer* renderer) override;
     void Update(float deltaTime) override;
     void Render(Renderer* renderer) override;
 
 private:
-    void CreateGeometry();
+    void CreateGeometry(Renderer* renderer);
 
-    ComPtr<ID3D11Buffer> vertexBuffer;
-    ComPtr<ID3D11Buffer> indexBuffer;
+    // D3D12 resources
+    ComPtr<ID3D12Resource>      vertexBuffer;
+    ComPtr<ID3D12Resource>      indexBuffer;
+    D3D12_VERTEX_BUFFER_VIEW    vbView = {};
+    D3D12_INDEX_BUFFER_VIEW     ibView = {};
 
     std::vector<SimpleVertex> vertices;
-    std::vector<UINT> indices;
-
+    std::vector<UINT>         indices;
 };

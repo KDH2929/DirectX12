@@ -8,10 +8,10 @@ using namespace DirectX;
 // b0
 struct CB_MVP
 {
-    XMMATRIX model;
-    XMMATRIX view;
-    XMMATRIX projection;
-    XMMATRIX modelInvTranspose;
+    XMFLOAT4X4 model;
+    XMFLOAT4X4 view;
+    XMFLOAT4X4 projection;
+    XMFLOAT4X4 modelInvTranspose;
 };
 
 // b1

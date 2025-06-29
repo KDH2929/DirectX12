@@ -1,19 +1,25 @@
-#pragma once
+Ôªø#pragma once
+
+#include <dxgi1_6.h>
+#include <d3d12.h>
+#include <wrl.h>
+#include <vector>
+#include <memory>
+#include <string>
 
 #include "GameObject.h"
 #include "ShaderManager.h"
+#include "PipelineStateManager.h"
+#include "RootSignatureManager.h"
 #include "Camera.h"
 #include "Light.h"
 #include "ConstantBuffers.h"
 
-#include <d3d11.h>
-#include <wrl.h>
-#include <vector>
-#include <memory>
+#pragma comment(lib, "d3d12.lib")
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "dxguid.lib")
 
-#pragma comment(lib, "d3d11.lib")
-
-using namespace Microsoft::WRL;
+using Microsoft::WRL::ComPtr;
 
 class Renderer {
 public:
@@ -23,62 +29,89 @@ public:
     bool Init(HWND hwnd, int width, int height);
     void Cleanup();
 
-    ID3D11Device* GetDevice() const;
-    ID3D11DeviceContext* GetDeviceContext() const;
-    ShaderManager* GetShaderManager();
-
+    // Game object Í¥ÄÎ¶¨
     void AddGameObject(std::shared_ptr<GameObject> obj);
     void RemoveGameObject(std::shared_ptr<GameObject> obj);
 
     void Update(float deltaTime);
     void Render();
 
-    bool InitGlobalBuffer();
-    void UpdateGlobalTime(float totalTime);
+    void WaitForPreviousFrame();
 
-    Camera* GetCamera();
+
+    ID3D12Device* GetDevice() const;
+    ID3D12CommandQueue* GetCommandQueue() const;
+    ID3D12GraphicsCommandList* GetCommandList() const;
+
+    // Î¶¨ÏÜåÏä§ ÏÉùÏÑ± ÏãúÏóê ÏÇ¨Ïö©Ìï† CommandList
+    ID3D12CommandAllocator* GetUploadCommandAllocator() const;
+    ID3D12GraphicsCommandList* GetUploadCommandList() const;
+
+    PipelineStateManager* GetPSOManager() const;
+    RootSignatureManager* GetRootSignatureManager() const;
+    ShaderManager* GetShaderManager() const;
+
+    Camera* GetCamera() const;
     void SetCamera(std::shared_ptr<Camera> newCamera);
 
-    ID3D11Buffer* GetLightingConstantBuffer();
-    ID3D11SamplerState* GetSamplerState() const;
-
-    bool SetupLightingConstantBuffer();
-    bool SetupTextureSampler();
-    void SetupDefaultLights();
-    
-
-
+    // Viewport Ï†ïÎ≥¥
     int GetViewportWidth() const;
     int GetViewportHeight() const;
 
+
 private:
     bool InitD3D(HWND hwnd, int width, int height);
+    void PopulateCommandList();
 
 
 private:
-    // Direct3D ∞¸∑√ ∫ØºˆµÈ
-    ComPtr<ID3D11Device> device;
-    ComPtr<ID3D11DeviceContext> deviceContext;
-    ComPtr<IDXGISwapChain> swapChain;
-    ComPtr<ID3D11RenderTargetView> renderTargetView;
-    ComPtr<ID3D11DepthStencilView> depthStencilView;
-    ComPtr<ID3D11DepthStencilState> depthStencilState;
-    D3D11_VIEWPORT viewport;
+    static const UINT FrameCount = 2;
 
+    // Device & swap chain
+    ComPtr<ID3D12Device>           device;
+    ComPtr<IDXGISwapChain3>        swapChain;
+    UINT                            frameIndex = 0;
+
+    // Command queue & lists
+    ComPtr<ID3D12CommandQueue>     commandQueue;
+    ComPtr<ID3D12CommandAllocator> commandAllocator;
+    ComPtr<ID3D12GraphicsCommandList> commandList;
+
+
+    ComPtr<ID3D12CommandAllocator> uploadCommandAllocator;
+    ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
+
+
+    // Descriptor heaps: RTV, DSV
+    ComPtr<ID3D12DescriptorHeap>   rtvHeap;
+    ComPtr<ID3D12DescriptorHeap>   dsvHeap;
+    UINT                            rtvDescriptorSize = 0;
+
+    // Render target & depth buffer
+    ComPtr<ID3D12Resource>         renderTargets[FrameCount];
+    ComPtr<ID3D12Resource>         depthStencilBuffer;
+
+    // Synchronization
+    ComPtr<ID3D12Fence>            fence;
+    UINT64                          fenceValue = 0;
+    HANDLE                          fenceEvent = nullptr;
+
+    // Viewport & scissor
+    D3D12_VIEWPORT                 viewport = {};
+    D3D12_RECT                     scissorRect = {};
+
+    // Managers
+    std::unique_ptr<RootSignatureManager>   rootSignatureManager;
+    std::unique_ptr<ShaderManager>          shaderManager;
+    std::unique_ptr<PipelineStateManager>   psoManager;
 
     std::vector<std::shared_ptr<GameObject>> gameObjects;
-    std::shared_ptr<ShaderManager> shaderManager;
+    std::shared_ptr<Camera>                   mainCamera;
 
-    std::shared_ptr<Camera> mainCamera;
+    // Constant buffers
+    CB_Global          globalCB;
+    ComPtr<ID3D12Resource> cbGlobalBuffer;
 
-    CB_Global globalCB;
-    ComPtr<ID3D11Buffer> cbGlobalBuffer;
-
-    std::vector<Light> lights;
-    ComPtr<ID3D11Buffer> lightingConstantBuffer;
-    CB_Lighting lightingData;
-
-
-    ComPtr<ID3D11SamplerState> samplerState;
-
+    CB_Lighting        lightingData;
+    ComPtr<ID3D12Resource> lightingConstantBuffer;
 };

@@ -1,0 +1,71 @@
+syntax = "proto3";
+package game;
+
+// Wrapper
+message Packet {
+  string type = 1;
+  bytes payload = 2;
+}
+
+// Login
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Room
+message JoinRoomRequest {
+  int32 room_id = 1;
+}
+
+message JoinRoomResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Chat
+message Chat {
+  string nickname = 1;
+  string message = 2;
+}
+
+// Position Synchronization
+message Move {
+  int32 player_id = 1;  // 누가 이동했는지
+  float x = 2;
+  float y = 3;
+  float z = 4;
+}
+
+// Attack
+message Fire {
+  int32 player_id = 1;  // 누가 쐈는지
+  int32 bullet_id = 2;
+  float dir_x = 3;
+  float dir_y = 4;
+  float dir_z = 5;
+}
+
+message Hit {
+  int32 attacker_id = 1;
+  int32 target_id = 2;
+  float damage = 3;
+}
+
+message PlayerInfo {
+  int32 player_id = 1;
+  string nickname = 2;
+  float x = 3;
+  float y = 4;
+  float z = 5;
+  float hp = 6;
+}
+
+message GameState {
+  repeated PlayerInfo players = 1;
+}

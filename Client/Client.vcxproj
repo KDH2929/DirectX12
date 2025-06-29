@@ -141,71 +141,48 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Sources\GameObjects\BillboardExplosion.cpp" />
-    <ClCompile Include="Sources\GameObjects\BillboardMuzzleFlash.cpp" />
-    <ClCompile Include="Sources\GameObjects\BillboardMuzzleSmoke.cpp" />
-    <ClCompile Include="Sources\GameObjects\BillboardObject.cpp" />
-    <ClCompile Include="Sources\GameObjects\BoxObject.cpp" />
-    <ClCompile Include="Sources\GameObjects\Bullet.cpp" />
     <ClCompile Include="Sources\Camera.cpp" />
-    <ClCompile Include="Sources\CameraController.cpp" />
     <ClCompile Include="Sources\DebugManager.cpp" />
-    <ClCompile Include="Sources\DebugRenderer.cpp" />
-    <ClCompile Include="Sources\GameObjects\EnemyFlight.cpp" />
-    <ClCompile Include="Sources\GameObjects\Flight.cpp" />
     <ClCompile Include="Sources\Game.cpp" />
     <ClCompile Include="Sources\GameObjects\GameObject.cpp" />
-    <ClCompile Include="Sources\GameObjects\HeightMapTerrain.cpp" />
     <ClCompile Include="Sources\InputManager.cpp" />
     <ClCompile Include="Sources\main.cpp" />
     <ClCompile Include="Sources\Mesh.cpp" />
     <ClCompile Include="Sources\ModelLoader.cpp" />
     <ClCompile Include="Sources\NetworkManager.cpp" />
-    <ClCompile Include="Sources\GameObjects\Particle.cpp" />
     <ClCompile Include="Sources\PhysicsManager.cpp" />
-    <ClCompile Include="Sources\GameObjects\PlayerFlight.cpp" />
+    <ClCompile Include="Sources\PipelineStateManager.cpp" />
     <ClCompile Include="Sources\Renderer.cpp" />
+    <ClCompile Include="Sources\RootSignatureManager.cpp" />
+    <ClCompile Include="Sources\ShaderCompiler.cpp" />
     <ClCompile Include="Sources\ShaderManager.cpp" />
-    <ClCompile Include="Sources\Skybox.cpp" />
     <ClCompile Include="Sources\Texture.cpp" />
     <ClCompile Include="Sources\TextureManager.cpp" />
     <ClCompile Include="Sources\GameObjects\TriangleObject.cpp" />
-    <ClCompile Include="Sources\GameObjects\UI2D.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Sources\GameObjects\BillboardExplosion.h" />
-    <ClInclude Include="Sources\GameObjects\BillboardMuzzleFlash.h" />
-    <ClInclude Include="Sources\GameObjects\BillboardMuzzleSmoke.h" />
-    <ClInclude Include="Sources\GameObjects\BillboardObject.h" />
-    <ClInclude Include="Sources\GameObjects\BoxObject.h" />
-    <ClInclude Include="Sources\GameObjects\Bullet.h" />
     <ClInclude Include="Sources\Camera.h" />
-    <ClInclude Include="Sources\CameraController.h" />
     <ClInclude Include="Sources\ConstantBuffers.h" />
     <ClInclude Include="Sources\DebugManager.h" />
-    <ClInclude Include="Sources\DebugRenderer.h" />
-    <ClInclude Include="Sources\GameObjects\EnemyFlight.h" />
-    <ClInclude Include="Sources\GameObjects\Flight.h" />
     <ClInclude Include="Sources\Game.h" />
     <ClInclude Include="Sources\GameObjects\GameObject.h" />
-    <ClInclude Include="Sources\GameObjects\HeightMapTerrain.h" />
     <ClInclude Include="Sources\InputManager.h" />
     <ClInclude Include="Sources\Light.h" />
     <ClInclude Include="Sources\MathUtil.h" />
     <ClInclude Include="Sources\Mesh.h" />
     <ClInclude Include="Sources\ModelLoader.h" />
     <ClInclude Include="Sources\NetworkManager.h" />
-    <ClInclude Include="Sources\GameObjects\Particle.h" />
     <ClInclude Include="Sources\PhysicsManager.h" />
-    <ClInclude Include="Sources\GameObjects\PlayerFlight.h" />
+    <ClInclude Include="Sources\PipelineStateDesc.h" />
+    <ClInclude Include="Sources\PipelineStateManager.h" />
     <ClInclude Include="Sources\Renderer.h" />
-    <ClInclude Include="Sources\ShaderInfo.h" />
+    <ClInclude Include="Sources\RootSignatureManager.h" />
+    <ClInclude Include="Sources\ShaderCompileDesc.h" />
+    <ClInclude Include="Sources\ShaderCompiler.h" />
     <ClInclude Include="Sources\ShaderManager.h" />
-    <ClInclude Include="Sources\Skybox.h" />
     <ClInclude Include="Sources\Texture.h" />
     <ClInclude Include="Sources\TextureManager.h" />
     <ClInclude Include="Sources\GameObjects\TriangleObject.h" />
-    <ClInclude Include="Sources\GameObjects\UI2D.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\ExplosionPixelShader.hlsl">

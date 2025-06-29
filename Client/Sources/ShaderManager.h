@@ -1,46 +1,36 @@
+// ShaderManager.h
 #pragma once
 
-#include <d3d11.h>
-#include <wrl.h>
+#include <d3d12.h>
+#include <wrl/client.h>
 #include <string>
 #include <unordered_map>
+#include <vector>
+#include "ShaderCompileDesc.h"
+#include "ShaderCompiler.h"
 
-using namespace Microsoft::WRL;
+using Microsoft::WRL::ComPtr;
 
 class ShaderManager {
 public:
-    bool Init(ID3D11Device* device);
+
+    explicit ShaderManager(ID3D12Device* device_);
+
+    bool Init(ID3D12Device* device);
     void Cleanup();
 
-    bool CompileShaders();
+    // 여러 ShaderCompileDesc를 받아서 한 번에 컴파일
+    bool CompileAll(const std::vector<ShaderCompileDesc>& shaderDescs);
 
-    bool CompileVertexShader(
-        const std::wstring& vsPath,
-        const std::wstring& shaderName,
-        const D3D11_INPUT_ELEMENT_DESC* inputLayoutDescArray,
-        UINT numElements,
-        const std::string& entry = "VSMain",
-        const std::string& profile = "vs_5_0"
-    );
+    ComPtr<ID3DBlob> GetShaderBlob(const std::wstring& shaderName) const;
+    D3D12_SHADER_BYTECODE GetShaderBytecode(const std::wstring& shaderName) const;
 
-    bool CompilePixelShader(
-        const std::wstring& psPath,
-        const std::wstring& shaderName,
-        const std::string& entry = "PSMain",
-        const std::string& profile = "ps_5_0"
-    );
-
-    ID3D11VertexShader* GetVertexShader(const std::wstring& name) const;
-    ID3D11PixelShader* GetPixelShader(const std::wstring& name) const;
-    ID3D11InputLayout* GetInputLayout(const std::wstring& name) const;
 
 private:
-    struct ShaderData {
-        ComPtr<ID3D11VertexShader> vertexShader;
-        ComPtr<ID3D11PixelShader> pixelShader;
-        ComPtr<ID3D11InputLayout> inputLayout;
-    };
+    // 한 개의 ShaderCompileDesc를 ShaderCompiler로 컴파일
+    bool Compile(const ShaderCompileDesc& desc, ComPtr<ID3DBlob>& outBlob);
 
-    std::unordered_map<std::wstring, ShaderData> shaders;
-    ID3D11Device* device = nullptr;
+    ID3D12Device* device = nullptr;
+    ShaderCompiler compiler;
+    std::unordered_map<std::wstring, ComPtr<ID3DBlob>> shaders;
 };

@@ -2,11 +2,10 @@
 
 void ClientManager::AddClient(SOCKET sock, int playerId, const std::string& nickname) {
     std::lock_guard<std::mutex> lock(mutex);
-    ClientInfo info;
-    info.socket = sock;
-    info.playerId = playerId;
-    info.nickname = nickname;
-    clients[sock] = info;
+    auto client = std::make_shared<ClientSession>(sock);
+    client->playerId = playerId;
+    client->nickname = nickname;
+    clients[sock] = client;
 }
 
 void ClientManager::RemoveClient(SOCKET sock) {
@@ -14,30 +13,40 @@ void ClientManager::RemoveClient(SOCKET sock) {
     clients.erase(sock);
 }
 
-ClientInfo* ClientManager::GetClient(SOCKET sock) {
+std::shared_ptr<ClientSession> ClientManager::GetClient(SOCKET sock) {
     std::lock_guard<std::mutex> lock(mutex);
     auto it = clients.find(sock);
     if (it != clients.end()) {
-        return &it->second;
+        return it->second;
     }
     return nullptr;
 }
 
-std::vector<ClientInfo*> ClientManager::GetAllClients() {
+ClientSession* ClientManager::GetClientById(int playerId) {
     std::lock_guard<std::mutex> lock(mutex);
-    std::vector<ClientInfo*> result;
     for (auto it = clients.begin(); it != clients.end(); ++it) {
-        result.push_back(&it->second);
+        if (it->second->playerId == playerId) {
+            return it->second.get();
+        }
+    }
+    return nullptr;
+}
+
+std::vector<std::shared_ptr<ClientSession>> ClientManager::GetAllClients() {
+    std::lock_guard<std::mutex> lock(mutex);
+    std::vector<std::shared_ptr<ClientSession>> result;
+    for (auto it = clients.begin(); it != clients.end(); ++it) {
+        result.push_back(it->second);
     }
     return result;
 }
 
-std::vector<ClientInfo*> ClientManager::GetClientsInRoom(int roomId) {
+std::vector<std::shared_ptr<ClientSession>> ClientManager::GetClientsInRoom(int roomId) {
     std::lock_guard<std::mutex> lock(mutex);
-    std::vector<ClientInfo*> result;
+    std::vector<std::shared_ptr<ClientSession>> result;
     for (auto it = clients.begin(); it != clients.end(); ++it) {
-        if (it->second.roomId == roomId) {
-            result.push_back(&it->second);
+        if (it->second->roomId == roomId) {
+            result.push_back(it->second);
         }
     }
     return result;

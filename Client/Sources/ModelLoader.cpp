@@ -49,9 +49,11 @@ std::shared_ptr<Mesh> ModelLoader::LoadMesh(Renderer* renderer, const std::strin
     }
 
     auto mesh = std::make_shared<Mesh>();
+    /*
     if (!mesh->Initialize(renderer->GetDevice(), meshVertices, indices)) {
         return nullptr;
     }
+    */
 
     return mesh;
 }

@@ -4,16 +4,17 @@
 #include <vector>
 #include <memory>
 #include <mutex>
-#include <winsock2.h>
-
 #include "GameRoom.h"
+#include "ClientSession.h"
 
 class RoomManager {
 public:
     GameRoom* GetRoom(int roomId);
-    GameRoom& CreateRoom(int roomId);
-    void RemovePlayerFromAllRooms(SOCKET sock);
+    GameRoom& GetOrCreateRoom(int roomId);
+    void BroadcastToRoom(int roomId, const game::Packet& packet, ClientSession* excludeClient = nullptr);
+    void RemovePlayerFromAllRooms(ClientSession* client);
     std::vector<GameRoom*> GetAllRooms();
+
 
 private:
     std::mutex mutex;

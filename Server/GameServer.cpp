@@ -1,4 +1,5 @@
 #include "GameServer.h"
+#include "MessageHandler.h"
 
 #include <iostream>
 #include <chrono>
@@ -33,6 +34,8 @@ bool GameServer::Start(int port) {
         return false;
     }
 
+    MessageHandler::SetGameServer(this);
+
     running = true;
     acceptThread = std::thread(&GameServer::AcceptLoop, this);
     gameLoopThread = std::thread(&GameServer::GameLoop, this);
@@ -52,6 +55,19 @@ void GameServer::Stop() {
     std::cout << "Server stopped\n";
 }
 
+
+RoomManager* GameServer::GetRoomManager()
+{
+    return &roomManager;
+}
+
+ClientManager* GameServer::GetClientManager()
+{
+    return &clientManager;
+}
+
+
+
 void GameServer::AcceptLoop() {
     while (running) {
         SOCKET clientSocket = accept(serverSocket, nullptr, nullptr);
@@ -66,8 +82,9 @@ void GameServer::AcceptLoop() {
     }
 }
 
+
 void GameServer::HandleClient(SOCKET clientSocket) {
-    clientManager.AddClient(clientSocket);  // 클라이언트 등록
+    clientManager.AddClient(clientSocket);
 
     const int BUFFER_SIZE = 1024;
     char buffer[BUFFER_SIZE];
@@ -79,22 +96,28 @@ void GameServer::HandleClient(SOCKET clientSocket) {
             break;
         }
 
-        buffer[received] = '\0';
+        std::string raw(buffer, received);
+        game::Packet packet;
 
-        // 예: 방 번호를 1로 고정, 실제로는 메시지 파싱해야 함
-        GameRoom* room = roomManager.GetRoom(1);
-        if (!room) {
-            room = &roomManager.CreateRoom(1);
+        if (PacketParser::Parse(raw, packet)) {
+            auto client = clientManager.GetClient(clientSocket);
+            if (client) {
+                dispatcher.Dispatch(client, packet);
+            }
         }
-
-        room->AddPlayer(clientSocket);
-        room->Broadcast(buffer, received, clientSocket);
+        else {
+            std::cerr << "Failed to parse packet from client: " << clientSocket << "\n";
+        }
     }
 
-    roomManager.RemovePlayerFromAllRooms(clientSocket);
+    auto client = clientManager.GetClient(clientSocket);
+    if (client) {
+        roomManager.RemovePlayerFromAllRooms(client.get());
+    }
     clientManager.RemoveClient(clientSocket);
     closesocket(clientSocket);
 }
+
 
 void GameServer::GameLoop() {
     using namespace std::chrono;
