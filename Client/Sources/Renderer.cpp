@@ -23,24 +23,103 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
         return false;
 
     shaderManager = std::make_unique<ShaderManager>(device.Get());
-    if (!shaderManager->Init(GetDevice()) ||
-        !shaderManager->CompileAll({
-            // Triangle shaders
-            {L"TriangleVertexShader", L"Shaders/TriangleVertexShader.hlsl", "VSMain", "vs_5_0"},
-            {L"TrianglePixelShader", L"Shaders/TrianglePixelShader.hlsl", "PSMain", "ps_5_0"}
-            })) {
+
+    std::vector<ShaderCompileDesc> shaderDescs = {
+        {L"TriangleVertexShader", L"Shaders/TriangleVertexShader.hlsl", "VSMain", "vs_5_0"},
+        {L"TrianglePixelShader", L"Shaders/TrianglePixelShader.hlsl", "PSMain", "ps_5_0"},
+        {L"PhongVertexShader",    L"Shaders/PhongVertexShader.hlsl", "VSMain", "vs_5_0"},
+        {L"PhongPixelShader",     L"Shaders/PhongPixelShader.hlsl",  "PSMain", "ps_5_0"}
+    };
+
+    if (!shaderManager->CompileAll(shaderDescs))
         return false;
-    }
+
 
     psoManager = std::make_unique<PipelineStateManager>(this);
 
     if (!psoManager->InitializePSOs())
         return false;
 
+
+    descriptorHeapManager = std::make_unique<DescriptorHeapManager>();
+    if (!descriptorHeapManager->Initialize(
+        device.Get(),
+        60'000,   // CBV_SRV_UAV
+        256,      // Sampler
+        0,        // RTV   (Renderer가 현재는 처리)
+        0,        // DSV   (Renderer가 현재는 처리)
+        FrameCount))
+        return false;
+
+
     // Setup camera
     mainCamera = std::make_shared<Camera>();
-    mainCamera->SetPosition({ 0,0,-5 });
+    mainCamera->SetPosition({ 0,0,-30 });
     mainCamera->SetPerspective(XM_PIDIV4, float(width) / height, 0.1f, 100.f);
+
+
+    // ─── 글로벌-타임 CB (b3) ───────────────────────────────────────────────
+    {
+        CD3DX12_HEAP_PROPERTIES props(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC   desc = CD3DX12_RESOURCE_DESC::Buffer(256);
+
+        if (FAILED(device->CreateCommittedResource(
+            &props, D3D12_HEAP_FLAG_NONE, &desc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+            IID_PPV_ARGS(&globalConstantBuffer))))
+            return false;
+
+        globalConstantBuffer->Map(0, nullptr,
+            reinterpret_cast<void**>(&mappedGlobalPtr));
+    }
+
+    // ─── 라이팅 CB (b1) ───────────────────────────────────────────────────
+    {
+        CD3DX12_HEAP_PROPERTIES props(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC   desc = CD3DX12_RESOURCE_DESC::Buffer(256);
+
+        if (FAILED(device->CreateCommittedResource(
+            &props, D3D12_HEAP_FLAG_NONE, &desc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+            IID_PPV_ARGS(&lightingConstantBuffer))))
+            return false;
+
+        lightingConstantBuffer->Map(0, nullptr,
+            reinterpret_cast<void**>(&mappedLightingPtr));
+
+        /* 기본 라이팅 값 설정 */
+        lightingData = {};
+        lightingData.cameraWorld = { 0.f, 0.f, 0.f };
+
+        Light dirLight{};
+        dirLight.strength = { 1.f, 1.f, 1.f };
+        dirLight.direction = { 0.f,-1.f, 0.f };
+        dirLight.specPower = 32.f;
+        dirLight.type = 0;              // 0 = Directional
+        dirLight.color = { 1.f,1.f,1.f };
+
+        lightingData.lights[0] = dirLight;
+        memcpy(mappedLightingPtr, &lightingData, sizeof(lightingData));
+
+    }
+
+
+    // ─── Sampler (s0) 1개 생성 & 힙 슬롯 확보 ─────────────────────────────
+    {
+        // 1) 힙 슬롯 1개 할당
+        auto samplerHandle = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+        samplerGpuHandle = samplerHandle.gpu;     // root slot 5에서 사용할 GPU 핸들
+
+        // 2) 샘플러 디스크립터 작성 (linear wrap 예시)
+        D3D12_SAMPLER_DESC sampDesc = {};
+        sampDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        sampDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        sampDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        sampDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        sampDesc.MaxLOD = D3D12_FLOAT32_MAX;
+
+        device->CreateSampler(&sampDesc, samplerHandle.cpu);
+    }
 
     return true;
 }
@@ -62,6 +141,10 @@ void Renderer::RemoveGameObject(std::shared_ptr<GameObject> obj) {
 
 void Renderer::Update(float deltaTime)
 {
+    lightingData.cameraWorld = mainCamera->GetPosition();
+    memcpy(mappedLightingPtr, &lightingData, sizeof(lightingData));
+
+
     for (auto& gameObject : gameObjects) {
         gameObject->Update(deltaTime);
     }
@@ -127,6 +210,11 @@ ShaderManager* Renderer::GetShaderManager() const
     return shaderManager.get();
 }
 
+DescriptorHeapManager* Renderer::GetDescriptorHeapManager() const
+{
+    return descriptorHeapManager.get();
+}
+
 Camera* Renderer::GetCamera() const { 
     return mainCamera.get(); 
 }
@@ -143,6 +231,15 @@ int Renderer::GetViewportHeight() const {
     return int(viewport.Height); 
 }
 
+ID3D12Resource* Renderer::GetLightingConstantBuffer() const
+{
+    return lightingConstantBuffer.Get();
+}
+
+ID3D12Resource* Renderer::GetGlobalConstantBuffer() const
+{
+    return globalConstantBuffer.Get();
+}
 
 bool Renderer::InitD3D(HWND hwnd, int width, int height)
 {
@@ -310,6 +407,33 @@ void Renderer::PopulateCommandList() {
     commandAllocator->Reset();
     commandList->Reset(commandAllocator.Get(), nullptr);
 
+
+    /* 힙 두 개 바인딩 (CBV_SRV_UAV + SAMPLER) */
+    ID3D12DescriptorHeap* heaps[] = {
+        descriptorHeapManager->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
+        descriptorHeapManager->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+    };
+    commandList->SetDescriptorHeaps(2, heaps);
+
+
+    // 루트 서명 먼저!
+    commandList->SetGraphicsRootSignature(
+        rootSignatureManager->Get(L"PhongRS"));   // 또는 공통 RS
+
+
+    /* 프레임 전역 Root-CBV (b1, b3)  */
+    commandList->SetGraphicsRootConstantBufferView(
+        1, lightingConstantBuffer->GetGPUVirtualAddress());   // b1
+
+    commandList->SetGraphicsRootConstantBufferView(
+        3, globalConstantBuffer->GetGPUVirtualAddress());     // b3
+
+    /* Sampler 테이블 (root slot 5)  */
+    commandList->SetGraphicsRootDescriptorTable(
+        5, samplerGpuHandle);
+
+
+
     // 2) 백버퍼 Transition: PRESENT → RENDER_TARGET
     CD3DX12_RESOURCE_BARRIER barrierToRenderTarget =
         CD3DX12_RESOURCE_BARRIER::Transition(
@@ -334,7 +458,7 @@ void Renderer::PopulateCommandList() {
     commandList->RSSetViewports(1, &viewport);
     commandList->RSSetScissorRects(1, &scissorRect);
 
-    // 5) 각 게임 오브젝트에 그리기 위임
+    // 5) 각 게임 오브젝트 드로우콜
     for (auto& obj : gameObjects) {
         obj->Render(this);
     }
@@ -360,4 +484,10 @@ void Renderer::WaitForPreviousFrame() {
         fence->SetEventOnCompletion(currentFence, fenceEvent);
         WaitForSingleObject(fenceEvent, INFINITE);
     }
+}
+
+void Renderer::UpdateGlobalTime(float timeSeconds)
+{
+    globalData.time = timeSeconds;
+    memcpy(mappedGlobalPtr, &globalData, sizeof(globalData));
 }

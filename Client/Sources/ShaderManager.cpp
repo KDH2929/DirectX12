@@ -29,6 +29,11 @@ bool ShaderManager::Compile(
         if (errorBlob)
             OutputDebugStringA(
                 static_cast<const char*>(errorBlob->GetBufferPointer()));
+    
+#if defined(_DEBUG)
+        throw std::runtime_error("Shader compilation failed: " +
+            std::string(desc.path.begin(), desc.path.end()));
+#endif
         return false;
     }
     return true;

@@ -11,6 +11,7 @@
 #include "ShaderManager.h"
 #include "PipelineStateManager.h"
 #include "RootSignatureManager.h"
+#include "DescriptorHeapManager.h"
 #include "Camera.h"
 #include "Light.h"
 #include "ConstantBuffers.h"
@@ -38,6 +39,8 @@ public:
 
     void WaitForPreviousFrame();
 
+    void UpdateGlobalTime(float timeSeconds);
+
 
     ID3D12Device* GetDevice() const;
     ID3D12CommandQueue* GetCommandQueue() const;
@@ -50,6 +53,8 @@ public:
     PipelineStateManager* GetPSOManager() const;
     RootSignatureManager* GetRootSignatureManager() const;
     ShaderManager* GetShaderManager() const;
+    DescriptorHeapManager* GetDescriptorHeapManager() const;
+
 
     Camera* GetCamera() const;
     void SetCamera(std::shared_ptr<Camera> newCamera);
@@ -59,13 +64,17 @@ public:
     int GetViewportHeight() const;
 
 
+    ID3D12Resource* GetLightingConstantBuffer()const;
+    ID3D12Resource* GetGlobalConstantBuffer()  const;
+
+
 private:
     bool InitD3D(HWND hwnd, int width, int height);
     void PopulateCommandList();
 
 
 private:
-    static const UINT FrameCount = 2;
+    static const UINT FrameCount = 2;  
 
     // Device & swap chain
     ComPtr<ID3D12Device>           device;
@@ -104,14 +113,24 @@ private:
     std::unique_ptr<RootSignatureManager>   rootSignatureManager;
     std::unique_ptr<ShaderManager>          shaderManager;
     std::unique_ptr<PipelineStateManager>   psoManager;
+    std::unique_ptr<DescriptorHeapManager> descriptorHeapManager;
 
     std::vector<std::shared_ptr<GameObject>> gameObjects;
     std::shared_ptr<Camera>                   mainCamera;
 
-    // Constant buffers
-    CB_Global          globalCB;
-    ComPtr<ID3D12Resource> cbGlobalBuffer;
+    /* ----------  Frame-global constant buffer : b3  ---------- */
+    CB_Global                 globalData;
+    ComPtr<ID3D12Resource>    globalConstantBuffer;       // upload heap
+    UINT8* mappedGlobalPtr = nullptr;  // persistent map
 
-    CB_Lighting        lightingData;
-    ComPtr<ID3D12Resource> lightingConstantBuffer;
+    /* ----------  Lighting constant buffer : b1  -------------- */
+    std::vector<Light>        lights;
+    CB_Lighting               lightingData;
+    ComPtr<ID3D12Resource>    lightingConstantBuffer;     // upload heap
+    UINT8* mappedLightingPtr = nullptr;
+
+    /* ----------  Sampler (s0)  ------------------------------- */
+    // RootSignature 에 StaticSampler 로 넣어두면 추가 코드 X
+    // 동적 샘플러가 필요하면 ↓ 한 칸만 샘플러 힙에 만들어 공유
+    D3D12_GPU_DESCRIPTOR_HANDLE samplerGpuHandle{};
 };

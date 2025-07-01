@@ -72,6 +72,12 @@
     <ClCompile Include="Sources\RootSignatureManager.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\DescriptorHeapManager.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\GameObjects\BoxObject.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Game.h">
@@ -138,6 +144,12 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Sources\RootSignatureManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\DescriptorHeapManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\GameObjects\BoxObject.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

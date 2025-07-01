@@ -11,11 +11,25 @@ PipelineStateManager::~PipelineStateManager() {
     Cleanup();
 }
 
-bool PipelineStateManager::InitializePSOs() {
-    psoMap.clear();
-    // 삼각형 전용 PSO 생성
-    auto triDesc = CreateTrianglePSODesc();
-    return GetOrCreate(triDesc) != nullptr;
+bool PipelineStateManager::InitializePSOs()
+{
+    psoMap.clear();         // 캐시 비우기
+
+    // ── 1. Triangle용 PSO ─────────────────────────────
+    {
+        PipelineStateDesc desc = CreateTrianglePSODesc();
+        if (GetOrCreate(desc) == nullptr)
+            return false;
+    }
+
+    // ── 2. Phong-Lighting용 PSO ───────────────────────
+    {
+        PipelineStateDesc desc = CreatePhongPSODesc();
+        if (GetOrCreate(desc) == nullptr)
+            return false;
+    }
+
+    return true;
 }
 
 PipelineStateDesc PipelineStateManager::CreateTrianglePSODesc() const {
@@ -48,6 +62,58 @@ PipelineStateDesc PipelineStateManager::CreateTrianglePSODesc() const {
     desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
     // 나머지 상태는 기본값 유지
+    return desc;
+}
+
+PipelineStateDesc PipelineStateManager::CreatePhongPSODesc() const
+{
+    // ──────────────────────────────────────────────────────────────
+    // 1) 루트 시그니처 : PhongRS
+    // ──────────────────────────────────────────────────────────────
+    auto rs = renderer->GetRootSignatureManager()->Get(L"PhongRS");
+    if (!rs)
+        throw std::runtime_error("PhongRS not created");
+
+    // ──────────────────────────────────────────────────────────────
+    // 2) 입력 레이아웃 : Position + Normal + TexCoord
+    //    (컬러는 머티리얼에서 처리)
+    // ──────────────────────────────────────────────────────────────
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    // ──────────────────────────────────────────────────────────────
+    // 3) 셰이더 : Phong 전용 VS / PS
+    //
+    // ──────────────────────────────────────────────────────────────
+    ComPtr<ID3DBlob> vsBlob =
+        renderer->GetShaderManager()->GetShaderBlob(L"PhongVertexShader");
+    ComPtr<ID3DBlob> psBlob =
+        renderer->GetShaderManager()->GetShaderBlob(L"PhongPixelShader");
+
+    // ──────────────────────────────────────────────────────────────
+    // 4) 파이프라인 상태 기본값 구성
+    // ──────────────────────────────────────────────────────────────
+    PipelineStateDesc desc;
+    desc.name = L"PhongPSO";
+    desc.rootSignature = rs;
+    desc.vsBlob = vsBlob;
+    desc.psBlob = psBlob;
+    desc.inputLayout = std::move(inputLayout);
+
+    // 필요 시 CullMode 등을 조정
+    desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+    // MSAA, RTV/DSV 포맷, SampleMask 등은
+    // 프로젝트 공통 기본값 그대로 두거나 여기서 수정
     return desc;
 }
 

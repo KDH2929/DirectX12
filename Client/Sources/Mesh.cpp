@@ -1,144 +1,150 @@
 #include "Mesh.h"
+#include "Renderer.h"
+#include <directx/d3dx12.h>
 
-Mesh::Mesh() : vertexBuffer(nullptr), indexBuffer(nullptr), indexCount(0) {}
+Mesh::Mesh() = default;
+Mesh::~Mesh() = default;
 
-Mesh::~Mesh() {
+
+void Mesh::CopyDataToGpuBuffer(ID3D12Device* device,
+    ID3D12GraphicsCommandList* commandList,
+    const void* sourceDataPtr_,
+    UINT                       sizeBytes_,
+    ComPtr<ID3D12Resource>& uploadBufferOut_,
+    ComPtr<ID3D12Resource>& gpuBufferOut_,
+    D3D12_RESOURCE_STATES      finalResourceState_)
+{
+    CD3DX12_HEAP_PROPERTIES uploadProperties(D3D12_HEAP_TYPE_UPLOAD);
+    CD3DX12_RESOURCE_DESC   resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeBytes_);
+
+    // Upload heap buffer
+    device->CreateCommittedResource(&uploadProperties, D3D12_HEAP_FLAG_NONE,
+        &resourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr, IID_PPV_ARGS(&uploadBufferOut_));
+
+    void* mappedPtr = nullptr;
+    uploadBufferOut_->Map(0, nullptr, &mappedPtr);
+    memcpy(mappedPtr, sourceDataPtr_, sizeBytes_);
+    uploadBufferOut_->Unmap(0, nullptr);
+
+    // Default heap buffer
+    CD3DX12_HEAP_PROPERTIES defaultProperties(D3D12_HEAP_TYPE_DEFAULT);
+    device->CreateCommittedResource(&defaultProperties, D3D12_HEAP_FLAG_NONE,
+        &resourceDesc, D3D12_RESOURCE_STATE_COPY_DEST,
+        nullptr, IID_PPV_ARGS(&gpuBufferOut_));
+
+    // Schedule copy + state transition
+    commandList->CopyResource(gpuBufferOut_.Get(), uploadBufferOut_.Get());
+    auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+        gpuBufferOut_.Get(), D3D12_RESOURCE_STATE_COPY_DEST, finalResourceState_);
+    commandList->ResourceBarrier(1, &barrier);
 }
 
-bool Mesh::Initialize(ID3D11Device* device, const std::vector<MeshVertex>& vertices, const std::vector<unsigned int>& indices) {
-    if (!CreateBuffers(device, vertices, indices)) {
-        return false;
-    }
+// ---------------------------------------------------------------------------
+bool Mesh::CreateGpuBuffers(Renderer* renderer,
+    const void* vertexDataPtr_, UINT vertexBytes_,
+    const void* indexDataPtr_, UINT indexBytes_)
+{
+    ID3D12Device* device = renderer->GetDevice();
+    auto          uploadAllocator = renderer->GetUploadCommandAllocator();
+    auto          uploadList = renderer->GetUploadCommandList();
+
+    uploadAllocator->Reset();
+    uploadList->Reset(uploadAllocator, nullptr);
+
+    ComPtr<ID3D12Resource> vertexUpload;
+    ComPtr<ID3D12Resource> indexUpload;
+
+    CopyDataToGpuBuffer(device, uploadList, vertexDataPtr_, vertexBytes_,
+        vertexUpload, vertexBuffer,
+        D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+
+    CopyDataToGpuBuffer(device, uploadList, indexDataPtr_, indexBytes_,
+        indexUpload, indexBuffer,
+        D3D12_RESOURCE_STATE_INDEX_BUFFER);
+
+    uploadList->Close();
+    ID3D12CommandList* lists[] = { uploadList };
+    renderer->GetCommandQueue()->ExecuteCommandLists(1, lists);
+    renderer->WaitForPreviousFrame();
+
+    // Build views
+    vertexView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
+    vertexView.StrideInBytes = sizeof(MeshVertex);
+    vertexView.SizeInBytes = vertexBytes_;
+
+    indexView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+    indexView.Format = DXGI_FORMAT_R32_UINT;
+    indexView.SizeInBytes = indexBytes_;
 
     return true;
 }
 
-bool Mesh::CreateBuffers(ID3D11Device* device, const std::vector<MeshVertex>& vertices, const std::vector<unsigned int>& indices) {
-    // 버텍스 버퍼 생성
-    D3D11_BUFFER_DESC vbd = {};
-    vbd.Usage = D3D11_USAGE_DEFAULT;
-    vbd.ByteWidth = UINT(sizeof(MeshVertex) * vertices.size());
-    vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    vbd.CPUAccessFlags = 0;
-
-    D3D11_SUBRESOURCE_DATA vinitData = {};
-    vinitData.pSysMem = vertices.data();
-
-    HRESULT hr = device->CreateBuffer(&vbd, &vinitData, vertexBuffer.GetAddressOf());
-    if (FAILED(hr)) {
-        return false;
-    }
-
-    // 인덱스 버퍼 생성
-    D3D11_BUFFER_DESC ibd = {};
-    ibd.Usage = D3D11_USAGE_DEFAULT;
-    ibd.ByteWidth = UINT(sizeof(unsigned int) * indices.size());
-    ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    ibd.CPUAccessFlags = 0;
-
-    D3D11_SUBRESOURCE_DATA iinitData = {};
-    iinitData.pSysMem = indices.data();
-
-    hr = device->CreateBuffer(&ibd, &iinitData, indexBuffer.GetAddressOf());
-    if (FAILED(hr)) {
-        return false;
-    }
-
-    indexCount = static_cast<unsigned int>(indices.size());
-
-    return true;
+// ---------------------------------------------------------------------------
+bool Mesh::Initialize(Renderer* renderer,
+    const std::vector<MeshVertex>& vertexVector,
+    const std::vector<uint32_t>& indexVector)
+{
+    indexCount = static_cast<uint32_t>(indexVector.size());
+    return CreateGpuBuffers(renderer,
+        vertexVector.data(), UINT(vertexVector.size() * sizeof(MeshVertex)),
+        indexVector.data(), UINT(indexVector.size() * sizeof(uint32_t)));
 }
 
-ID3D11Buffer* Mesh::GetVertexBuffer() const {
-    return vertexBuffer.Get();
-}
+// ---------------------------------------------------------------------------
+const D3D12_VERTEX_BUFFER_VIEW& Mesh::GetVertexBufferView() const { return vertexView; }
+const D3D12_INDEX_BUFFER_VIEW& Mesh::GetIndexBufferView()  const { return indexView; }
+uint32_t Mesh::GetIndexCount()  const { return indexCount; }
 
-ID3D11Buffer* Mesh::GetIndexBuffer() const {
-    return indexBuffer.Get();
-}
 
-unsigned int Mesh::GetIndexCount() const {
-    return indexCount;
-}
 
-std::shared_ptr<Mesh> Mesh::CreateCube(ID3D11Device* device) {
-    std::vector<MeshVertex> vertices = {
-        // Top (+Y)
-        {{-1,  1, -1}, {0, 1, 0}, {0, 0}},
-        {{-1,  1,  1}, {0, 1, 0}, {1, 0}},
-        {{ 1,  1,  1}, {0, 1, 0}, {1, 1}},
-        {{ 1,  1, -1}, {0, 1, 0}, {0, 1}},
-
-        // Bottom (-Y)
-        {{-1, -1, -1}, {0, -1, 0}, {0, 0}},
-        {{ 1, -1, -1}, {0, -1, 0}, {1, 0}},
-        {{ 1, -1,  1}, {0, -1, 0}, {1, 1}},
-        {{-1, -1,  1}, {0, -1, 0}, {0, 1}},
-
-        // Front (-Z)
-        {{-1, -1, -1}, {0, 0, -1}, {0, 0}},
-        {{-1,  1, -1}, {0, 0, -1}, {1, 0}},
-        {{ 1,  1, -1}, {0, 0, -1}, {1, 1}},
-        {{ 1, -1, -1}, {0, 0, -1}, {0, 1}},
-
-        // Back (+Z)
-        {{-1, -1,  1}, {0, 0, 1}, {0, 0}},
-        {{ 1, -1,  1}, {0, 0, 1}, {1, 0}},
-        {{ 1,  1,  1}, {0, 0, 1}, {1, 1}},
-        {{-1,  1,  1}, {0, 0, 1}, {0, 1}},
-
-        // Left (-X)
-        {{-1, -1,  1}, {-1, 0, 0}, {0, 0}},
-        {{-1,  1,  1}, {-1, 0, 0}, {1, 0}},
-        {{-1,  1, -1}, {-1, 0, 0}, {1, 1}},
-        {{-1, -1, -1}, {-1, 0, 0}, {0, 1}},
-
-        // Right (+X)
-        {{ 1, -1, -1}, {1, 0, 0}, {0, 0}},
-        {{ 1,  1, -1}, {1, 0, 0}, {1, 0}},
-        {{ 1,  1,  1}, {1, 0, 0}, {1, 1}},
-        {{ 1, -1,  1}, {1, 0, 0}, {0, 1}},
+static void BuildCube(std::vector<MeshVertex>& verticesOut, std::vector<uint32_t>& indicesOut)
+{
+    verticesOut = {
+        // +Y
+        {{-1,  1, -1},{0,1,0},{0,0}}, {{-1,  1,  1},{0,1,0},{1,0}},
+        {{ 1,  1,  1},{0,1,0},{1,1}}, {{ 1,  1, -1},{0,1,0},{0,1}},
+        // -Y
+        {{-1, -1, -1},{0,-1,0},{0,0}}, {{ 1, -1, -1},{0,-1,0},{1,0}},
+        {{ 1, -1,  1},{0,-1,0},{1,1}}, {{-1, -1,  1},{0,-1,0},{0,1}},
+        // -Z
+        {{-1,-1,-1},{0,0,-1},{0,0}}, {{-1,1,-1},{0,0,-1},{1,0}},
+        {{1,1,-1},{0,0,-1},{1,1}}, {{1,-1,-1},{0,0,-1},{0,1}},
+        // +Z
+        {{-1,-1,1},{0,0,1},{0,0}}, {{1,-1,1},{0,0,1},{1,0}},
+        {{1,1,1},{0,0,1},{1,1}}, {{-1,1,1},{0,0,1},{0,1}},
+        // -X
+        {{-1,-1,1},{-1,0,0},{0,0}}, {{-1,1,1},{-1,0,0},{1,0}},
+        {{-1,1,-1},{-1,0,0},{1,1}}, {{-1,-1,-1},{-1,0,0},{0,1}},
+        // +X
+        {{1,-1,-1},{1,0,0},{0,0}}, {{1,1,-1},{1,0,0},{1,0}},
+        {{1,1,1},{1,0,0},{1,1}}, {{1,-1,1},{1,0,0},{0,1}}
     };
-
-    std::vector<unsigned int> indices = {
-        // Top
-         0,  1,  2,  0,  2,  3,
-         // Bottom
-          4,  5,  6,  4,  6,  7,
-          // Front
-           8,  9, 10,  8, 10, 11,
-           // Back
-           12, 13, 14, 12, 14, 15,
-           // Left
-           16, 17, 18, 16, 18, 19,
-           // Right
-           20, 21, 22, 20, 22, 23
+    indicesOut = {
+        0,1,2, 0,2,3, 4,5,6, 4,6,7,
+        8,9,10, 8,10,11, 12,13,14, 12,14,15,
+        16,17,18, 16,18,19, 20,21,22, 20,22,23
     };
-
-    auto mesh = std::make_shared<Mesh>();
-    if (!mesh->Initialize(device, vertices, indices))
-        return nullptr;
-
-    return mesh;
 }
 
-std::shared_ptr<Mesh> Mesh::CreateQuad(ID3D11Device* device)
+std::shared_ptr<Mesh> Mesh::CreateCube(Renderer* renderer)
+{
+    std::vector<MeshVertex> vertices; std::vector<uint32_t> indices;
+    BuildCube(vertices, indices);
+    auto meshPtr = std::make_shared<Mesh>();
+    if (!meshPtr->Initialize(renderer, vertices, indices)) return nullptr;
+    return meshPtr;
+}
+
+
+std::shared_ptr<Mesh> Mesh::CreateQuad(Renderer* renderer)
 {
     std::vector<MeshVertex> vertices = {
-        {{-1.0f, -1.0f, 0.0f}, {0, 0, -1}, {0.0f, 1.0f}}, // Bottom-left
-        {{ 1.0f, -1.0f, 0.0f}, {0, 0, -1}, {1.0f, 1.0f}}, // Bottom-right
-        {{-1.0f,  1.0f, 0.0f}, {0, 0, -1}, {0.0f, 0.0f}}, // Top-left
-        {{ 1.0f,  1.0f, 0.0f}, {0, 0, -1}, {1.0f, 0.0f}}, // Top-right
+        {{-1,-1,0},{0,0,-1},{0,1}}, {{1,-1,0},{0,0,-1},{1,1}},
+        {{-1, 1,0},{0,0,-1},{0,0}}, {{1, 1,0},{0,0,-1},{1,0}}
     };
-
-    std::vector<unsigned int> indices = {
-        0, 1, 2,
-        2, 1, 3
-    };
-
-    auto mesh = std::make_shared<Mesh>();
-    if (!mesh->Initialize(device, vertices, indices))
-        return nullptr;
-
-    return mesh;
+    std::vector<uint32_t> indices = { 0,1,2, 2,1,3 };
+    auto meshPtr = std::make_shared<Mesh>();
+    if (!meshPtr->Initialize(renderer, vertices, indices)) return nullptr;
+    return meshPtr;
 }

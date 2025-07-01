@@ -2,6 +2,7 @@
 #include "InputManager.h"
 #include "DebugManager.h"
 #include "TriangleObject.h"
+#include "BoxObject.h"
 
 #include <filesystem>
 #include <windowsx.h> 
@@ -135,12 +136,19 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
 
 
     // 객체 초기화 (테스트 용도)
+    /*
     auto triangleObject = std::make_shared<TriangleObject>();
     if (!triangleObject->Initialize(&renderer)) {
         throw std::runtime_error("Failed to initialize TriangleObject");
     }
     renderer.AddGameObject(triangleObject);
+    */
 
+    auto boxObject = std::make_shared<BoxObject>();
+    if (!boxObject->Initialize(&renderer)) {
+        throw std::runtime_error("Failed to initialize BoxObject");
+    }
+    renderer.AddGameObject(boxObject);
 
     return true;
 }
@@ -277,7 +285,7 @@ void Game::Update(float deltaTime) {
 
     totalTime += deltaTime;
 
-    // renderer.UpdateGlobalTime(totalTime);
+    renderer.UpdateGlobalTime(totalTime);
     renderer.Update(deltaTime);
 
     DebugManager::GetInstance().Update(deltaTime);

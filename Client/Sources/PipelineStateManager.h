@@ -31,8 +31,11 @@ public:
     void Cleanup();
 
 private:
-    // 삼각형 전용 PSO 디스크립터 빌더
+    // 삼각형 전용 PSO 디스크립터 생성함수
     PipelineStateDesc CreateTrianglePSODesc() const;
+
+    // Phong 쉐이딩 PSO 디스크립터 생성함수
+    PipelineStateDesc CreatePhongPSODesc() const;
 
     // PSO 생성 내부 로직
     bool CreatePSO(const PipelineStateDesc& desc);

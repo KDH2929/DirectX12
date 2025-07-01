@@ -10,7 +10,7 @@ using namespace Microsoft::WRL;
 class RootSignatureManager {
 public:
 
-    // explicit 키워드는 C 기반의 초기화 (형변환을 방지함)
+    // explicit 키워드는 C 기반의 초기화 방지 (형변환을 방지함)
     explicit RootSignatureManager(ID3D12Device* device_);
 
     bool InitializeDescs();

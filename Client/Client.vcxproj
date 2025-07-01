@@ -143,7 +143,9 @@
   <ItemGroup>
     <ClCompile Include="Sources\Camera.cpp" />
     <ClCompile Include="Sources\DebugManager.cpp" />
+    <ClCompile Include="Sources\DescriptorHeapManager.cpp" />
     <ClCompile Include="Sources\Game.cpp" />
+    <ClCompile Include="Sources\GameObjects\BoxObject.cpp" />
     <ClCompile Include="Sources\GameObjects\GameObject.cpp" />
     <ClCompile Include="Sources\InputManager.cpp" />
     <ClCompile Include="Sources\main.cpp" />
@@ -164,7 +166,9 @@
     <ClInclude Include="Sources\Camera.h" />
     <ClInclude Include="Sources\ConstantBuffers.h" />
     <ClInclude Include="Sources\DebugManager.h" />
+    <ClInclude Include="Sources\DescriptorHeapManager.h" />
     <ClInclude Include="Sources\Game.h" />
+    <ClInclude Include="Sources\GameObjects\BoxObject.h" />
     <ClInclude Include="Sources\GameObjects\GameObject.h" />
     <ClInclude Include="Sources\InputManager.h" />
     <ClInclude Include="Sources\Light.h" />
