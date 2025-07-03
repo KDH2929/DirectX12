@@ -3,6 +3,7 @@
 #include "DebugManager.h"
 #include "TriangleObject.h"
 #include "BoxObject.h"
+#include "Flight.h"
 
 #include <filesystem>
 #include <windowsx.h> 
@@ -126,11 +127,12 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
     network.StartRecvThread();
 
     InputManager::GetInstance().Initialize(hwnd);
-    //textureManager.Initialize(renderer.GetDevice());
-
+    textureManager.Initialize(&renderer, renderer.GetDescriptorHeapManager());
+    
+    
     // ¸ðµ¨ ·Îµå
-    //LoadModel();
-    //LoadTexture();
+    LoadModel();
+    LoadTexture();
     
     SetupCollisionResponse();
 
@@ -144,11 +146,17 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
     renderer.AddGameObject(triangleObject);
     */
 
-    auto boxObject = std::make_shared<BoxObject>();
-    if (!boxObject->Initialize(&renderer)) {
-        throw std::runtime_error("Failed to initialize BoxObject");
+
+    // Flight °´Ã¼ »ý¼º
+    auto flightObject = std::make_shared<Flight>(flight1Mesh, flight1Texture);
+
+    if (!flightObject->Initialize(&renderer))
+    {
+        throw std::runtime_error("Failed to initialize Flight object");
     }
-    renderer.AddGameObject(boxObject);
+
+    renderer.AddGameObject(flightObject);
+    
 
     return true;
 }
@@ -173,8 +181,13 @@ void Game::LoadModel()
 
 void Game::LoadTexture()
 {
-    flight1Texture = textureManager.LoadTexture(L"Assets/spitfirev6/spitfirev6_Textures/base_Base_Color_1002.png");
-    bulletTexture = textureManager.LoadTexture(L"Assets/Bullet/Textures/bullet_DefaultMaterial_BaseColor.png");
+    if (!(flight1Texture = textureManager.LoadTexture(L"Assets/spitfirev6/spitfirev6_Textures/base_Base_Color_1002.png"))) {
+        MessageBox(hwnd, L"Failed to load flight1 texture!", L"Error", MB_OK);
+    }
+
+    if (!(bulletTexture = textureManager.LoadTexture(L"Assets/Bullet/Textures/bullet_DefaultMaterial_BaseColor.png"))) {
+        MessageBox(hwnd, L"Failed to load bullet texture!", L"Error", MB_OK);
+    }
 }
 
 bool Game::InitWindow(HINSTANCE hInstance, int nCmdShow) {

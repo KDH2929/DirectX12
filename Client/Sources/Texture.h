@@ -1,19 +1,32 @@
 #pragma once
-
 #include <wrl/client.h>
-#include <d3d11.h>
+#include <d3d12.h>
 #include <string>
 
-using Microsoft::WRL::ComPtr;
-
-class Texture {
+class Texture
+{
 public:
-    Texture(ComPtr<ID3D11ShaderResourceView> srv, const std::wstring& name = L"");
+    Texture() = default;
+    ~Texture() = default;
 
-    ID3D11ShaderResourceView* GetShaderResourceView() const;
-    const std::wstring& GetName() const;
+    bool LoadFromFile(ID3D12Device* device,
+        ID3D12GraphicsCommandList* copyCommandList,
+        const std::wstring& filePath);
+
+    void SetDescriptorHandles(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle);
+
+    ID3D12Resource* GetResource()   const;
+    D3D12_GPU_DESCRIPTOR_HANDLE    GetGpuHandle()  const;
+    D3D12_CPU_DESCRIPTOR_HANDLE    GetCpuHandle()  const;
+    const std::wstring& GetName()       const;
 
 private:
-    ComPtr<ID3D11ShaderResourceView> shaderResourceView;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texture;        // Default-heap texture
+    Microsoft::WRL::ComPtr<ID3D12Resource> uploadBuffer;   // Upload-heap buffer
+
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};   // shader-resource-view À§Ä¡
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{};
+
     std::wstring name;
 };

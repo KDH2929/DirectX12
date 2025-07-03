@@ -57,18 +57,39 @@ void DescriptorHeapManager::BeginFrame(UINT frameIndex)
     cbvHeap.cursor = sliceSize * (frameIndex % sliceCount);
 }
 
-DescriptorHandle DescriptorHeapManager::Allocate(HeapType type, UINT count)
+ID3D12DescriptorHeap* DescriptorHeapManager::GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const
 {
-    auto& e = heaps[static_cast<size_t>(type)];
-    if (e.cursor + count > e.capacity)
+    return heaps[static_cast<size_t>(type)].heap.Get();
+}
+
+UINT DescriptorHeapManager::GetStride(D3D12_DESCRIPTOR_HEAP_TYPE type) const
+{
+    return heaps[static_cast<size_t>(type)].stride;
+}
+
+
+DescriptorHandle DescriptorHeapManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT descriptorCount)
+{
+    HeapInfo& selectedHeap = heaps[static_cast<size_t>(heapType)];
+
+    if (selectedHeap.cursor + descriptorCount > selectedHeap.capacity)
         throw std::runtime_error("DescriptorHeapManager: heap exhausted");
 
-    DescriptorHandle h;
-    h.cpu.ptr = e.cpuBase.ptr + static_cast<SIZE_T>(e.cursor) * e.stride;
-    h.gpu.ptr = e.shaderVisible ?
-        e.gpuBase.ptr + static_cast<UINT64>(e.cursor) * e.stride : 0;
-    h.index = e.cursor;
+    DescriptorHandle handle;
 
-    e.cursor += count;
-    return h;
+    handle.cpu.ptr = selectedHeap.cpuBase.ptr + static_cast<SIZE_T>(selectedHeap.cursor) * selectedHeap.stride;
+
+    if (selectedHeap.shaderVisible)
+    {
+        handle.gpu.ptr = selectedHeap.gpuBase.ptr + static_cast<UINT64>(selectedHeap.cursor) * selectedHeap.stride;
+    }
+    else
+    {
+        handle.gpu.ptr = 0;
+    }
+
+    handle.index = selectedHeap.cursor;
+    selectedHeap.cursor += descriptorCount;
+
+    return handle;
 }

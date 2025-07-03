@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <format>
 
 #include "GameObject.h"
 #include "ShaderManager.h"
@@ -21,6 +22,18 @@
 #pragma comment(lib, "dxguid.lib")
 
 using Microsoft::WRL::ComPtr;
+
+inline void ThrowIfFailed(HRESULT hr, const char* msg = nullptr)
+{
+    if (FAILED(hr))
+    {
+        const char* message = (msg && *msg) ? msg : "HRESULT failed";
+
+        throw std::runtime_error(
+            std::format("{} (hr=0x{:08X})", message, static_cast<unsigned>(hr))
+        );
+    }
+}
 
 class Renderer {
 public:
@@ -45,6 +58,7 @@ public:
     ID3D12Device* GetDevice() const;
     ID3D12CommandQueue* GetCommandQueue() const;
     ID3D12GraphicsCommandList* GetCommandList() const;
+    ID3D12CommandAllocator* GetCommandAllocator() const;
 
     // 리소스 생성 시에 사용할 CommandList
     ID3D12CommandAllocator* GetUploadCommandAllocator() const;
@@ -54,6 +68,11 @@ public:
     RootSignatureManager* GetRootSignatureManager() const;
     ShaderManager* GetShaderManager() const;
     DescriptorHeapManager* GetDescriptorHeapManager() const;
+
+
+    ID3D12CommandQueue* GetUploadQueue() const;
+    ID3D12Fence* GetUploadFence() const;
+    UINT64 IncrementUploadFenceValue();
 
 
     Camera* GetCamera() const;
@@ -105,6 +124,13 @@ private:
     UINT64                          fenceValue = 0;
     HANDLE                          fenceEvent = nullptr;
 
+
+    // 업로드 전용 동기화 객체
+    ComPtr<ID3D12CommandQueue> uploadQueue;
+    ComPtr<ID3D12Fence>        uploadFence;
+    UINT64                     uploadFenceValue = 0;
+
+
     // Viewport & scissor
     D3D12_VIEWPORT                 viewport = {};
     D3D12_RECT                     scissorRect = {};
@@ -133,4 +159,7 @@ private:
     // RootSignature 에 StaticSampler 로 넣어두면 추가 코드 X
     // 동적 샘플러가 필요하면 ↓ 한 칸만 샘플러 힙에 만들어 공유
     D3D12_GPU_DESCRIPTOR_HANDLE samplerGpuHandle{};
+
+
+
 };

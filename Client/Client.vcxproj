@@ -70,6 +70,12 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -104,7 +110,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)Sources/GameObjects;$(ProjectDir)Sources;D:\KDHStudy\HongLab_Graphics\vcpkg\installed\x64-windows\include\physx</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -125,7 +131,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir)Sources/GameObjects;$(ProjectDir)Sources;D:\KDHStudy\HongLab_Graphics\vcpkg\installed\x64-windows\include\physx</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -146,6 +152,7 @@
     <ClCompile Include="Sources\DescriptorHeapManager.cpp" />
     <ClCompile Include="Sources\Game.cpp" />
     <ClCompile Include="Sources\GameObjects\BoxObject.cpp" />
+    <ClCompile Include="Sources\GameObjects\Flight.cpp" />
     <ClCompile Include="Sources\GameObjects\GameObject.cpp" />
     <ClCompile Include="Sources\InputManager.cpp" />
     <ClCompile Include="Sources\main.cpp" />
@@ -169,6 +176,7 @@
     <ClInclude Include="Sources\DescriptorHeapManager.h" />
     <ClInclude Include="Sources\Game.h" />
     <ClInclude Include="Sources\GameObjects\BoxObject.h" />
+    <ClInclude Include="Sources\GameObjects\Flight.h" />
     <ClInclude Include="Sources\GameObjects\GameObject.h" />
     <ClInclude Include="Sources\InputManager.h" />
     <ClInclude Include="Sources\Light.h" />
@@ -277,9 +285,17 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="packages.config" />
     <None Include="Shaders\Common.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets" Condition="Exists('..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>이 프로젝트는 이 컴퓨터에 없는 NuGet 패키지를 참조합니다. 해당 패키지를 다운로드하려면 NuGet 패키지 복원을 사용하십시오. 자세한 내용은 http://go.microsoft.com/fwlink/?LinkID=322105를 참조하십시오. 누락된 파일은 {0}입니다.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets'))" />
+  </Target>
 </Project>

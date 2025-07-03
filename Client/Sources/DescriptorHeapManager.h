@@ -34,16 +34,10 @@ public:
 
     DescriptorHandle Allocate(D3D12_DESCRIPTOR_HEAP_TYPE type, UINT count = 1);
 
-    // Getters ---------------------------------------------------------------
-    ID3D12DescriptorHeap* GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const
-    {
-        return heaps[static_cast<size_t>(type)].heap.Get();
-    }
 
-    UINT GetStride(D3D12_DESCRIPTOR_HEAP_TYPE type) const
-    {
-        return heaps[static_cast<size_t>(type)].stride;
-    }
+    ID3D12DescriptorHeap* GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
+
+    UINT GetStride(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 
 private:
     struct HeapInfo

@@ -1,11 +1,6 @@
 #include "Renderer.h"
 #include <stdexcept>
 
-inline void ThrowIfFailed(HRESULT hr) {
-    if (FAILED(hr)) {
-        throw std::runtime_error("HRESULT failed");
-    }
-}
 
 Renderer::Renderer() {}
 
@@ -58,7 +53,7 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
     mainCamera->SetPerspective(XM_PIDIV4, float(width) / height, 0.1f, 100.f);
 
 
-    // ─── 글로벌-타임 CB (b3) ───────────────────────────────────────────────
+    // 글로벌-타임 CB (b3)
     {
         CD3DX12_HEAP_PROPERTIES props(D3D12_HEAP_TYPE_UPLOAD);
         CD3DX12_RESOURCE_DESC   desc = CD3DX12_RESOURCE_DESC::Buffer(256);
@@ -73,7 +68,7 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
             reinterpret_cast<void**>(&mappedGlobalPtr));
     }
 
-    // ─── 라이팅 CB (b1) ───────────────────────────────────────────────────
+    // 라이팅 CB (b1)
     {
         CD3DX12_HEAP_PROPERTIES props(D3D12_HEAP_TYPE_UPLOAD);
         CD3DX12_RESOURCE_DESC   desc = CD3DX12_RESOURCE_DESC::Buffer(256);
@@ -104,13 +99,13 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
     }
 
 
-    // ─── Sampler (s0) 1개 생성 & 힙 슬롯 확보 ─────────────────────────────
+    // Sampler (s0) 1개 생성 & 힙 슬롯 확보
     {
         // 1) 힙 슬롯 1개 할당
         auto samplerHandle = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
         samplerGpuHandle = samplerHandle.gpu;     // root slot 5에서 사용할 GPU 핸들
 
-        // 2) 샘플러 디스크립터 작성 (linear wrap 예시)
+        // 2) 샘플러 디스크립터 작성
         D3D12_SAMPLER_DESC sampDesc = {};
         sampDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
         sampDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -185,6 +180,11 @@ ID3D12GraphicsCommandList* Renderer::GetCommandList() const
     return commandList.Get();
 }
 
+ID3D12CommandAllocator* Renderer::GetCommandAllocator() const
+{
+    return commandAllocator.Get();
+}
+
 ID3D12CommandAllocator* Renderer::GetUploadCommandAllocator() const
 {
     return uploadCommandAllocator.Get();
@@ -213,6 +213,21 @@ ShaderManager* Renderer::GetShaderManager() const
 DescriptorHeapManager* Renderer::GetDescriptorHeapManager() const
 {
     return descriptorHeapManager.get();
+}
+
+ID3D12CommandQueue* Renderer::GetUploadQueue() const
+{
+    return uploadQueue.Get();
+}
+
+ID3D12Fence* Renderer::GetUploadFence() const
+{
+    return uploadFence.Get();
+}
+
+UINT64 Renderer::IncrementUploadFenceValue()
+{
+    return ++uploadFenceValue;
 }
 
 Camera* Renderer::GetCamera() const { 
@@ -276,13 +291,30 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
     cqDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
     ThrowIfFailed(device->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&commandQueue)));
 
-    // 업로드 전용 커맨드 할당자 & 리스트
+    // 2.1 업로드 전용 커맨드 큐 생성 (Copy 전용)
+    D3D12_COMMAND_QUEUE_DESC copyQueueDesc = {};
+    copyQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+    copyQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    ThrowIfFailed(device->CreateCommandQueue(&copyQueueDesc, IID_PPV_ARGS(&uploadQueue)));
+
+    // 2.2 업로드용 커맨드 할당자 & 리스트 생성
     ThrowIfFailed(device->CreateCommandAllocator(
-        D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&uploadCommandAllocator)));
+        D3D12_COMMAND_LIST_TYPE_COPY,
+        IID_PPV_ARGS(&uploadCommandAllocator)));
     ThrowIfFailed(device->CreateCommandList(
-        0, D3D12_COMMAND_LIST_TYPE_DIRECT, uploadCommandAllocator.Get(),
-        nullptr, IID_PPV_ARGS(&uploadCommandList)));
+        0,
+        D3D12_COMMAND_LIST_TYPE_COPY,
+        uploadCommandAllocator.Get(),
+        nullptr,
+        IID_PPV_ARGS(&uploadCommandList)));
     uploadCommandList->Close();
+
+    // 2.3 업로드 전용 펜스 생성
+    ThrowIfFailed(device->CreateFence(
+        0,
+        D3D12_FENCE_FLAG_NONE,
+        IID_PPV_ARGS(&uploadFence)));
+    uploadFenceValue = 0;
 
 
     // 3. 스왑체인 생성 (Flip 방식)
@@ -386,7 +418,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         nullptr,
         IID_PPV_ARGS(&commandList)
     ));
-    commandList->Close();    // 초기엔 닫아두기
+    commandList->Close(); 
 
     // 8. Fence & 이벤트 생성
     ThrowIfFailed(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));

@@ -1,23 +1,26 @@
 #pragma once
 
-#include <string>
 #include <unordered_map>
 #include <memory>
-#include <wrl/client.h>
-#include <d3d11.h>
-#include "Texture.h" 
+#include <string>
+#include "Texture.h"
 
-using Microsoft::WRL::ComPtr;
+class Renderer;
+class DescriptorHeapManager;
 
-class TextureManager {
+class TextureManager
+{
 public:
-    void Initialize(ID3D11Device* device);
 
+    void Initialize(Renderer* renderer_,
+        DescriptorHeapManager* descriptorHeapManager_);
+
+    // 텍스처 로드 및 캐시
     std::shared_ptr<Texture> LoadTexture(const std::wstring& filePath);
-
     void Clear();
 
 private:
-    ID3D11Device* device = nullptr;
+    Renderer* renderer = nullptr;
+    DescriptorHeapManager* descriptorHeapManager = nullptr;
     std::unordered_map<std::wstring, std::shared_ptr<Texture>> textureCache;
 };

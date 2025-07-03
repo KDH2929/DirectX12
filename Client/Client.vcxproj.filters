@@ -78,6 +78,9 @@
     <ClCompile Include="Sources\GameObjects\BoxObject.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\GameObjects\Flight.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Game.h">
@@ -152,6 +155,9 @@
     <ClInclude Include="Sources\GameObjects\BoxObject.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Sources\GameObjects\Flight.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\TriangleVertexShader.hlsl">
@@ -201,5 +207,6 @@
     <None Include="Shaders\Common.hlsli">
       <Filter>Shader</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
