@@ -12,7 +12,7 @@ float4 PSMain(PSInput input) : SV_Target
 {
     float4 texColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
 
-    if (material.useTexture == 1) {
+    if (material.useAlbedoMap == 1) {
         texColor = diffuseMap.Sample(samp, input.uv);
     }
     else {

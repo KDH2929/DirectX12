@@ -16,6 +16,7 @@ struct MeshVertex {
     XMFLOAT3 position;
     XMFLOAT3 normal;
     XMFLOAT2 texCoord;
+    XMFLOAT3 tangent;
 };
 
 

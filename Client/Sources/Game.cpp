@@ -148,7 +148,10 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
 
 
     // Flight °´Ã¼ »ý¼º
-    auto flightObject = std::make_shared<Flight>(flight1Mesh, flight1Texture);
+    auto flightObject = std::make_shared<Flight>(
+        flight1Mesh,
+        flight1AlbedoTexture,
+        flight1NormalTexture);
 
     if (!flightObject->Initialize(&renderer))
     {
@@ -181,9 +184,21 @@ void Game::LoadModel()
 
 void Game::LoadTexture()
 {
-    if (!(flight1Texture = textureManager.LoadTexture(L"Assets/spitfirev6/spitfirev6_Textures/base_Base_Color_1002.png"))) {
-        MessageBox(hwnd, L"Failed to load flight1 texture!", L"Error", MB_OK);
-    }
+    // Albedo (BaseColor)
+    flight1AlbedoTexture = textureManager.LoadTexture(
+        L"Assets/spitfirev6/spitfirev6_Textures/base_Base_Color_1002.png");
+
+    if (!flight1AlbedoTexture)
+        MessageBox(hwnd, L"Failed to load Flight1 albedo texture!", L"Error", MB_OK);
+
+    // Normal (DirectX -Y)
+    flight1NormalTexture = textureManager.LoadTexture(
+        L"Assets/spitfirev6/spitfirev6_Textures/base_Normal_DirectX_1002.png");
+
+    if (!flight1NormalTexture)
+        MessageBox(hwnd, L"Failed to load Flight1 normal texture!", L"Error", MB_OK);
+
+
 
     if (!(bulletTexture = textureManager.LoadTexture(L"Assets/Bullet/Textures/bullet_DefaultMaterial_BaseColor.png"))) {
         MessageBox(hwnd, L"Failed to load bullet texture!", L"Error", MB_OK);

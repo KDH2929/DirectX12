@@ -42,7 +42,8 @@ private:
 
     // Meshes
     std::shared_ptr<Mesh> flight1Mesh;
-    std::shared_ptr<Texture> flight1Texture;
+    std::shared_ptr<Texture> flight1AlbedoTexture;
+    std::shared_ptr<Texture> flight1NormalTexture;
 
     std::vector<XMFLOAT3> enemyPositions = {
         { -60.0f, 50.0f, 100.0f },

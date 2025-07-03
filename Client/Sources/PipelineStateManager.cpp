@@ -15,14 +15,14 @@ bool PipelineStateManager::InitializePSOs()
 {
     psoMap.clear();         // 캐시 비우기
 
-    // ── 1. Triangle용 PSO ─────────────────────────────
+    // 1. Triangle용 PSO
     {
         PipelineStateDesc desc = CreateTrianglePSODesc();
         if (GetOrCreate(desc) == nullptr)
             return false;
     }
 
-    // ── 2. Phong-Lighting용 PSO ───────────────────────
+    // 2. Phong-Lighting용 PSO
     {
         PipelineStateDesc desc = CreatePhongPSODesc();
         if (GetOrCreate(desc) == nullptr)
@@ -67,39 +67,39 @@ PipelineStateDesc PipelineStateManager::CreateTrianglePSODesc() const {
 
 PipelineStateDesc PipelineStateManager::CreatePhongPSODesc() const
 {
-    // ──────────────────────────────────────────────────────────────
+
     // 1) 루트 시그니처 : PhongRS
-    // ──────────────────────────────────────────────────────────────
     auto rs = renderer->GetRootSignatureManager()->Get(L"PhongRS");
     if (!rs)
         throw std::runtime_error("PhongRS not created");
 
-    // ──────────────────────────────────────────────────────────────
-    // 2) 입력 레이아웃 : Position + Normal + TexCoord
-    //    (컬러는 머티리얼에서 처리)
-    // ──────────────────────────────────────────────────────────────
+
+    // 2) 입력 레이아웃 : Position + Normal + TexCoord + Tangent
     std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
     {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0,
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0,
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12,
+
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12,
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24,
+
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+        { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32,
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    // ──────────────────────────────────────────────────────────────
     // 3) 셰이더 : Phong 전용 VS / PS
-    //
-    // ──────────────────────────────────────────────────────────────
+
     ComPtr<ID3DBlob> vsBlob =
         renderer->GetShaderManager()->GetShaderBlob(L"PhongVertexShader");
     ComPtr<ID3DBlob> psBlob =
         renderer->GetShaderManager()->GetShaderBlob(L"PhongPixelShader");
 
-    // ──────────────────────────────────────────────────────────────
+
     // 4) 파이프라인 상태 기본값 구성
-    // ──────────────────────────────────────────────────────────────
+
     PipelineStateDesc desc;
     desc.name = L"PhongPSO";
     desc.rootSignature = rs;

@@ -19,6 +19,7 @@ public:
         DirectX::XMFLOAT3 position;
         DirectX::XMFLOAT3 normal;
         DirectX::XMFLOAT2 texCoords;  // UV ÅØ½ºÃÄ ÁÂÇ¥
+        DirectX::XMFLOAT3 tangent;
     };
 
     ModelLoader() = default;
@@ -29,8 +30,7 @@ public:
 
     const std::vector<Vertex>& GetVertices() const;
     const std::vector<unsigned int>& GetIndices() const;
-    const std::vector<XMFLOAT3>& GetNormals() const;
-    const std::vector<XMFLOAT2>& GetTexCoords() const;
+
 
 private:
     void ProcessNode(aiNode* node, const aiScene* scene, const XMMATRIX& parentTransform);
@@ -40,8 +40,8 @@ private:
 
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
-    std::vector<XMFLOAT3> normals;
-    std::vector<XMFLOAT2> texCoords;
+
+    bool needTangentFix = false;
 
     Assimp::Importer importer;
 };

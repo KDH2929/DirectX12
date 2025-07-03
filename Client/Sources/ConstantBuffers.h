@@ -35,8 +35,9 @@ struct CB_Material
     XMFLOAT3 specular;
     float alpha;
 
-    int useTexture;        // bool 이지만 4byte로 맞춰야함
-    XMFLOAT3 padding3;
+    uint32_t useAlbedoMap;
+    uint32_t useNormalMap;
+    XMFLOAT2 padding2;        // align 16
 };
 
 

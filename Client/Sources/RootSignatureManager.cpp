@@ -10,9 +10,7 @@ bool RootSignatureManager::InitializeDescs()
 {
     signatureMap.clear();
 
-    //
     // 1) TriangleRS 생성
-    //
     {
         D3D12_ROOT_PARAMETER params[1] = {};
 
@@ -32,39 +30,46 @@ bool RootSignatureManager::InitializeDescs()
         Create(L"TriangleRS", desc);
     }
 
-    //
+    
     // 2) 퐁 조명용 PhongRS 생성
-    //
     {
-        // b0~b3: CBVs for MVP, Lighting, Material, Global 
-        D3D12_ROOT_PARAMETER params[6] = { /* b0~b3 */ };
-
+        // b0~b3: CBVs for MVP, Lighting, Material, Global
+        D3D12_ROOT_PARAMETER params[6] = {};          //-- 초기화
         for (int i = 0; i < 4; ++i) {
             params[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-            params[i].Descriptor.ShaderRegister = i;    // b0, b1, b2, b3
+            params[i].Descriptor.ShaderRegister = i;      // b0, b1, b2, b3
             params[i].Descriptor.RegisterSpace = 0;
             params[i].ShaderVisibility =
                 (i == 0 ? D3D12_SHADER_VISIBILITY_VERTEX
                     : D3D12_SHADER_VISIBILITY_PIXEL);
         }
 
-        // t0 + s0용 디스크립터 테이블
-        // ranges[0] = SRV (CBV/SRV/UAV 힙)
-        D3D12_DESCRIPTOR_RANGE srvRange = { D3D12_DESCRIPTOR_RANGE_TYPE_SRV,1,0 };
+        // t0, t1 -- 알베도 + 노멀  → 한 테이블에 2 개 SRV
+        D3D12_DESCRIPTOR_RANGE srvRange = {};
+        srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        srvRange.NumDescriptors = 2;        // 1  →  2
+        srvRange.BaseShaderRegister = 0;      // t0
+        srvRange.RegisterSpace = 0;
+        srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-        // ranges[1] = Sampler (Sampler 힙)  은 수행시 에러..    같은 table 불가
-        // ---> 별도 root parameter
-        D3D12_DESCRIPTOR_RANGE sampRange = { D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER,1,0 };
+        // s0  (샘플러 테이블은 그대로)
+        D3D12_DESCRIPTOR_RANGE sampRange = {};
+        sampRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+        sampRange.NumDescriptors = 1;
+        sampRange.BaseShaderRegister = 0;     // s0
+        sampRange.RegisterSpace = 0;
+        sampRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-
-        // param[4] : SRV table
+        // param[4] : SRV table (t0, t1)
         params[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        params[4].DescriptorTable = { 1, &srvRange };
+        params[4].DescriptorTable.NumDescriptorRanges = 1;
+        params[4].DescriptorTable.pDescriptorRanges = &srvRange;
         params[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // param[5] : Sampler table
+        // param[5] : Sampler table (s0)
         params[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        params[5].DescriptorTable = { 1, &sampRange };
+        params[5].DescriptorTable.NumDescriptorRanges = 1;
+        params[5].DescriptorTable.pDescriptorRanges = &sampRange;
         params[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
         D3D12_ROOT_SIGNATURE_DESC desc = {};

@@ -24,16 +24,17 @@ struct Light
 struct Material
 {
     float3 ambient;
-    float padding0;
+    float _pad0; 
 
     float3 diffuse;
-    float padding1;
+    float _pad1;
 
     float3 specular;
     float alpha;
-    
-    bool useTexture;    // 4byte
-    float3 padding3;
+
+    bool useAlbedoMap;
+    bool useNormalMap;
+    float2 _pad2;
 };
 
 cbuffer CB_MVP : register(b0)

@@ -21,7 +21,6 @@ BoxObject::~BoxObject()
         materialConstantBuffer->Unmap(0, nullptr);
 }
 
-// ---------------------------------------------------------------------------
 bool BoxObject::Initialize(Renderer* renderer)
 {
     if (!GameObject::Initialize(renderer))
@@ -47,7 +46,7 @@ bool BoxObject::Initialize(Renderer* renderer)
     material.ambient = { 0.2f, 0.0f, 0.0f };
     material.diffuse = { 1.0f, 0.0f, 0.0f };
     material.specular = { 0.4f, 0.4f, 0.4f };
-    material.useTexture = 0;
+    material.useAlbedoMap = 0;
     memcpy(mappedMaterialPtr, &material, sizeof(CB_Material));
 
     return true;
@@ -71,13 +70,13 @@ void BoxObject::Update(float deltaTime)
     }
 
 
-    // ―― 평면 이동 (XZ)
+    // 평면 이동 (XZ)
     if (input.IsKeyHeld('W')) position.z -= moveSpeed * deltaTime; // 앞
     if (input.IsKeyHeld('S')) position.z += moveSpeed * deltaTime; // 뒤
     if (input.IsKeyHeld('A')) position.x += moveSpeed * deltaTime; // 좌
     if (input.IsKeyHeld('D')) position.x -= moveSpeed * deltaTime; // 우
 
-    // ―― 수직 이동 (Y)
+    // 수직 이동 (Y)
     if (input.IsKeyHeld('E')) position.y += moveSpeed * deltaTime;   // 위
     if (input.IsKeyHeld('Q')) position.y -= moveSpeed * deltaTime;   // 아래
 
