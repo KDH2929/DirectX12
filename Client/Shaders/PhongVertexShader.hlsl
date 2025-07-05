@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "PhongLighting.hlsli"
 
 struct VSInput
 {

@@ -42,12 +42,12 @@ bool BoxObject::Initialize(Renderer* renderer)
     materialConstantBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedMaterialPtr));
 
     // 3) Write initial CB_Material data (red Phong)
-    CB_Material material{};
+    CB_MaterialPhong material{};
     material.ambient = { 0.2f, 0.0f, 0.0f };
     material.diffuse = { 1.0f, 0.0f, 0.0f };
     material.specular = { 0.4f, 0.4f, 0.4f };
     material.useAlbedoMap = 0;
-    memcpy(mappedMaterialPtr, &material, sizeof(CB_Material));
+    memcpy(mappedMaterialPtr, &material, sizeof(CB_MaterialPhong));
 
     return true;
 }
@@ -88,30 +88,55 @@ void BoxObject::Update(float deltaTime)
 
 void BoxObject::Render(Renderer* renderer)
 {
-    ID3D12GraphicsCommandList* cmd = renderer->GetCommandList();
+    // 1) Direct 커맨드 리스트 가져오기
+    ID3D12GraphicsCommandList* directCommandList =
+        renderer->GetDirectCommandList();
 
-    // PSO & RootSignature
-    cmd->SetPipelineState(renderer->GetPSOManager()->Get(L"PhongPSO"));
-    cmd->SetGraphicsRootSignature(renderer->GetRootSignatureManager()->Get(L"PhongRS"));
+    // 2) Descriptor Heaps 바인딩 (CBV_SRV_UAV + SAMPLER)
+    ID3D12DescriptorHeap* descriptorHeaps[] = {
+        renderer->GetDescriptorHeapManager()->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
+        renderer->GetDescriptorHeapManager()->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+    };
+    directCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-    // Update MVP
-    CB_MVP mvp{};
-    XMStoreFloat4x4(&mvp.model, XMMatrixTranspose(worldMatrix));
-    XMStoreFloat4x4(&mvp.view, XMMatrixTranspose(renderer->GetCamera()->GetViewMatrix()));
-    XMStoreFloat4x4(&mvp.projection, XMMatrixTranspose(renderer->GetCamera()->GetProjectionMatrix()));
-    XMStoreFloat4x4(&mvp.modelInvTranspose,
+    // 3) 루트 시그니처 및 PSO 바인딩
+    auto* rootSignature = renderer->GetRootSignatureManager()->Get(L"PhongRS");
+    auto* pipelineState = renderer->GetPSOManager()->Get(L"PhongPSO");
+    directCommandList->SetGraphicsRootSignature(rootSignature);
+    directCommandList->SetPipelineState(pipelineState);
+
+    // 4) 프레임 전역 CBV 바인딩 (b1: Lighting, b3: Global)
+    directCommandList->SetGraphicsRootConstantBufferView(
+        1, renderer->GetLightingConstantBuffer()->GetGPUVirtualAddress());
+    directCommandList->SetGraphicsRootConstantBufferView(
+        3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
+
+    // 5) SRV 및 Sampler 테이블 바인딩 (root slot 4, 5)
+    D3D12_GPU_DESCRIPTOR_HANDLE srvStart =
+        descriptorHeaps[0]->GetGPUDescriptorHandleForHeapStart();
+    D3D12_GPU_DESCRIPTOR_HANDLE samplerStart =
+        descriptorHeaps[1]->GetGPUDescriptorHandleForHeapStart();
+    directCommandList->SetGraphicsRootDescriptorTable(4, srvStart);
+    directCommandList->SetGraphicsRootDescriptorTable(5, samplerStart);
+
+    // 6) MVP 및 역전치 모델 행렬 계산 후 상수 버퍼에 복사
+    CB_MVP mvpData{};
+    XMStoreFloat4x4(&mvpData.model, XMMatrixTranspose(worldMatrix));
+    XMStoreFloat4x4(&mvpData.view, XMMatrixTranspose(renderer->GetCamera()->GetViewMatrix()));
+    XMStoreFloat4x4(&mvpData.projection, XMMatrixTranspose(renderer->GetCamera()->GetProjectionMatrix()));
+    XMStoreFloat4x4(&mvpData.modelInvTranspose,
         XMMatrixTranspose(XMMatrixInverse(nullptr, worldMatrix)));
-    memcpy(mappedMVPData, &mvp, sizeof(CB_MVP));
+    memcpy(mappedMVPData, &mvpData, sizeof(mvpData));
 
-    // Root CBV bindings (b0 ~ b3)
-    cmd->SetGraphicsRootConstantBufferView(0, constantMVPBuffer->GetGPUVirtualAddress());
-    cmd->SetGraphicsRootConstantBufferView(1, renderer->GetLightingConstantBuffer()->GetGPUVirtualAddress());
-    cmd->SetGraphicsRootConstantBufferView(2, materialConstantBuffer->GetGPUVirtualAddress());
-    cmd->SetGraphicsRootConstantBufferView(3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
+    // 7) 객체별 CBV 바인딩 (b0: MVP, b2: Material)
+    directCommandList->SetGraphicsRootConstantBufferView(
+        0, constantMVPBuffer->GetGPUVirtualAddress());
+    directCommandList->SetGraphicsRootConstantBufferView(
+        2, materialConstantBuffer->GetGPUVirtualAddress());
 
-    // Draw
-    cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    cmd->IASetVertexBuffers(0, 1, &cubeMesh->GetVertexBufferView());
-    cmd->IASetIndexBuffer(&cubeMesh->GetIndexBufferView());
-    cmd->DrawIndexedInstanced(cubeMesh->GetIndexCount(), 1, 0, 0, 0);
+    // 8) IA 설정 및 Draw 호출
+    directCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    directCommandList->IASetVertexBuffers(0, 1, &cubeMesh->GetVertexBufferView());
+    directCommandList->IASetIndexBuffer(&cubeMesh->GetIndexBufferView());
+    directCommandList->DrawIndexedInstanced(cubeMesh->GetIndexCount(), 1, 0, 0, 0);
 }

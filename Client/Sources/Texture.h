@@ -1,32 +1,39 @@
 #pragma once
+#include <memory>
+#include <string>
 #include <wrl/client.h>
 #include <d3d12.h>
-#include <string>
 
+class Renderer;
+
+/* -----------------------------------------------------------
+ * GPU-텍스처 + SRV 핸들 보유
+ * ----------------------------------------------------------*/
 class Texture
 {
 public:
     Texture() = default;
-    ~Texture() = default;
 
-    bool LoadFromFile(ID3D12Device* device,
-        ID3D12GraphicsCommandList* copyCommandList,
+    bool LoadFromFile(Renderer* renderer,
         const std::wstring& filePath);
 
-    void SetDescriptorHandles(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle);
+    ID3D12Resource* GetResource()       const;
+    D3D12_GPU_DESCRIPTOR_HANDLE  GetGpuHandle()      const;
+    D3D12_CPU_DESCRIPTOR_HANDLE  GetCpuHandle()      const;
+    UINT                         GetDescriptorIndex()const;
+    const std::wstring& GetName()           const;
 
-    ID3D12Resource* GetResource()   const;
-    D3D12_GPU_DESCRIPTOR_HANDLE    GetGpuHandle()  const;
-    D3D12_CPU_DESCRIPTOR_HANDLE    GetCpuHandle()  const;
-    const std::wstring& GetName()       const;
+    // 핸들 설정 (TextureManager 가 SRV를 만들고 호출)
+    void SetDescriptorHandles(D3D12_CPU_DESCRIPTOR_HANDLE cpu,
+        D3D12_GPU_DESCRIPTOR_HANDLE gpu,
+        UINT index);
 
 private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> texture;        // Default-heap texture
-    Microsoft::WRL::ComPtr<ID3D12Resource> uploadBuffer;   // Upload-heap buffer
+    Microsoft::WRL::ComPtr<ID3D12Resource> texture;      // 실제 GPU 리소스
+    std::wstring  name;                                  // 파일 경로(캐시 키)
 
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};   // shader-resource-view 위치
-    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{};
-
-    std::wstring name;
+    // SRV 위치
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{ 0 };
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{ 0 };
+    UINT descriptorIndex{ UINT(-1) };
 };

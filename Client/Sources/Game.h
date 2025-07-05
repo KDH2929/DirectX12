@@ -5,11 +5,13 @@
 #include "Renderer.h"
 #include "ModelLoader.h"
 #include "TextureManager.h"
+#include "Material.h"
 
 #include <imgui.h>
 //#include <imgui_impl_dx12.h>
 #include <imgui_impl_win32.h>
 #include <windows.h>
+
 
 
 class Game {
@@ -42,8 +44,8 @@ private:
 
     // Meshes
     std::shared_ptr<Mesh> flight1Mesh;
-    std::shared_ptr<Texture> flight1AlbedoTexture;
-    std::shared_ptr<Texture> flight1NormalTexture;
+    std::shared_ptr<Material> flightMaterial;
+    MaterialPbrTextures flightTextures;
 
     std::vector<XMFLOAT3> enemyPositions = {
         { -60.0f, 50.0f, 100.0f },

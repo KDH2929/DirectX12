@@ -81,6 +81,9 @@
     <ClCompile Include="Sources\GameObjects\Flight.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Material.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Game.h">
@@ -158,6 +161,9 @@
     <ClInclude Include="Sources\GameObjects\Flight.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Sources\Material.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\TriangleVertexShader.hlsl">
@@ -202,11 +208,23 @@
     <FxCompile Include="Shaders\ExplosionPixelShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\PbrVertexShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\PbrPixelShader.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Common.hlsli">
       <Filter>Shader</Filter>
     </None>
     <None Include="packages.config" />
+    <None Include="Shaders\PhongLighting.hlsli">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="Shaders\PbrLighting.hlsli">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -29,6 +29,13 @@ bool PipelineStateManager::InitializePSOs()
             return false;
     }
 
+    // 3. PBR-Lighting 전용
+    {
+        PipelineStateDesc desc = CreatePbrPSODesc();
+        if (GetOrCreate(desc) == nullptr)
+            return false;
+    }
+
     return true;
 }
 
@@ -117,6 +124,53 @@ PipelineStateDesc PipelineStateManager::CreatePhongPSODesc() const
     return desc;
 }
 
+PipelineStateDesc PipelineStateManager::CreatePbrPSODesc() const
+{
+    // 1) RootSignature : PbrRS (bindless)
+    auto rs = renderer->GetRootSignatureManager()->Get(L"PbrRS");
+    if (!rs)
+        throw std::runtime_error("PbrRS not created");
+
+    // 2) InputLayout : Position / Normal / TexCoord / Tangent
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+        { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    // 3) Shaders : PBR 전용 VS / PS
+    ComPtr<ID3DBlob> vsBlob =
+        renderer->GetShaderManager()->GetShaderBlob(L"PbrVertexShader");
+    ComPtr<ID3DBlob> psBlob =
+        renderer->GetShaderManager()->GetShaderBlob(L"PbrPixelShader");
+
+    // 4) 기본 파이프라인 설정
+    PipelineStateDesc desc;
+    desc.name = L"PbrPSO";
+    desc.rootSignature = rs;
+    desc.vsBlob = vsBlob;
+    desc.psBlob = psBlob;
+    desc.inputLayout = std::move(inputLayout);
+
+    desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+    // HDR/톤매핑을 고려해 sRGB 백버퍼라면 RTV 포맷도 맞춰 주세요.
+    // 예) desc.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+
+    return desc;
+}
+
 ID3D12PipelineState* PipelineStateManager::GetOrCreate(
     const PipelineStateDesc& desc)
 {
@@ -148,6 +202,9 @@ bool PipelineStateManager::CreatePSO(
         psoDesc.RTVFormats[i] = desc.rtvFormats[i];
     psoDesc.DSVFormat = desc.dsvFormat;
     psoDesc.SampleDesc = desc.sampleDesc;
+
+    psoDesc.NodeMask = 1;                          // GPU 0 사용
+    psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
     ComPtr<ID3D12PipelineState> pso;
     if (FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)))) {

@@ -138,6 +138,7 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
 
 
     // 객체 초기화 (테스트 용도)
+    
     /*
     auto triangleObject = std::make_shared<TriangleObject>();
     if (!triangleObject->Initialize(&renderer)) {
@@ -145,18 +146,23 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
     }
     renderer.AddGameObject(triangleObject);
     */
-
+    
+    /*
+    auto boxObject = std::make_shared<BoxObject>();
+    if (!boxObject->Initialize(&renderer)) {
+        throw std::runtime_error("Failed to initialize BoxObject");
+    }
+    renderer.AddGameObject(boxObject);
+    */
 
     // Flight 객체 생성
-    auto flightObject = std::make_shared<Flight>(
-        flight1Mesh,
-        flight1AlbedoTexture,
-        flight1NormalTexture);
+    flightMaterial = std::make_shared<Material>();
+    flightMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
+    flightMaterial->SetAllTextures(flightTextures);
 
+    auto flightObject = std::make_shared<Flight>(flight1Mesh, flightTextures);
     if (!flightObject->Initialize(&renderer))
-    {
         throw std::runtime_error("Failed to initialize Flight object");
-    }
 
     renderer.AddGameObject(flightObject);
     
@@ -184,25 +190,25 @@ void Game::LoadModel()
 
 void Game::LoadTexture()
 {
-    // Albedo (BaseColor)
-    flight1AlbedoTexture = textureManager.LoadTexture(
+    flightTextures.albedoTexture = textureManager.LoadTexture(
         L"Assets/spitfirev6/spitfirev6_Textures/base_Base_Color_1002.png");
+    if (!flightTextures.albedoTexture) MessageBox(hwnd, L"Failed to load flight albedo texture!", L"Error", MB_OK);
 
-    if (!flight1AlbedoTexture)
-        MessageBox(hwnd, L"Failed to load Flight1 albedo texture!", L"Error", MB_OK);
-
-    // Normal (DirectX -Y)
-    flight1NormalTexture = textureManager.LoadTexture(
+    flightTextures.normalTexture = textureManager.LoadTexture(
         L"Assets/spitfirev6/spitfirev6_Textures/base_Normal_DirectX_1002.png");
+    if (!flightTextures.normalTexture) MessageBox(hwnd, L"Failed to load flight normal texture!", L"Error", MB_OK);
 
-    if (!flight1NormalTexture)
-        MessageBox(hwnd, L"Failed to load Flight1 normal texture!", L"Error", MB_OK);
+    flightTextures.metallicTexture = textureManager.LoadTexture(
+        L"Assets/spitfirev6/spitfirev6_Textures/base_Metallic_1002.png");
+    if (!flightTextures.metallicTexture) MessageBox(hwnd, L"Failed to load flight metallic texture!", L"Error", MB_OK);
 
+    flightTextures.roughnessTexture = textureManager.LoadTexture(
+        L"Assets/spitfirev6/spitfirev6_Textures/base_Roughness_1002.png");
+    if (!flightTextures.roughnessTexture) MessageBox(hwnd, L"Failed to load flight roughness texture!", L"Error", MB_OK);
 
-
-    if (!(bulletTexture = textureManager.LoadTexture(L"Assets/Bullet/Textures/bullet_DefaultMaterial_BaseColor.png"))) {
-        MessageBox(hwnd, L"Failed to load bullet texture!", L"Error", MB_OK);
-    }
+    bulletTexture = textureManager.LoadTexture(
+        L"Assets/Bullet/Textures/bullet_DefaultMaterial_BaseColor.png");
+    if (!bulletTexture) MessageBox(hwnd, L"Failed to load bullet texture!", L"Error", MB_OK);
 }
 
 bool Game::InitWindow(HINSTANCE hInstance, int nCmdShow) {

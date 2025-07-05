@@ -16,7 +16,12 @@ bool GameObject::Initialize(Renderer* renderer) {
     // 1) CBV용 업로드 힙 버퍼 생성
     auto device = renderer->GetDevice();
     D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-    D3D12_RESOURCE_DESC   desc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(XMFLOAT4X4));
+
+    // CB_MVP 전체 크기(4x4 행렬 4개 = 256바이트)를 256바이트 경계로 맞춤
+    UINT64 rawSize = sizeof(CB_MVP);
+    UINT64 alignedSize = (rawSize + 255) & ~static_cast<UINT64>(255);
+
+    D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(alignedSize);
 
     HRESULT hr = device->CreateCommittedResource(
         &heapProps,
@@ -25,8 +30,10 @@ bool GameObject::Initialize(Renderer* renderer) {
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
         IID_PPV_ARGS(&constantMVPBuffer));
-    if (FAILED(hr)) return false;
 
+    if (FAILED(hr)) {
+        return false;
+    }
 
     // 2) 초기 worldMatrix를 버퍼에 복사
     constantMVPBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedMVPData));

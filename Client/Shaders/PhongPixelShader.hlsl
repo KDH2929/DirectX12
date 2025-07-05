@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "PhongLighting.hlsli"
 
 Texture2D albedoMap : register(t0);
 Texture2D normalMap : register(t1);

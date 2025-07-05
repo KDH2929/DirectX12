@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "PhongLighting.hlsli"
 
 Texture2D diffuseMap : register(t0);
 SamplerState samp : register(s0);

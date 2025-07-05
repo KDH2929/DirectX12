@@ -36,7 +36,9 @@ public:
     // GPU views
     const D3D12_VERTEX_BUFFER_VIEW& GetVertexBufferView() const { return vertexView; }
     const D3D12_INDEX_BUFFER_VIEW& GetIndexBufferView()  const { return indexView; }
-    uint32_t                        GetIndexCount() const { return indexCount; }
+    ID3D12Resource* GetVertexBuffer() const { return vertexBuffer.Get(); }
+    ID3D12Resource* GetIndexBuffer()  const { return indexBuffer.Get(); }
+    uint32_t GetIndexCount() const { return indexCount; }
 
     static std::shared_ptr<Mesh> CreateCube(Renderer* renderer);
     static std::shared_ptr<Mesh> CreateQuad(Renderer* renderer);

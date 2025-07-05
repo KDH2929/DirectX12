@@ -23,19 +23,29 @@
 
 using Microsoft::WRL::ComPtr;
 
-inline void ThrowIfFailed(HRESULT hr, const char* msg = nullptr)
+
+inline void ThrowIfFailed(HRESULT hr,
+    const char* expr = nullptr,
+    const char* file = __FILE__,
+    int         line = __LINE__)
 {
     if (FAILED(hr))
     {
-        const char* message = (msg && *msg) ? msg : "HRESULT failed";
-
-        throw std::runtime_error(
-            std::format("{} (hr=0x{:08X})", message, static_cast<unsigned>(hr))
-        );
+        auto msg = std::format(
+            "ERROR: {} failed at {}:{} (hr=0x{:08X})",
+            expr ? expr : "HRESULT",
+            file,
+            line,
+            static_cast<unsigned>(hr));
+        throw std::runtime_error(msg);
     }
 }
 
-class Renderer {
+#define CHECK_HR(call) ThrowIfFailed((call), #call, __FILE__, __LINE__)
+
+
+class Renderer
+{
 public:
     Renderer();
     ~Renderer();
@@ -49,117 +59,107 @@ public:
 
     void Update(float deltaTime);
     void Render();
-
     void WaitForPreviousFrame();
+    void UpdateGlobalTime(float seconds);
 
-    void UpdateGlobalTime(float timeSeconds);
-
-
+    // Direct queue(그래픽스) 접근자
     ID3D12Device* GetDevice() const;
-    ID3D12CommandQueue* GetCommandQueue() const;
-    ID3D12GraphicsCommandList* GetCommandList() const;
-    ID3D12CommandAllocator* GetCommandAllocator() const;
+    ID3D12CommandQueue* GetDirectQueue() const;
+    ID3D12GraphicsCommandList* GetDirectCommandList() const;
+    ID3D12CommandAllocator* GetDirectCommandAllocator() const;
 
-    // 리소스 생성 시에 사용할 CommandList
-    ID3D12CommandAllocator* GetUploadCommandAllocator() const;
-    ID3D12GraphicsCommandList* GetUploadCommandList() const;
+    // Copy queue(업로드 전용) 접근자
+    ID3D12CommandQueue* GetCopyQueue() const;
+    ID3D12GraphicsCommandList* GetCopyCommandList() const;
+    ID3D12CommandAllocator* GetCopyCommandAllocator() const;
+    ID3D12Fence* GetCopyFence() const;
+    UINT64& GetCopyFenceValue();
+    UINT64                          SignalCopyFence();
+    void                            WaitCopyFence(UINT64 value);
 
+    // Manager 접근자
     PipelineStateManager* GetPSOManager() const;
     RootSignatureManager* GetRootSignatureManager() const;
     ShaderManager* GetShaderManager() const;
     DescriptorHeapManager* GetDescriptorHeapManager() const;
 
-
-    ID3D12CommandQueue* GetUploadQueue() const;
-    ID3D12Fence* GetUploadFence() const;
-    UINT64 IncrementUploadFenceValue();
-
-
+    // 카메라
     Camera* GetCamera() const;
-    void SetCamera(std::shared_ptr<Camera> newCamera);
+    void                            SetCamera(std::shared_ptr<Camera> cam);
 
-    // Viewport 정보
-    int GetViewportWidth() const;
-    int GetViewportHeight() const;
+    // Viewport
+    int                             GetViewportWidth() const;
+    int                             GetViewportHeight() const;
 
-
-    ID3D12Resource* GetLightingConstantBuffer()const;
-    ID3D12Resource* GetGlobalConstantBuffer()  const;
-
+    // 상수 버퍼
+    ID3D12Resource* GetLightingConstantBuffer() const;
+    ID3D12Resource* GetGlobalConstantBuffer()   const;
+    D3D12_GPU_DESCRIPTOR_HANDLE GetSamplerGpuHandle() const;
 
 private:
-    bool InitD3D(HWND hwnd, int width, int height);
+    bool InitD3D(HWND hwnd, int w, int h);
     void PopulateCommandList();
 
-
 private:
-    static const UINT FrameCount = 2;  
+    static const UINT FrameCount = 2;
 
     // Device & swap chain
-    ComPtr<ID3D12Device>           device;
-    ComPtr<IDXGISwapChain3>        swapChain;
+    ComPtr<ID3D12Device>            device;
+    ComPtr<IDXGISwapChain3>         swapChain;
     UINT                            frameIndex = 0;
 
-    // Command queue & lists
-    ComPtr<ID3D12CommandQueue>     commandQueue;
-    ComPtr<ID3D12CommandAllocator> commandAllocator;
-    ComPtr<ID3D12GraphicsCommandList> commandList;
+    // Direct queue & lists
+    ComPtr<ID3D12CommandQueue>           directQueue;
+    ComPtr<ID3D12CommandAllocator>       directCommandAllocator;
+    ComPtr<ID3D12GraphicsCommandList>    directCommandList;
 
+    // Copy queue & lists
+    ComPtr<ID3D12CommandQueue>           copyQueue;
+    ComPtr<ID3D12CommandAllocator>       copyCommandAllocator;
+    ComPtr<ID3D12GraphicsCommandList>    copyCommandList;
 
-    ComPtr<ID3D12CommandAllocator> uploadCommandAllocator;
-    ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
-
-
-    // Descriptor heaps: RTV, DSV
-    ComPtr<ID3D12DescriptorHeap>   rtvHeap;
-    ComPtr<ID3D12DescriptorHeap>   dsvHeap;
+    // RTV / DSV 힙
+    ComPtr<ID3D12DescriptorHeap>    rtvHeap;
+    ComPtr<ID3D12DescriptorHeap>    dsvHeap;
     UINT                            rtvDescriptorSize = 0;
 
-    // Render target & depth buffer
-    ComPtr<ID3D12Resource>         renderTargets[FrameCount];
-    ComPtr<ID3D12Resource>         depthStencilBuffer;
+    // Render targets & depth
+    ComPtr<ID3D12Resource>          renderTargets[FrameCount];
+    ComPtr<ID3D12Resource>          depthStencilBuffer;
 
-    // Synchronization
-    ComPtr<ID3D12Fence>            fence;
-    UINT64                          fenceValue = 0;
-    HANDLE                          fenceEvent = nullptr;
+    // Direct-queue Fence
+    ComPtr<ID3D12Fence>             directFence;
+    UINT64                          directFenceValue = 0;
+    HANDLE                          directFenceEvent = nullptr;
 
+    // Copy-queue Fence
+    ComPtr<ID3D12Fence>             copyFence;
+    UINT64                          copyFenceValue = 0;
+    HANDLE                          copyFenceEvent = nullptr;
 
-    // 업로드 전용 동기화 객체
-    ComPtr<ID3D12CommandQueue> uploadQueue;
-    ComPtr<ID3D12Fence>        uploadFence;
-    UINT64                     uploadFenceValue = 0;
-
-
-    // Viewport & scissor
-    D3D12_VIEWPORT                 viewport = {};
-    D3D12_RECT                     scissorRect = {};
+    // Viewport & Scissor
+    D3D12_VIEWPORT                  viewport{};
+    D3D12_RECT                      scissorRect{};
 
     // Managers
-    std::unique_ptr<RootSignatureManager>   rootSignatureManager;
-    std::unique_ptr<ShaderManager>          shaderManager;
-    std::unique_ptr<PipelineStateManager>   psoManager;
-    std::unique_ptr<DescriptorHeapManager> descriptorHeapManager;
+    std::unique_ptr<RootSignatureManager>    rootSignatureManager;
+    std::unique_ptr<ShaderManager>           shaderManager;
+    std::unique_ptr<PipelineStateManager>    psoManager;
+    std::unique_ptr<DescriptorHeapManager>   descriptorHeapManager;
 
     std::vector<std::shared_ptr<GameObject>> gameObjects;
-    std::shared_ptr<Camera>                   mainCamera;
+    std::shared_ptr<Camera>                  mainCamera;
 
-    /* ----------  Frame-global constant buffer : b3  ---------- */
-    CB_Global                 globalData;
-    ComPtr<ID3D12Resource>    globalConstantBuffer;       // upload heap
-    UINT8* mappedGlobalPtr = nullptr;  // persistent map
+    // Constant buffers
+    CB_Global           globalData;
+    ComPtr<ID3D12Resource> globalConstantBuffer;
+    UINT8* mappedGlobalPtr = nullptr;
 
-    /* ----------  Lighting constant buffer : b1  -------------- */
-    std::vector<Light>        lights;
-    CB_Lighting               lightingData;
-    ComPtr<ID3D12Resource>    lightingConstantBuffer;     // upload heap
+    std::vector<Light>  lights;
+    CB_Lighting         lightingData;
+    ComPtr<ID3D12Resource> lightingConstantBuffer;
     UINT8* mappedLightingPtr = nullptr;
 
-    /* ----------  Sampler (s0)  ------------------------------- */
-    // RootSignature 에 StaticSampler 로 넣어두면 추가 코드 X
-    // 동적 샘플러가 필요하면 ↓ 한 칸만 샘플러 힙에 만들어 공유
+    // Shared sampler handle (s0)
     D3D12_GPU_DESCRIPTOR_HANDLE samplerGpuHandle{};
-
-
-
 };

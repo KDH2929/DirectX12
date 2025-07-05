@@ -82,103 +82,114 @@ bool Mesh::Initialize(Renderer* renderer,
 
 bool Mesh::UploadBuffers(Renderer* renderer,
     const void* vertexData, size_t vertexByteSize,
-    const void* indexData, size_t indexByteSize) {
+    const void* indexData, size_t indexByteSize)
+{
+    // 1) DEFAULT-heap 버퍼 생성 (COMMON)
     ID3D12Device* device = renderer->GetDevice();
-    if (!device) return false;
+    CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
+    CD3DX12_RESOURCE_DESC     vbDesc = CD3DX12_RESOURCE_DESC::Buffer(UINT(vertexByteSize));
+    CD3DX12_RESOURCE_DESC     ibDesc = CD3DX12_RESOURCE_DESC::Buffer(UINT(indexByteSize));
 
-    // 1) Create DEFAULT-heap buffers (GPU-local)
-    CD3DX12_HEAP_PROPERTIES defaultProps(D3D12_HEAP_TYPE_DEFAULT);
+    CHECK_HR(device->CreateCommittedResource(
+        &defaultHeap, D3D12_HEAP_FLAG_NONE, &vbDesc,
+        D3D12_RESOURCE_STATE_COMMON, nullptr,
+        IID_PPV_ARGS(&vertexBuffer)));
 
-    CD3DX12_RESOURCE_DESC vbDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexByteSize);
-    CD3DX12_RESOURCE_DESC ibDesc = CD3DX12_RESOURCE_DESC::Buffer(indexByteSize);
+    CHECK_HR(device->CreateCommittedResource(
+        &defaultHeap, D3D12_HEAP_FLAG_NONE, &ibDesc,
+        D3D12_RESOURCE_STATE_COMMON, nullptr,
+        IID_PPV_ARGS(&indexBuffer)));
 
-    ThrowIfFailed(device->CreateCommittedResource(
-        &defaultProps, D3D12_HEAP_FLAG_NONE,
-        &vbDesc, D3D12_RESOURCE_STATE_COPY_DEST,
-        nullptr, IID_PPV_ARGS(&vertexBuffer)));
+    // 2) UPLOAD-heap 스테이징 버퍼 생성
+    CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
+    ComPtr<ID3D12Resource> vertexUpload, indexUpload;
 
-    ThrowIfFailed(device->CreateCommittedResource(
-        &defaultProps, D3D12_HEAP_FLAG_NONE,
-        &ibDesc, D3D12_RESOURCE_STATE_COPY_DEST,
-        nullptr, IID_PPV_ARGS(&indexBuffer)));
+    CHECK_HR(device->CreateCommittedResource(
+        &uploadHeap, D3D12_HEAP_FLAG_NONE, &vbDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+        IID_PPV_ARGS(&vertexUpload)));
 
-    // 2) Create UPLOAD-heap staging buffers
-    CD3DX12_HEAP_PROPERTIES uploadProps(D3D12_HEAP_TYPE_UPLOAD);
-    ComPtr<ID3D12Resource> vertexUpload;
-    ComPtr<ID3D12Resource> indexUpload;
+    CHECK_HR(device->CreateCommittedResource(
+        &uploadHeap, D3D12_HEAP_FLAG_NONE, &ibDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+        IID_PPV_ARGS(&indexUpload)));
 
-    ThrowIfFailed(device->CreateCommittedResource(
-        &uploadProps, D3D12_HEAP_FLAG_NONE,
-        &vbDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr, IID_PPV_ARGS(&vertexUpload)));
+    // 3) CPU → UPLOAD 복사
+    {
+        void* mapped = nullptr;
+        CD3DX12_RANGE readRange(0, 0);
 
-    ThrowIfFailed(device->CreateCommittedResource(
-        &uploadProps, D3D12_HEAP_FLAG_NONE,
-        &ibDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr, IID_PPV_ARGS(&indexUpload)));
+        vertexUpload->Map(0, &readRange, &mapped);
+        memcpy(mapped, vertexData, vertexByteSize);
+        vertexUpload->Unmap(0, nullptr);
 
-    // 3) Copy CPU data into upload heap (memcpy)
-    void* mapped = nullptr;
-    CD3DX12_RANGE range(0, 0);
-    ThrowIfFailed(vertexUpload->Map(0, &range, &mapped));
-    memcpy(mapped, vertexData, vertexByteSize);
-    vertexUpload->Unmap(0, nullptr);
+        indexUpload->Map(0, &readRange, &mapped);
+        memcpy(mapped, indexData, indexByteSize);
+        indexUpload->Unmap(0, nullptr);
+    }
 
-    ThrowIfFailed(indexUpload->Map(0, &range, &mapped));
-    memcpy(mapped, indexData, indexByteSize);
-    indexUpload->Unmap(0, nullptr);
+    // 4) Copy 전용 커맨드 리스트에 복사 명령 기록
+    auto* copyAlloc = renderer->GetCopyCommandAllocator();
+    auto* copyList = renderer->GetCopyCommandList();
 
-    // 4) Record copy commands on renderer’s COPY list
-    ID3D12GraphicsCommandList* copyList = renderer->GetUploadCommandList();
-    ID3D12CommandAllocator* copyAlloc = renderer->GetUploadCommandAllocator();
+    CHECK_HR(copyAlloc->Reset());
+    CHECK_HR(copyList->Reset(copyAlloc, nullptr));
 
-    copyAlloc->Reset();
-    copyList->Reset(copyAlloc, nullptr);
+    // 4-1) COMMON → COPY_DEST
+    {
+        D3D12_RESOURCE_BARRIER barriers[] = {
+            CD3DX12_RESOURCE_BARRIER::Transition(
+                vertexBuffer.Get(),
+                D3D12_RESOURCE_STATE_COMMON,
+                D3D12_RESOURCE_STATE_COPY_DEST),
+            CD3DX12_RESOURCE_BARRIER::Transition(
+                indexBuffer.Get(),
+                D3D12_RESOURCE_STATE_COMMON,
+                D3D12_RESOURCE_STATE_COPY_DEST)
+        };
+        copyList->ResourceBarrier(_countof(barriers), barriers);
+    }
 
+    // 4-2) 실제 Copy
     copyList->CopyResource(vertexBuffer.Get(), vertexUpload.Get());
     copyList->CopyResource(indexBuffer.Get(), indexUpload.Get());
 
-    // 그래픽 상태로 전환하지 않고 COMMON 상태까지만 전환
-    CD3DX12_RESOURCE_BARRIER barriers[] = {
-        CD3DX12_RESOURCE_BARRIER::Transition(
-            vertexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
-            D3D12_RESOURCE_STATE_COMMON),
-        CD3DX12_RESOURCE_BARRIER::Transition(
-            indexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST,
-            D3D12_RESOURCE_STATE_COMMON)
-    };
-    copyList->ResourceBarrier(2, barriers);
-
-    ThrowIfFailed(copyList->Close());
-
-    ID3D12CommandQueue* copyQueue = renderer->GetUploadQueue();
-    copyQueue->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList* const*>(&copyList));
-
-    // 5) Fence & wait so buffers are ready before first draw
-    UINT64 fenceValue = renderer->IncrementUploadFenceValue();
-    ID3D12Fence* fence = renderer->GetUploadFence();
-
-    copyQueue->Signal(fence, fenceValue);
-    if (fence->GetCompletedValue() < fenceValue) {
-        HANDLE eventHandle = CreateEvent(nullptr, false, false, nullptr);
-        fence->SetEventOnCompletion(fenceValue, eventHandle);
-        WaitForSingleObject(eventHandle, INFINITE);
-        CloseHandle(eventHandle);
+    // 4-3) COPY_DEST → COMMON 으로 복구
+    {
+        D3D12_RESOURCE_BARRIER barriers[] = {
+            CD3DX12_RESOURCE_BARRIER::Transition(
+                vertexBuffer.Get(),
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_COMMON),
+            CD3DX12_RESOURCE_BARRIER::Transition(
+                indexBuffer.Get(),
+                D3D12_RESOURCE_STATE_COPY_DEST,
+                D3D12_RESOURCE_STATE_COMMON)
+        };
+        copyList->ResourceBarrier(_countof(barriers), barriers);
     }
 
-    // 6) Destroy upload buffers (implicit when ComPtr goes out of scope)
+    CHECK_HR(copyList->Close());
 
-    // 7) Fill buffer views
+    // 5) Copy 큐에 제출 & 완료 대기
+    ID3D12CommandList* lists[] = { copyList };
+    renderer->GetCopyQueue()->ExecuteCommandLists(_countof(lists), lists);
+
+    const UINT64 fenceValue = renderer->SignalCopyFence();
+    renderer->WaitCopyFence(fenceValue);
+
+    // 6) VB/IB 뷰 설정
     vertexView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-    vertexView.SizeInBytes = static_cast<UINT>(vertexByteSize);
+    vertexView.SizeInBytes = UINT(vertexByteSize);
     vertexView.StrideInBytes = sizeof(MeshVertex);
 
     indexView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-    indexView.SizeInBytes = static_cast<UINT>(indexByteSize);
+    indexView.SizeInBytes = UINT(indexByteSize);
     indexView.Format = DXGI_FORMAT_R32_UINT;
 
     return true;
 }
+
 
 std::shared_ptr<Mesh> Mesh::CreateCube(Renderer* renderer) {
     std::vector<MeshVertex> v; std::vector<uint32_t> i;

@@ -5,7 +5,6 @@
 
 using namespace DirectX;
 
-// b0
 struct CB_MVP
 {
     XMFLOAT4X4 model;
@@ -14,7 +13,6 @@ struct CB_MVP
     XMFLOAT4X4 modelInvTranspose;
 };
 
-// b1
 struct CB_Lighting
 {
     XMFLOAT3 cameraWorld;
@@ -23,8 +21,7 @@ struct CB_Lighting
 };
 
 
-// b2
-struct CB_Material
+struct CB_MaterialPhong
 {
     XMFLOAT3 ambient;
     float padding0;
@@ -40,8 +37,26 @@ struct CB_Material
     XMFLOAT2 padding2;        // align 16
 };
 
+// PBR 전용 (16B 정렬)
+struct CB_MaterialPBR
+{
+    XMFLOAT3 baseColor;
+    float    metallic;       // 16
 
-// b3
+    float    specular;
+    float    roughness;      // 24
+
+    float    ambientOcclusion;
+    float    emissiveIntensity; // 32
+
+    XMFLOAT3 emissiveColor;
+    float    pad0;           // 44 +4 =48
+
+    // 여기부터 16바이트 단위 패딩
+    float    pad1[4];        // +16 = 64바이트
+};
+
+
 struct CB_Global {
     float time;
     float padding[3]; // 16바이트 정렬

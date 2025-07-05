@@ -15,9 +15,13 @@ public:
 
     bool InitializeDescs();
 
-    bool Create(
-        const std::wstring& name,
+    // v1
+    bool Create(const std::wstring& name,
         const D3D12_ROOT_SIGNATURE_DESC& desc);
+
+    // Versioned (1.1/1.2)
+    bool Create(const std::wstring& name,
+        const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& desc);
 
     // 생성된 루트 시그니처 반환
     ID3D12RootSignature* Get(const std::wstring& name) const;

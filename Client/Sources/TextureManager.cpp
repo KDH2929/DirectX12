@@ -3,8 +3,7 @@
 #include "Renderer.h"
 #include <directx/d3dx12.h>
 
-void TextureManager::Initialize(Renderer* renderer_,
-    DescriptorHeapManager* descriptorHeapManager_)
+void TextureManager::Initialize(Renderer* renderer_, DescriptorHeapManager* descriptorHeapManager_)
 {
     renderer = renderer_;
     descriptorHeapManager = descriptorHeapManager_;
@@ -16,61 +15,32 @@ std::shared_ptr<Texture> TextureManager::LoadTexture(const std::wstring& filePat
     if (auto it = textureCache.find(filePath); it != textureCache.end())
         return it->second;
 
-    // 2) 텍스처 객체 준비
+    // 2) Texture 객체 준비
     auto texture = std::make_shared<Texture>();
 
-    ID3D12Device* device = renderer->GetDevice();
-    ID3D12GraphicsCommandList* uploadCommandList = renderer->GetUploadCommandList();
-    ID3D12CommandAllocator* uploadCommandAlloc = renderer->GetUploadCommandAllocator();
-    ID3D12CommandQueue* uploadQueue = renderer->GetUploadQueue();
-    ID3D12Fence* uploadFence = renderer->GetUploadFence();
-
-    // 리스트를 초기 상태로
-    uploadCommandList->Close();
-    uploadCommandAlloc->Reset();
-    uploadCommandList->Reset(uploadCommandAlloc, nullptr);
-
-    if (!texture->LoadFromFile(device, uploadCommandList, filePath))
+    // 3) Texture 내부에서 Copy + Sync 까지 수행
+    if (!texture->LoadFromFile(renderer, filePath))
         throw std::runtime_error("TextureManager::LoadTexture - load failed");
 
-    uploadCommandList->Close();                         // 기록 종료
-
-    // 3) Copy 큐에 제출
-    ID3D12CommandList* submitList[] = { uploadCommandList };
-    uploadQueue->ExecuteCommandLists(1, submitList);
-
-    // 4) Signal & Wait (업로드 완료 보장)
-    const UINT64 fenceValue = renderer->IncrementUploadFenceValue();
-    uploadQueue->Signal(uploadFence, fenceValue);
-
-    if (uploadFence->GetCompletedValue() < fenceValue)
-    {
-        HANDLE fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-        uploadFence->SetEventOnCompletion(fenceValue, fenceEvent);
-        WaitForSingleObject(fenceEvent, INFINITE);
-        CloseHandle(fenceEvent);
-    }
-
-    // 5) SRV 디스크립터 슬롯 확보 & 생성
-    DescriptorHandle srvHandle = descriptorHeapManager->Allocate(
+    // 4) SRV 디스크립터 슬롯 확보 & 생성
+    DescriptorHandle handle = descriptorHeapManager->Allocate(
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     srvDesc.Format = texture->GetResource()->GetDesc().Format;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = 1;   // 필요 시 MipLevels 설정
+    srvDesc.Texture2D.MipLevels = 1;
 
-    device->CreateShaderResourceView(
-        texture->GetResource(), &srvDesc, srvHandle.cpu);
+    renderer->GetDevice()->CreateShaderResourceView(
+        texture->GetResource(), &srvDesc, handle.cpu);
 
-    texture->SetDescriptorHandles(srvHandle.cpu, srvHandle.gpu);
+    texture->SetDescriptorHandles(handle.cpu, handle.gpu, handle.index);
 
-    // 6) 캐시에 등록 후 반환
+    // 5) 캐시에 저장
     textureCache[filePath] = texture;
     return texture;
 }
-
 
 void TextureManager::Clear()
 {

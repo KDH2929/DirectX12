@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "PhongLighting.hlsli"
 
 cbuffer CB_UVRect : register(b4)
 {

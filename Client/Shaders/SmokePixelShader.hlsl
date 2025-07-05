@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "PhongLighting.hlsli"
 
 Texture2D diffuseMap : register(t0);
 Texture2D noiseMap : register(t1);
