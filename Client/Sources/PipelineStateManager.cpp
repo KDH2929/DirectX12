@@ -1,6 +1,9 @@
 #include "PipelineStateManager.h"
 #include "Renderer.h"
 #include <stdexcept>
+#include <format>
+#include <codecvt>
+
 
 PipelineStateManager::PipelineStateManager(Renderer* renderer_)
     : renderer(renderer_)
@@ -32,6 +35,13 @@ bool PipelineStateManager::InitializePSOs()
     // 3. PBR-Lighting 전용
     {
         PipelineStateDesc desc = CreatePbrPSODesc();
+        if (GetOrCreate(desc) == nullptr)
+            return false;
+    }
+
+    // 4. Skybox 전용
+    {
+        PipelineStateDesc desc = CreateSkyboxPSODesc();
         if (GetOrCreate(desc) == nullptr)
             return false;
     }
@@ -165,8 +175,47 @@ PipelineStateDesc PipelineStateManager::CreatePbrPSODesc() const
     desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
-    // HDR/톤매핑을 고려해 sRGB 백버퍼라면 RTV 포맷도 맞춰 주세요.
+    // HDR/톤매핑을 고려해 sRGB 백버퍼라면 RTV 포맷도 맞출 것
     // 예) desc.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+
+    return desc;
+}
+
+PipelineStateDesc PipelineStateManager::CreateSkyboxPSODesc() const
+{
+    auto rootSig = renderer->GetRootSignatureManager()->Get(L"SkyboxRS");
+    if (!rootSig) throw std::runtime_error("SkyboxRS not created");
+
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    ComPtr<ID3DBlob> vsBlob =
+        renderer->GetShaderManager()->GetShaderBlob(L"SkyboxVertexShader");
+    ComPtr<ID3DBlob> psBlob =
+        renderer->GetShaderManager()->GetShaderBlob(L"SkyboxPixelShader");
+
+    PipelineStateDesc desc;
+    desc.name = L"SkyboxPSO";
+    desc.rootSignature = rootSig;
+    desc.vsBlob = vsBlob;
+    desc.psBlob = psBlob;
+    desc.inputLayout = std::move(inputLayout);
+
+    desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    desc.rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;  // draw inside faces
+
+    desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    desc.depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+    desc.depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+    desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+
+    desc.sampleMask = UINT_MAX;
+    desc.sampleDesc.Count = 1;
+
 
     return desc;
 }
@@ -206,12 +255,13 @@ bool PipelineStateManager::CreatePSO(
     psoDesc.NodeMask = 1;                          // GPU 0 사용
     psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
-    ComPtr<ID3D12PipelineState> pso;
-    if (FAILED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pso)))) {
-        return false;
+    ComPtr<ID3D12PipelineState> pipelineState;
+    HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState));
+    if (FAILED(hr)) {
+        throw std::runtime_error("CreateGraphicsPipelineState failed");
     }
+    psoMap[desc.name] = pipelineState;
 
-    psoMap[desc.name] = pso;
     return true;
 }
 

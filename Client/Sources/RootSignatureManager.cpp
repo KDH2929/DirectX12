@@ -84,12 +84,12 @@ bool RootSignatureManager::InitializeDescs()
         Create(L"PhongRS", desc);
     }
 
-
-    // 3) PBR 조명용 PbrRS 생성
+    // 3) PBR용 루트 시그니처 PbrRS 생성
     {
-        // b0~b3: CBVs for MVP, Lighting, Material, Global
-        D3D12_ROOT_PARAMETER params[6] = {};
-        for (int i = 0; i < 4; ++i) {
+        // 1) b0~b3: CBV (b0=MVP, b1=Lighting, b2=Material, b3=Global)
+        D3D12_ROOT_PARAMETER params[9] = {};
+        for (UINT i = 0; i < 4; ++i)
+        {
             params[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
             params[i].Descriptor.ShaderRegister = i;  // b0, b1, b2, b3
             params[i].Descriptor.RegisterSpace = 0;
@@ -98,45 +98,127 @@ bool RootSignatureManager::InitializeDescs()
                 : D3D12_SHADER_VISIBILITY_PIXEL;
         }
 
-        // t0~t3: SRV 테이블 (알베도, 노멀, 메탈릭, 러프니스)
-        D3D12_DESCRIPTOR_RANGE srvRange = {};
-        srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srvRange.NumDescriptors = 4;      // 4 textures
-        srvRange.BaseShaderRegister = 0;      // t0
-        srvRange.RegisterSpace = 0;
-        srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        // 2) Material(4) Descriptor Table → root 4
+        D3D12_DESCRIPTOR_RANGE matRange{};
+        matRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        matRange.NumDescriptors = 4;   // t0~t3
+        matRange.BaseShaderRegister = 0;
+        matRange.RegisterSpace = 0;
+        matRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
         params[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[4].DescriptorTable.NumDescriptorRanges = 1;
-        params[4].DescriptorTable.pDescriptorRanges = &srvRange;
+        params[4].DescriptorTable.pDescriptorRanges = &matRange;
         params[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // s0: 샘플러 테이블
-        D3D12_DESCRIPTOR_RANGE sampRange = {};
-        sampRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-        sampRange.NumDescriptors = 1;
-        sampRange.BaseShaderRegister = 0; // s0
-        sampRange.RegisterSpace = 0;
-        sampRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        // 3) IrradianceCube → root 5 (t4)
+        D3D12_DESCRIPTOR_RANGE irrRange = matRange;
+        irrRange.NumDescriptors = 1;
+        irrRange.BaseShaderRegister = 4;  // t4
 
         params[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[5].DescriptorTable.NumDescriptorRanges = 1;
-        params[5].DescriptorTable.pDescriptorRanges = &sampRange;
+        params[5].DescriptorTable.pDescriptorRanges = &irrRange;
         params[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // 루트 시그니처 설명(v1.0)
-        D3D12_ROOT_SIGNATURE_DESC desc = {};
+        // 4) PrefilteredCube → root 6 (t5)
+        D3D12_DESCRIPTOR_RANGE prefRange = matRange;
+        prefRange.NumDescriptors = 1;
+        prefRange.BaseShaderRegister = 5;  // t5
+
+        params[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        params[6].DescriptorTable.NumDescriptorRanges = 1;
+        params[6].DescriptorTable.pDescriptorRanges = &prefRange;
+        params[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // 5) BRDF LUT → root 7 (t6)
+        D3D12_DESCRIPTOR_RANGE lutRange = matRange;
+        lutRange.NumDescriptors = 1;
+        lutRange.BaseShaderRegister = 6;  // t6
+
+        params[7].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        params[7].DescriptorTable.NumDescriptorRanges = 1;
+        params[7].DescriptorTable.pDescriptorRanges = &lutRange;
+        params[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // 6) Sampler 테이블 → root 8 (s0)
+        D3D12_DESCRIPTOR_RANGE sampRange{};
+        sampRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+        sampRange.NumDescriptors = 1;  // s0
+        sampRange.BaseShaderRegister = 0;
+        sampRange.RegisterSpace = 0;
+        sampRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        params[8].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        params[8].DescriptorTable.NumDescriptorRanges = 1;
+        params[8].DescriptorTable.pDescriptorRanges = &sampRange;
+        params[8].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // 7) 루트 시그니처 설명 생성
+        D3D12_ROOT_SIGNATURE_DESC desc{};
         desc.NumParameters = _countof(params);
         desc.pParameters = params;
         desc.NumStaticSamplers = 0;
         desc.pStaticSamplers = nullptr;
         desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-        // 생성 호출
+        // 8) 생성 호출
         if (!Create(L"PbrRS", desc))
             throw std::runtime_error("RootSignatureManager::Create(\"PbrRS\") failed");
     }
 
+
+    // 4) Skybox(큐브맵)용 루트 시그니처
+    {
+        // b0 : CB_MVP (world-view-proj)
+        // t0 : 큐브맵 SRV
+        // s0 : 샘플러
+        D3D12_ROOT_PARAMETER params[3] = {};
+
+        // CBV b0
+        params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        params[0].Descriptor.ShaderRegister = 0;
+        params[0].Descriptor.RegisterSpace = 0;
+        params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+        // SRV 테이블 t0
+        D3D12_DESCRIPTOR_RANGE srvRange = {};
+        srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        srvRange.NumDescriptors = 1;   // 큐브맵 한 개
+        srvRange.BaseShaderRegister = 0;   // t0
+        srvRange.RegisterSpace = 0;
+        srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        params[1].DescriptorTable.NumDescriptorRanges = 1;
+        params[1].DescriptorTable.pDescriptorRanges = &srvRange;
+        params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // 샘플러 테이블 s0
+        D3D12_DESCRIPTOR_RANGE samplerRange = {};
+        samplerRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+        samplerRange.NumDescriptors = 1;
+        samplerRange.BaseShaderRegister = 0;   // s0
+        samplerRange.RegisterSpace = 0;
+        samplerRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        params[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        params[2].DescriptorTable.NumDescriptorRanges = 1;
+        params[2].DescriptorTable.pDescriptorRanges = &samplerRange;
+        params[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // 루트 시그니처 설명
+        D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
+        rsDesc.NumParameters = _countof(params);
+        rsDesc.pParameters = params;
+        rsDesc.NumStaticSamplers = 0;
+        rsDesc.pStaticSamplers = nullptr;
+        rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+        // 생성 호출 ("SkyboxRS"로 식별)
+        if (!Create(L"SkyboxRS", rsDesc))
+            throw std::runtime_error("RootSignatureManager::Create(\"SkyboxRS\") failed");
+    }
 
     return true;
 }

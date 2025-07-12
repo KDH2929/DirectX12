@@ -4,6 +4,7 @@
 #include "TriangleObject.h"
 #include "BoxObject.h"
 #include "Flight.h"
+#include "Skybox.h"
 
 #include <filesystem>
 #include <windowsx.h> 
@@ -17,8 +18,9 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
 // 전역 윈도우 프로시저
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam)) {
-        return true;        // ImGui가 메시지를 처리했다면, 더 이상 처리하지 않음
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+    {
+        return TRUE;
     }
 
     switch (message) {
@@ -105,10 +107,7 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
         return false;
     }
 
-    if (!InitImGui()) {
-        MessageBox(nullptr, L"Failed to initialize ImGui.", L"Error", MB_OK | MB_ICONERROR);
-        return false;
-    }
+    renderer.InitImGui(hwnd);
 
     // PhysX 초기화
     if (!physicsManager.Init()) {
@@ -127,7 +126,6 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
     network.StartRecvThread();
 
     InputManager::GetInstance().Initialize(hwnd);
-    textureManager.Initialize(&renderer, renderer.GetDescriptorHeapManager());
     
     
     // 모델 로드
@@ -135,6 +133,19 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
     LoadTexture();
     
     SetupCollisionResponse();
+
+    
+    if (!renderer.GetEnvironmentMaps().Load(
+        &renderer,
+        L"Assets/HDRI/SkyboxDiffuseHDR.dds",   // Irradiance Map
+        L"Assets/HDRI/SkyboxSpecularHDR.dds",  // Specular Prefiltered Map
+        L"Assets/HDRI/SkyboxBrdf.dds"          // BRDF LUT 2D
+    ))
+    {
+        MessageBox(hwnd, L"Failed to load IBL environment maps!", L"Error", MB_OK);
+    }
+    
+
 
 
     // 객체 초기화 (테스트 용도)
@@ -166,6 +177,14 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
 
     renderer.AddGameObject(flightObject);
     
+    
+    auto skybox = std::make_shared<Skybox>(skyboxTexture);
+    if (!skybox->Initialize(&renderer)) {
+        throw std::runtime_error("Failed to initialize Skybox");
+    }
+
+   renderer.AddGameObject(skybox);
+    
 
     return true;
 }
@@ -186,29 +205,36 @@ void Game::LoadModel()
     if (!bulletMesh) {
         MessageBox(hwnd, L"Failed to load bullet mesh!", L"Error", MB_OK);
     }
+
+    
 }
 
 void Game::LoadTexture()
 {
-    flightTextures.albedoTexture = textureManager.LoadTexture(
+    flightTextures.albedoTexture = renderer.GetTextureManager()->LoadTexture(
         L"Assets/spitfirev6/spitfirev6_Textures/base_Base_Color_1002.png");
     if (!flightTextures.albedoTexture) MessageBox(hwnd, L"Failed to load flight albedo texture!", L"Error", MB_OK);
 
-    flightTextures.normalTexture = textureManager.LoadTexture(
+    flightTextures.normalTexture = renderer.GetTextureManager()->LoadTexture(
         L"Assets/spitfirev6/spitfirev6_Textures/base_Normal_DirectX_1002.png");
     if (!flightTextures.normalTexture) MessageBox(hwnd, L"Failed to load flight normal texture!", L"Error", MB_OK);
 
-    flightTextures.metallicTexture = textureManager.LoadTexture(
+    flightTextures.metallicTexture = renderer.GetTextureManager()->LoadTexture(
         L"Assets/spitfirev6/spitfirev6_Textures/base_Metallic_1002.png");
     if (!flightTextures.metallicTexture) MessageBox(hwnd, L"Failed to load flight metallic texture!", L"Error", MB_OK);
 
-    flightTextures.roughnessTexture = textureManager.LoadTexture(
+    flightTextures.roughnessTexture = renderer.GetTextureManager()->LoadTexture(
         L"Assets/spitfirev6/spitfirev6_Textures/base_Roughness_1002.png");
     if (!flightTextures.roughnessTexture) MessageBox(hwnd, L"Failed to load flight roughness texture!", L"Error", MB_OK);
 
-    bulletTexture = textureManager.LoadTexture(
+    bulletTexture = renderer.GetTextureManager()->LoadTexture(
         L"Assets/Bullet/Textures/bullet_DefaultMaterial_BaseColor.png");
     if (!bulletTexture) MessageBox(hwnd, L"Failed to load bullet texture!", L"Error", MB_OK);
+
+
+    skyboxTexture = renderer.GetTextureManager()->LoadCubeMap(L"Assets/HDRI/SkyboxSpecularHDR.dds");
+    if (!skyboxTexture)
+        MessageBox(hwnd, L"Failed to load skybox texture", L"Error", MB_OK);
 }
 
 bool Game::InitWindow(HINSTANCE hInstance, int nCmdShow) {
@@ -246,27 +272,6 @@ bool Game::InitWindow(HINSTANCE hInstance, int nCmdShow) {
     return true;
 }
 
-bool Game::InitImGui()
-{
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize = ImVec2(float(windowWidth), float(windowHeight));
-    ImGui::StyleColorsDark();
-
-    /*
-    if (!ImGui_ImplDX11_Init(renderer.GetDevice(), renderer.GetDeviceContext())) {
-        return false;
-    }
-    */
-
-    if (!ImGui_ImplWin32_Init(hwnd)) {
-        return false;
-    }
-}
-
-
 
 int Game::Run() {
     MSG msg = {};
@@ -282,6 +287,8 @@ int Game::Run() {
             deltaTime = static_cast<float>(curTime.QuadPart - prevTime.QuadPart) / frequency.QuadPart;
             prevTime = curTime;
 
+            renderer.ImGuiNewFrame();
+
             HandleInput(deltaTime);  // 키보드와 마우스 입력 처리
             ProcessNetwork();  // 서버에서 받은 데이터 반영
             Update(deltaTime);      // 게임 로직 갱신
@@ -290,11 +297,6 @@ int Game::Run() {
             physicsManager.FetchResults();
             physicsManager.ApplyActorRemovals();
 
-            /*
-            ImGui_ImplDX11_NewFrame();
-            ImGui_ImplWin32_NewFrame();
-            ImGui::NewFrame();
-            */
 
             Render();      // D3D 렌더링
         }
@@ -307,9 +309,8 @@ int Game::Run() {
 
 void Game::Cleanup() {
 
-    // ImGui_ImplDX11_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
+    renderer.ShutdownImGui();
+    renderer.Cleanup();
 
     physicsManager.Cleanup();
     network.Stop();

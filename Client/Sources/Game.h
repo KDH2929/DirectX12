@@ -4,12 +4,8 @@
 #include "PhysicsManager.h"
 #include "Renderer.h"
 #include "ModelLoader.h"
-#include "TextureManager.h"
 #include "Material.h"
 
-#include <imgui.h>
-//#include <imgui_impl_dx12.h>
-#include <imgui_impl_win32.h>
 #include <windows.h>
 
 
@@ -40,12 +36,14 @@ private:
     PhysicsManager physicsManager;
     Renderer renderer;
     ModelLoader modelLoader;
-    TextureManager textureManager;
 
     // Meshes
     std::shared_ptr<Mesh> flight1Mesh;
     std::shared_ptr<Material> flightMaterial;
     MaterialPbrTextures flightTextures;
+
+    // Skybox
+    std::shared_ptr<Texture> skyboxTexture;
 
     std::vector<XMFLOAT3> enemyPositions = {
         { -60.0f, 50.0f, 100.0f },
@@ -64,7 +62,6 @@ private:
     void LoadTexture();
 
     bool InitWindow(HINSTANCE hInstance, int nCmdShow);
-    bool InitImGui();
     void Update(float deltaTime);
     void Render();
     void HandleInput(float deltaTime);      // 서버에 키보드와 마우스 입력값 전달

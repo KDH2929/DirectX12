@@ -62,6 +62,26 @@ void Flight::Update(float deltaTime)
     if (input.IsKeyHeld('E')) position.y += moveSpeed * deltaTime;
     if (input.IsKeyHeld('Q')) position.y -= moveSpeed * deltaTime;
 
+
+    if (ImGui::Begin("Flight Material"))
+    {
+        auto& M = materialPBR->parameters;
+
+        // Base Color
+        ImGui::ColorEdit3("Base Color", reinterpret_cast<float*>(&M.baseColor));
+
+        // Metallic / Specular / Roughness / AO
+        ImGui::SliderFloat("Metallic", &M.metallic, 0.0f, 10.0f);
+        ImGui::SliderFloat("Specular", &M.specular, 0.0f, 10.0f);
+        ImGui::SliderFloat("Roughness", &M.roughness, 0.0f, 10.0f);
+        ImGui::SliderFloat("Ambient Occlusion", &M.ambientOcclusion, 0.0f, 10.0f);
+
+        // Emissive
+        ImGui::ColorEdit3("Emissive Color", reinterpret_cast<float*>(&M.emissiveColor));
+        ImGui::SliderFloat("Emissive Intensity", &M.emissiveIntensity, 0.0f, 10.0f);
+    }
+    ImGui::End();
+
     GameObject::Update(deltaTime);
 }
 
@@ -80,10 +100,11 @@ void Flight::Render(Renderer* renderer)
     directCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
     // 3) PBR 전용 RS & PSO 바인딩
-    auto* rootSignature = renderer->GetRootSignatureManager()->Get(L"PbrRS");
-    auto* pipelineState = renderer->GetPSOManager()->Get(L"PbrPSO");
-    directCommandList->SetGraphicsRootSignature(rootSignature);
-    directCommandList->SetPipelineState(pipelineState);
+    directCommandList->SetGraphicsRootSignature(
+        renderer->GetRootSignatureManager()->Get(L"PbrRS"));
+    directCommandList->SetPipelineState(
+        renderer->GetPSOManager()->Get(L"PbrPSO"));
+
 
     // 4) 프레임 전역 CBV 바인딩 (b1: Lighting, b3: Global)
     directCommandList->SetGraphicsRootConstantBufferView(
@@ -91,12 +112,24 @@ void Flight::Render(Renderer* renderer)
     directCommandList->SetGraphicsRootConstantBufferView(
         3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
 
-    // 5) SRV 및 Sampler 테이블 바인딩 (root slot 4, 5)
+    // 5) SRV 및 Sampler 테이블 바인딩 (root slot 4~8)
     {
-        auto srvStart = descriptorHeaps[0]->GetGPUDescriptorHandleForHeapStart();
-        directCommandList->SetGraphicsRootDescriptorTable(4, srvStart);
-        auto samplerStart = descriptorHeaps[1]->GetGPUDescriptorHandleForHeapStart();
-        directCommandList->SetGraphicsRootDescriptorTable(5, samplerStart);
+
+        // material textures (t0~t3) → root 4
+        // Albedo 가 첫 번째이므로 시작핸들로 넣으면 됨
+        directCommandList->SetGraphicsRootDescriptorTable(
+            4, materialPBR->GetAlbedoTexture()->GetGpuHandle());
+
+        // IBL 환경맵 바인딩 (t4~t6)
+        renderer->GetEnvironmentMaps().Bind(
+            directCommandList,
+            5,                          // Irradiance
+            6,                          // Specular
+            7                           // BrdfLut
+        );
+
+        // sampler (s0) → root 8
+        directCommandList->SetGraphicsRootDescriptorTable(8, renderer->GetSamplerGpuHandle());
     }
 
     // 6) MVP CBV (b0) 업데이트 & 바인딩
@@ -109,12 +142,11 @@ void Flight::Render(Renderer* renderer)
         memcpy(mappedMVPData, &mvpData, sizeof(mvpData));
 
         directCommandList->SetGraphicsRootConstantBufferView(
-            0, constantMVPBuffer->GetGPUVirtualAddress());
+            0, constantMVPBuffer->GetGPUVirtualAddress()); 
     }
 
     // 7) Material CBV (b2) 업데이트 & 바인딩
     {
-        // mappedMaterialData: CPU에서 맵핑해둔 Material CBV 의 포인터
         materialPBR->WriteToGpu(mappedMaterialBuffer);
         directCommandList->SetGraphicsRootConstantBufferView(
             2, materialConstantBuffer->GetGPUVirtualAddress());
@@ -126,6 +158,7 @@ void Flight::Render(Renderer* renderer)
         directCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         directCommandList->IASetVertexBuffers(0, 1, &mesh->GetVertexBufferView());
         directCommandList->IASetIndexBuffer(&mesh->GetIndexBufferView());
-        directCommandList->DrawIndexedInstanced(mesh->GetIndexCount(), 1, 0, 0, 0);
+        directCommandList->DrawIndexedInstanced(
+            mesh->GetIndexCount(), 1, 0, 0, 0);
     }
 }

@@ -7,15 +7,21 @@
 #include <memory>
 #include <string>
 #include <format>
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx12.h>
 
 #include "GameObject.h"
 #include "ShaderManager.h"
 #include "PipelineStateManager.h"
 #include "RootSignatureManager.h"
 #include "DescriptorHeapManager.h"
+#include "TextureManager.h"
 #include "Camera.h"
 #include "Light.h"
+#include "EnvironmentMaps.h"
 #include "ConstantBuffers.h"
+
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -42,7 +48,6 @@ inline void ThrowIfFailed(HRESULT hr,
 }
 
 #define CHECK_HR(call) ThrowIfFailed((call), #call, __FILE__, __LINE__)
-
 
 class Renderer
 {
@@ -74,27 +79,36 @@ public:
     ID3D12CommandAllocator* GetCopyCommandAllocator() const;
     ID3D12Fence* GetCopyFence() const;
     UINT64& GetCopyFenceValue();
-    UINT64                          SignalCopyFence();
-    void                            WaitCopyFence(UINT64 value);
+    UINT64 SignalCopyFence();
+    void WaitCopyFence(UINT64 value);
 
     // Manager 접근자
     PipelineStateManager* GetPSOManager() const;
     RootSignatureManager* GetRootSignatureManager() const;
     ShaderManager* GetShaderManager() const;
     DescriptorHeapManager* GetDescriptorHeapManager() const;
+    TextureManager* GetTextureManager() const;
 
     // 카메라
     Camera* GetCamera() const;
-    void                            SetCamera(std::shared_ptr<Camera> cam);
+    void SetCamera(std::shared_ptr<Camera> cam);
+
+    EnvironmentMaps& GetEnvironmentMaps();
 
     // Viewport
-    int                             GetViewportWidth() const;
-    int                             GetViewportHeight() const;
+    int GetViewportWidth() const;
+    int GetViewportHeight() const;
 
     // 상수 버퍼
     ID3D12Resource* GetLightingConstantBuffer() const;
     ID3D12Resource* GetGlobalConstantBuffer()   const;
     D3D12_GPU_DESCRIPTOR_HANDLE GetSamplerGpuHandle() const;
+
+    // ImGui 함수들
+    bool InitImGui(HWND hwnd);
+    void ImGuiNewFrame();                        // 호출 순서: NewFrame → 위젯 → Render
+    void ImGuiRenderDrawData();
+    void ShutdownImGui();
 
 private:
     bool InitD3D(HWND hwnd, int w, int h);
@@ -146,6 +160,7 @@ private:
     std::unique_ptr<ShaderManager>           shaderManager;
     std::unique_ptr<PipelineStateManager>    psoManager;
     std::unique_ptr<DescriptorHeapManager>   descriptorHeapManager;
+    std::unique_ptr<TextureManager>          textureManager;
 
     std::vector<std::shared_ptr<GameObject>> gameObjects;
     std::shared_ptr<Camera>                  mainCamera;
@@ -159,6 +174,10 @@ private:
     CB_Lighting         lightingData;
     ComPtr<ID3D12Resource> lightingConstantBuffer;
     UINT8* mappedLightingPtr = nullptr;
+
+
+    // 환경맵
+    EnvironmentMaps environmentMaps;
 
     // Shared sampler handle (s0)
     D3D12_GPU_DESCRIPTOR_HANDLE samplerGpuHandle{};

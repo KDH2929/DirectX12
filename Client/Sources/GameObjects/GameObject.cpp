@@ -30,7 +30,6 @@ bool GameObject::Initialize(Renderer* renderer) {
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
         IID_PPV_ARGS(&constantMVPBuffer));
-
     if (FAILED(hr)) {
         return false;
     }

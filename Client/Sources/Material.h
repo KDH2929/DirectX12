@@ -49,6 +49,14 @@ public:
         emissiveTexture = textures.emissiveTexture;
     }
 
+    // Texture getters
+    std::shared_ptr<Texture> GetAlbedoTexture() const { return albedoTexture; }
+    std::shared_ptr<Texture> GetNormalTexture() const { return normalTexture; }
+    std::shared_ptr<Texture> GetMetallicTexture() const { return metallicTexture; }
+    std::shared_ptr<Texture> GetRoughnessTexture() const { return roughnessTexture; }
+    std::shared_ptr<Texture> GetAmbientOcclusionTexture() const { return ambientOcclusionTexture; }
+    std::shared_ptr<Texture> GetEmissiveTexture() const { return emissiveTexture; }
+
     // destination: CB_MaterialPBR mapped CPU address
     void WriteToGpu(void* destination) const;
 

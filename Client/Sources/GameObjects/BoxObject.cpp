@@ -112,10 +112,8 @@ void BoxObject::Render(Renderer* renderer)
         3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
 
     // 5) SRV 및 Sampler 테이블 바인딩 (root slot 4, 5)
-    D3D12_GPU_DESCRIPTOR_HANDLE srvStart =
-        descriptorHeaps[0]->GetGPUDescriptorHandleForHeapStart();
-    D3D12_GPU_DESCRIPTOR_HANDLE samplerStart =
-        descriptorHeaps[1]->GetGPUDescriptorHandleForHeapStart();
+    D3D12_GPU_DESCRIPTOR_HANDLE srvStart = descriptorHeaps[0]->GetGPUDescriptorHandleForHeapStart();
+    D3D12_GPU_DESCRIPTOR_HANDLE samplerStart = descriptorHeaps[1]->GetGPUDescriptorHandleForHeapStart();
     directCommandList->SetGraphicsRootDescriptorTable(4, srvStart);
     directCommandList->SetGraphicsRootDescriptorTable(5, samplerStart);
 

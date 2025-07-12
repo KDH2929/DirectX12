@@ -24,8 +24,12 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
         { L"PhongVertexShader",    L"Shaders/PhongVertexShader.hlsl",    "VSMain", "vs_5_1" },
         { L"PhongPixelShader",     L"Shaders/PhongPixelShader.hlsl",     "PSMain", "ps_5_1" },
         { L"PbrVertexShader",      L"Shaders/PbrVertexShader.hlsl",      "VSMain", "vs_5_1" },
-        { L"PbrPixelShader",       L"Shaders/PbrPixelShader.hlsl",       "PSMain", "ps_5_1" }
+        { L"PbrPixelShader",       L"Shaders/PbrPixelShader.hlsl",       "PSMain", "ps_5_1" },
+
+        { L"SkyboxVertexShader",     L"Shaders/SkyboxVertexShader.hlsl",     "VSMain", "vs_5_0" },
+        { L"SkyboxPixelShader",      L"Shaders/SkyboxPixelShader.hlsl",      "PSMain", "ps_5_0" }
     };
+
     if (!shaderManager->CompileAll(shaderDescs))
         return false;
 
@@ -48,6 +52,11 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
         0,       // RTV
         0,       // DSV
         FrameCount))
+        return false;
+
+
+    textureManager = std::make_unique<TextureManager>();
+    if (!textureManager->Initialize(this, descriptorHeapManager.get()))
         return false;
 
     // Setup camera
@@ -113,8 +122,10 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
 
 void Renderer::Cleanup() {
     WaitForPreviousFrame();
-    if (directFenceEvent)
+    if (directFenceEvent != nullptr && directFenceEvent != INVALID_HANDLE_VALUE) {
         CloseHandle(directFenceEvent);
+        directFenceEvent = nullptr;
+    }
 }
 
 void Renderer::AddGameObject(std::shared_ptr<GameObject> obj) {
@@ -213,12 +224,22 @@ DescriptorHeapManager* Renderer::GetDescriptorHeapManager() const {
     return descriptorHeapManager.get();
 }
 
+TextureManager* Renderer::GetTextureManager() const
+{
+    return textureManager.get();
+}
+
 Camera* Renderer::GetCamera() const {
     return mainCamera.get();
 }
 
 void Renderer::SetCamera(std::shared_ptr<Camera> newCamera) {
     mainCamera = newCamera;
+}
+
+EnvironmentMaps& Renderer::GetEnvironmentMaps()
+{
+    return environmentMaps;
 }
 
 int Renderer::GetViewportWidth() const {
@@ -240,6 +261,48 @@ ID3D12Resource* Renderer::GetGlobalConstantBuffer() const {
 D3D12_GPU_DESCRIPTOR_HANDLE Renderer::GetSamplerGpuHandle() const
 {
     return samplerGpuHandle;
+}
+
+bool Renderer::InitImGui(HWND hwnd)
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+
+    // 1) Win32 초기화
+    if (!ImGui_ImplWin32_Init(hwnd))
+        return false;
+
+    // 2) DX12 초기화
+    //    FrameCount 멤버 사용
+    auto srvHeap = descriptorHeapManager->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    return ImGui_ImplDX12_Init(
+        device.Get(),
+        FrameCount,
+        DXGI_FORMAT_R8G8B8A8_UNORM,
+        srvHeap,
+        srvHeap->GetCPUDescriptorHandleForHeapStart(),
+        srvHeap->GetGPUDescriptorHandleForHeapStart());
+}
+
+void Renderer::ImGuiNewFrame()
+{
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+}
+
+void Renderer::ImGuiRenderDrawData()
+{
+    ImGui::Render();
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetDirectCommandList());
+}
+
+void Renderer::ShutdownImGui()
+{
+    ImGui_ImplDX12_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 }
 
 bool Renderer::InitD3D(HWND hwnd, int width, int height)
@@ -446,6 +509,9 @@ void Renderer::PopulateCommandList()
         obj->Render(this);
     }
 
+    // Imgui 드로우
+    ImGuiRenderDrawData();
+
     // 6) RENDER_TARGET → PRESENT 전환
     CD3DX12_RESOURCE_BARRIER toPresent =
         CD3DX12_RESOURCE_BARRIER::Transition(
@@ -453,6 +519,7 @@ void Renderer::PopulateCommandList()
             D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PRESENT);
     directCommandList->ResourceBarrier(1, &toPresent);
+
 
     // 7) 리스트 종료
     directCommandList->Close();

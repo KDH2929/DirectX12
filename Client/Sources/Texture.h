@@ -6,16 +6,19 @@
 
 class Renderer;
 
-/* -----------------------------------------------------------
- * GPU-텍스처 + SRV 핸들 보유
- * ----------------------------------------------------------*/
+
+ // GPU-텍스처 + SRV 핸들 보유
+
 class Texture
 {
 public:
     Texture() = default;
 
-    bool LoadFromFile(Renderer* renderer,
-        const std::wstring& filePath);
+    // 2D 텍스처 로드
+    bool LoadFromFile(Renderer* renderer, const std::wstring& filePath, bool generateMips = false);
+
+    // 큐브맵 텍스처 로드  (HDR, LDR 둘 다 처리 가능)
+    bool LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePath, bool generateMips = false);
 
     ID3D12Resource* GetResource()       const;
     D3D12_GPU_DESCRIPTOR_HANDLE  GetGpuHandle()      const;
@@ -25,8 +28,9 @@ public:
 
     // 핸들 설정 (TextureManager 가 SRV를 만들고 호출)
     void SetDescriptorHandles(D3D12_CPU_DESCRIPTOR_HANDLE cpu,
-        D3D12_GPU_DESCRIPTOR_HANDLE gpu,
+       D3D12_GPU_DESCRIPTOR_HANDLE gpu,
         UINT index);
+
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> texture;      // 실제 GPU 리소스

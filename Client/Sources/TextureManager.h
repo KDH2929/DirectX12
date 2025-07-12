@@ -12,11 +12,11 @@ class TextureManager
 {
 public:
 
-    void Initialize(Renderer* renderer_,
-        DescriptorHeapManager* descriptorHeapManager_);
+    bool Initialize(Renderer* renderer_, DescriptorHeapManager* descriptorHeapManager_);
 
     // 텍스처 로드 및 캐시
-    std::shared_ptr<Texture> LoadTexture(const std::wstring& filePath);
+    std::shared_ptr<Texture> LoadTexture(const std::wstring& filePath, bool generateMips = false);
+    std::shared_ptr<Texture> LoadCubeMap(const std::wstring& filePath, bool generateMips = false);
     void Clear();
 
 private:
