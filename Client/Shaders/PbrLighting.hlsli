@@ -1,150 +1,207 @@
 #include "Common.hlsli"
 
 static const float PI = 3.14159265;
-static const float3 Fdielectric = float3(0.04, 0.04, 0.04);
+static const float3 F_DIELECTRIC = float3(0.04, 0.04, 0.04);
 
+// 0=Albedo, 1=Normal, 2=Metallic, 3=Roughness
 Texture2D<float4> textureHeap[4] : register(t0, space0);
-SamplerState linearSampler : register(s0);
 
-// IBL textures
-TextureCube<float4> irradianceMap : register(t4);
-TextureCube<float4> prefilteredMap : register(t5);
-Texture2D<float2> brdfLut : register(t6);
+// 샘플러
+SamplerState linearWrapSampler : register(s0);
+SamplerState linearClampSampler : register(s1);
+
+// IBL 텍스처
+TextureCube<float4> irradianceMap : register(t4, space0);
+TextureCube<float4> prefilteredMap : register(t5, space0);
+Texture2D<float2> brdfLut : register(t6, space0);
 
 struct MaterialPBR
 {
     float3 baseColor;
-    float metallic; // 16
+    float metallic;
 
     float specular;
-    float roughness; // 24
-
+    float roughness;
     float ambientOcclusion;
-    float emissiveIntensity; // 32
+    float emissiveIntensity;
 
     float3 emissiveColor;
-    float pad0; // 44+4 =48
+    uint flags;
 
-    float pad1[4]; // +16 = 64바이트
+    float4 padding;
 };
-
 
 cbuffer CB_MVP : register(b0)
 {
-    float4x4 model;
-    float4x4 view;
-    float4x4 projection;
-    float4x4 modelInvTranspose;
+    float4x4 model, view, projection, modelInvTranspose;
 };
-
 cbuffer CB_Lighting : register(b1)
 {
     float3 cameraWorld;
     float _padL;
     Light lights[MAX_LIGHTS];
 };
-
 cbuffer CB_Material : register(b2)
 {
     MaterialPBR material;
 };
-
 cbuffer CB_Global : register(b3)
 {
     float time;
     float3 _padG;
 };
 
-float3 SampleAlbedo(float2 uv)
+// Map flags
+static const uint USE_ALBEDO_MAP = (1 << 0);
+static const uint USE_NORMAL_MAP = (1 << 1);
+static const uint USE_METALLIC_MAP = (1 << 2);
+static const uint USE_ROUGHNESS_MAP = (1 << 3);
+
+bool HasMap(uint flag)
 {
-    return textureHeap[0].Sample(linearSampler, uv).rgb;
-}
-float3 SampleNormal(float2 uv)
-{
-    // 0~1 범위의 값을 -1 ~ 1 범위의 값으로
-    return textureHeap[1].Sample(linearSampler, uv).rgb * 2 - 1;
-}
-float SampleMetallic(float2 uv)
-{
-    return textureHeap[2].Sample(linearSampler, uv).r;
-}
-float SampleRoughness(float2 uv)
-{
-    return textureHeap[3].Sample(linearSampler, uv).r;
+    return (material.flags & flag) != 0;
 }
 
+float3 SampleAlbedo(float2 uv)
+{
+    if (HasMap(USE_ALBEDO_MAP))
+    {
+        return textureHeap[0].Sample(linearWrapSampler, uv).rgb * material.baseColor;
+    }
+    return material.baseColor;
+}
+
+float3 SampleNormal(float2 uv)
+{
+    if (HasMap(USE_NORMAL_MAP))
+    {
+        float3 n = textureHeap[1].Sample(linearWrapSampler, uv).rgb * 2 - 1;
+        return normalize(n);
+    }
+    return float3(0, 0, 1);
+}
+
+float SampleMetallic(float2 uv)
+{
+    float m = material.metallic;
+    if (HasMap(USE_METALLIC_MAP))
+    {
+        m *= textureHeap[2].Sample(linearWrapSampler, uv).a;
+    }
+    return saturate(m);
+}
+
+float SampleRoughness(float2 uv)
+{
+    float r = material.roughness;
+    if (HasMap(USE_ROUGHNESS_MAP))
+    {
+        r *= textureHeap[3].Sample(linearWrapSampler, uv).r;
+    }
+    return saturate(r);
+}
+
+float SampleAO()
+{
+    return saturate(material.ambientOcclusion);
+}
+
+// Fresnel-Schlick
 float3 FresnelSchlick(float cosTheta, float3 F0)
 {
     return F0 + (1 - F0) * pow(1 - cosTheta, 5);
 }
 
-float DistributionGGX(float3 N, float3 H, float roughness)
+// GGX NDF
+float DistributionGGX(float3 N, float3 H, float rough)
 {
-    float a2 = roughness * roughness;
+    float a2 = rough * rough;
     a2 = a2 * a2;
-    float NdotH = saturate(dot(N, H));
+    float NdotH = max(dot(N, H), 0.0);
     float denom = (NdotH * NdotH) * (a2 - 1) + 1;
     return a2 / (PI * denom * denom);
 }
 
-float GeometrySchlickGGX(float NdotV, float k)
+// Schlick-GGX geometry term
+float GeometrySchlickGGX(float NdotV, float rough)
 {
+    float r = rough + 1;
+    float k = (r * r) / 8.0;
     return NdotV / (NdotV * (1 - k) + k);
 }
 
-float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
+// Smith’s method
+float GeometrySmith(float3 N, float3 V, float3 L, float rough)
 {
-    float k = (roughness + 1);
-    k = k * k / 8;
-    return GeometrySchlickGGX(saturate(dot(N, V)), k) *
-           GeometrySchlickGGX(saturate(dot(N, L)), k);
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    return GeometrySchlickGGX(NdotV, rough) * GeometrySchlickGGX(NdotL, rough);
 }
 
-float3 CookTorranceBRDF(float3 N, float3 V, float3 L, float3 F0, float roughness, out float NdotL)
+// Cook-Torrance specular
+float3 BRDF_Specular(float3 N, float3 V, float3 L, float3 F0, float roughness)
 {
     float3 H = normalize(V + L);
-    NdotL = saturate(dot(N, L));
-    float NdotV = saturate(dot(N, V));
-    float D = DistributionGGX(N, H, roughness);
-    float G = GeometrySmith(N, V, L, roughness);
-    float3 F = FresnelSchlick(saturate(dot(H, V)), F0);
-    return (D * G * F) / max(4 * NdotV * NdotL, 1e-4);
+
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float NdotH = saturate(dot(H, V));
+
+    // Microfacet terms
+    float D = DistributionGGX(N, H, roughness); // NDF
+    float G = GeometrySmith(N, V, L, roughness); // Geometry
+    float3 F = FresnelSchlick(NdotH, F0); // Fresnel
+
+    // Cook-Torrance BRDF
+    float3 numerator = D * G * F;
+    float denominator = 4.0 * NdotV * NdotL + 0.0001; // +ε to avoid divide-by-zero
+    return numerator / denominator;
 }
 
-float3 DiffuseIBL(float3 N, float3 albedo, float3 V, float metallic)
+float3 BRDF_Diffuse(float3 albedo, float3 N, float3 V, float3 L, float3 F0, float metallic)
 {
-    float3 F0 = lerp(Fdielectric, albedo, metallic);
-    float3 F = FresnelSchlick(saturate(dot(N, V)), F0);
-    float3 kd = (1 - F) * (1 - metallic);
-    float3 irradiance = irradianceMap.Sample(linearSampler, N).rgb;
-    return irradiance * albedo * kd * (1.0 / PI);
+    float NdotV = max(dot(N, V), 0.0);
+    float3 kS = FresnelSchlick(NdotV, F0);
+    float3 kD = (1 - kS) * (1 - metallic);
+    return kD * albedo / PI;
 }
 
-float3 SpecularIBL(float3 N, float3 V, float3 F0, float roughness)
+
+// IBL ambient terms
+float3 IBL_Diffuse(float3 albedo, float3 N)
 {
+    float3 irradiance = irradianceMap.SampleLevel(linearWrapSampler, N, 0).rgb;
+    return irradiance * albedo;
+}
+
+float3 IBL_Specular(float3 F0, float3 N, float3 V, float roughness)
+{
+    uint w, h, mips;
+    prefilteredMap.GetDimensions(0, w, h, mips);
     float3 R = reflect(-V, N);
-    uint width, height, mipCount;
-    prefilteredMap.GetDimensions(0, width, height, mipCount);
-    float maxMip = mipCount - 1;
-    float mipLevel = roughness * maxMip;
-    float3 prefilteredColor = prefilteredMap.SampleLevel(linearSampler, R, mipLevel).rgb;
-    float2 brdf = brdfLut.Sample(linearSampler, float2(roughness, saturate(dot(N, V)))).rg;
-    return prefilteredColor * (F0 * brdf.x + brdf.y);
+    float lod = roughness * (mips - 1);
+    float3 prefiltered = prefilteredMap.SampleLevel(linearClampSampler, R, lod).rgb;
+
+    float NdotV = max(dot(N, V), 0.0);
+    float2 brdfSample = brdfLut.Sample(linearClampSampler, float2(NdotV, roughness)).rg;
+
+    return prefiltered * (F0 * brdfSample.x + brdfSample.y);
 }
 
-float3 ComputePBR(float3 worldPos, float3 normal, float2 uv)
+// Main PBR computation
+float3 ComputePBR(float3 worldPos, float3 worldNormal, float2 uv)
 {
-    // 1) View 벡터, 재질 파라미터 추출
-    float3 V = normalize(cameraWorld - worldPos);
-    float3 albedo = SampleAlbedo(uv) * material.baseColor;
-    float metallic = SampleMetallic(uv) * material.metallic;
-    float roughness = SampleRoughness(uv) * material.roughness;
-    float ao = material.ambientOcclusion;
-    float3 F0_base = float3(material.specular, material.specular, material.specular);
-    float3 F0 = lerp(F0_base, albedo, metallic);
+    float3 N    = normalize(worldNormal);
+    float3 V    = normalize(cameraWorld - worldPos);
+    
+    float3 albedo = SampleAlbedo(uv);
+    float metal = SampleMetallic(uv);
+    float rough = SampleRoughness(uv);
+    float ao = SampleAO();
 
-    // 2) Direct Lighting (Cook-Torrance)
+    float3 F0 = lerp(F_DIELECTRIC, albedo, metal);
     float3 Lo = float3(0, 0, 0);
+
     [unroll]
     for (uint i = 0; i < MAX_LIGHTS; ++i)
     {
@@ -153,39 +210,36 @@ float3 ComputePBR(float3 worldPos, float3 normal, float2 uv)
             continue;
 
         float3 L;
-        float attenuation = 1;
+        float atten = 1.0;
         if (Ld.type == 0)
         {
             L = normalize(-Ld.direction);
         }
         else
         {
-            float3 d = Ld.position - worldPos;
-            float dist = length(d);
+            float3 toLight = Ld.position - worldPos;
+            float dist = length(toLight);
             if (dist > Ld.falloffEnd)
                 continue;
-            L = d / dist;
-            attenuation = saturate((Ld.falloffEnd - dist)
-                                      / (Ld.falloffEnd - Ld.falloffStart));
+            L = toLight / dist;
+            atten = saturate((Ld.falloffEnd - dist) / (Ld.falloffEnd - Ld.falloffStart));
+            if (Ld.type == 2)
+            {
+                float cosTheta = dot(L, normalize(-Ld.direction));
+                float spotAtt = saturate((cosTheta - Ld.falloffStart) / (Ld.falloffEnd - Ld.falloffStart));
+                atten *= spotAtt;
+            }
         }
 
-        float NdotL;
-        float3 specularTerm = CookTorranceBRDF(normal, V, L, F0, roughness, NdotL);
-        float3 kS = FresnelSchlick(saturate(dot(normal, V)), F0);
-        float3 kD = (1 - kS) * (1 - metallic);
-        float3 diffuseTerm = (kD * albedo) / PI;
-        float3 radiance = Ld.strength * Ld.color * attenuation;
+        float NdotL = max(dot(N, L), 0.0);
+        float3 radiance = Ld.color * Ld.strength * atten;
 
-        Lo += (diffuseTerm + specularTerm) * radiance * NdotL;
+        float3 specular = BRDF_Specular(N, V, L, F0, rough);
+        float3 diffuse = BRDF_Diffuse(albedo, N, V, L, F0, metal);
+    
+        Lo += (diffuse + specular) * radiance * NdotL;
     }
 
-    // 3) IBL (간접광) 기여
-    float3 diffuseIBL = DiffuseIBL(normal, albedo, V, metallic) * ao;
-    float3 specularIBL = SpecularIBL(normal, V, F0, roughness);
-
-    // 4) Emissive
-    float3 emissive = material.emissiveColor * material.emissiveIntensity;
-
-    // 5) 최종 합산 (톤매핑·감마는 필요시 추가)
-    return Lo + diffuseIBL + specularIBL + emissive;
+    float3 ambient = IBL_Diffuse(albedo, N) * ao + IBL_Specular(F0, N, V, rough);
+    return Lo + ambient;
 }

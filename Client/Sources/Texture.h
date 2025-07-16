@@ -7,7 +7,7 @@
 class Renderer;
 
 
- // GPU-텍스처 + SRV 핸들 보유
+// GPU-텍스처 + SRV 핸들 보유
 
 class Texture
 {
@@ -23,12 +23,12 @@ public:
     ID3D12Resource* GetResource()       const;
     D3D12_GPU_DESCRIPTOR_HANDLE  GetGpuHandle()      const;
     D3D12_CPU_DESCRIPTOR_HANDLE  GetCpuHandle()      const;
-    UINT                         GetDescriptorIndex()const;
+    UINT   GetDescriptorIndex()const;
     const std::wstring& GetName()           const;
 
     // 핸들 설정 (TextureManager 가 SRV를 만들고 호출)
     void SetDescriptorHandles(D3D12_CPU_DESCRIPTOR_HANDLE cpu,
-       D3D12_GPU_DESCRIPTOR_HANDLE gpu,
+        D3D12_GPU_DESCRIPTOR_HANDLE gpu,
         UINT index);
 
 

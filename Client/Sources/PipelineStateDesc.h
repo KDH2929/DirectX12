@@ -14,6 +14,7 @@ using namespace Microsoft::WRL;
 struct PipelineStateDesc {
     std::wstring                          name;           // PSO 식별 키
     ComPtr<ID3DBlob>                      vsBlob;         // 컴파일된 VS Blob
+    ComPtr<ID3DBlob>                      gsBlob;
     ComPtr<ID3DBlob>                      psBlob;         // 컴파일된 PS Blob
     ComPtr<ID3D12RootSignature>           rootSignature;      // 이미 생성된 루트 시그니처
     std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;    // 입력 레이아웃

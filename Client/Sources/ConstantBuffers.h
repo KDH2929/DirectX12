@@ -37,25 +37,30 @@ struct CB_MaterialPhong
     XMFLOAT2 padding2;        // align 16
 };
 
+
+
+static constexpr uint32_t USE_ALBEDO_MAP = 1 << 0;
+static constexpr uint32_t USE_NORMAL_MAP = 1 << 1;
+static constexpr uint32_t USE_METALLIC_MAP = 1 << 2;
+static constexpr uint32_t USE_ROUGHNESS_MAP = 1 << 3;
+
+
 // PBR 전용 (16B 정렬)
 struct CB_MaterialPBR
 {
     XMFLOAT3 baseColor;
-    float    metallic;       // 16
+    float    metallic;
 
     float    specular;
-    float    roughness;      // 24
-
+    float    roughness;
     float    ambientOcclusion;
-    float    emissiveIntensity; // 32
+    float    emissiveIntensity;
 
     XMFLOAT3 emissiveColor;
-    float    pad0;           // 44 +4 =48
+    uint32_t  flags;
 
-    // 여기부터 16바이트 단위 패딩
-    float    pad1[4];        // +16 = 64바이트
+    float    padding[4];
 };
-
 
 struct CB_Global {
     float time;

@@ -46,6 +46,13 @@ bool PipelineStateManager::InitializePSOs()
             return false;
     }
 
+    // 5. 노말 디버그용 PSO 전용
+    {
+        PipelineStateDesc desc = CreateDebugNormalPSODesc();
+        if (GetOrCreate(desc) == nullptr)
+            return false;
+    }
+
     return true;
 }
 
@@ -220,6 +227,61 @@ PipelineStateDesc PipelineStateManager::CreateSkyboxPSODesc() const
     return desc;
 }
 
+PipelineStateDesc PipelineStateManager::CreateDebugNormalPSODesc() const
+{
+    // 1) DebugNormal 전용 루트 시그니처 가져오기
+    auto rootSig = renderer->GetRootSignatureManager()->Get(L"DebugNormalRS");
+    if (!rootSig)
+        throw std::runtime_error("DebugNormalRS not created");
+
+
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,
+          0, D3D12_APPEND_ALIGNED_ELEMENT,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,
+          0, D3D12_APPEND_ALIGNED_ELEMENT,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT,
+          0, D3D12_APPEND_ALIGNED_ELEMENT,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,
+          0, D3D12_APPEND_ALIGNED_ELEMENT,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    // 3) 셰이더 바이트코드
+    ComPtr<ID3DBlob> vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"DebugNormalVS");
+    ComPtr<ID3DBlob> gsBlob = renderer->GetShaderManager()->GetShaderBlob(L"DebugNormalGS");
+    ComPtr<ID3DBlob> psBlob = renderer->GetShaderManager()->GetShaderBlob(L"DebugNormalPS");
+
+
+    // 4) PSO 기술자 세팅
+    PipelineStateDesc desc;
+    desc.name = L"DebugNormalPSO";
+    desc.rootSignature = rootSig;
+    desc.vsBlob = vsBlob;
+    desc.gsBlob = gsBlob;
+    desc.psBlob = psBlob;
+    desc.inputLayout = std::move(inputLayout);
+
+    // 5) 래스터라이저: 백페이스 컬링 없애고 와이어나 라인도 잘 보이도록
+    desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    desc.rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+
+    // 6) 깊이-스텐실
+    desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    desc.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+
+    // 8) 샘플링
+    desc.sampleMask = UINT_MAX;
+    desc.sampleDesc.Count = 1;
+
+    return desc;
+}
+
 ID3D12PipelineState* PipelineStateManager::GetOrCreate(
     const PipelineStateDesc& desc)
 {
@@ -239,6 +301,10 @@ bool PipelineStateManager::CreatePSO(
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.pRootSignature = desc.rootSignature.Get();
     psoDesc.VS = { desc.vsBlob->GetBufferPointer(), desc.vsBlob->GetBufferSize() };
+
+    if (desc.gsBlob)
+        psoDesc.GS = { desc.gsBlob->GetBufferPointer(), desc.gsBlob->GetBufferSize() };
+
     psoDesc.PS = { desc.psBlob->GetBufferPointer(), desc.psBlob->GetBufferSize() };
     psoDesc.InputLayout = { desc.inputLayout.data(), static_cast<UINT>(desc.inputLayout.size()) };
     psoDesc.RasterizerState = desc.rasterizerDesc;

@@ -16,28 +16,48 @@ struct DescriptorHandle
 
 // ---------------------------------------------------------------------------
 // DescriptorHeapManager
-// Owns all four physical descriptor heaps required by D3D12.
-// Provides type-aware Allocate() and frame-slice management for the
-// CBV_SRV_UAV heap -- everything in one place, zero extra classes.
+// Manages four descriptor heaps and provides allocation:
+//   - CBV_SRV_UAV (frame-sliced)
+//   - SAMPLER
+//   - RTV
+//   - DSV
+// Also creates a dedicated SRV heap for ImGui resources.
 // ---------------------------------------------------------------------------
 class DescriptorHeapManager
 {
 public:
+
     bool Initialize(ID3D12Device* device,
-        UINT cbvSrvUavCount = 40'000,
+        UINT cbvSrvUavCount = 40000,
         UINT samplerCount = 128,
         UINT rtvCount = 8,
         UINT dsvCount = 4,
         UINT backBufferCount = 3);
 
+    bool InitializeImGuiHeaps(ID3D12Device* device, UINT imguiSrvCount = 4, UINT imguiSamplerCount = 1);
+    
+
+    // 아직 사용안함. 추후 멀티스레드 렌더링 구현 시 필요할지도?
     void BeginFrame(UINT frameIndex);
 
     DescriptorHandle Allocate(D3D12_DESCRIPTOR_HEAP_TYPE type, UINT count = 1);
 
-
     ID3D12DescriptorHeap* GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
-
     UINT GetStride(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
+
+    ID3D12DescriptorHeap* GetImGuiSrvHeap() const { return imguiSrvHeap.Get(); }
+    ID3D12DescriptorHeap* GetImGuiSamplerHeap() const { return imguiSamplerHeap.Get(); }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE CreateWrapSampler(ID3D12Device* device);
+    D3D12_GPU_DESCRIPTOR_HANDLE CreateClampSampler(ID3D12Device* device);
+
+    D3D12_GPU_DESCRIPTOR_HANDLE GetWrapSamplerHandle() const {
+        return wrapSamplerHandle;
+    }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetClampSamplerHandle() const {
+        return clampSamplerHandle;
+    }
+
 
 private:
     struct HeapInfo
@@ -51,13 +71,18 @@ private:
         bool shaderVisible = false;
     };
 
-    std::array<HeapInfo, 4> heaps{};  // indexed by heap enum value
+    std::array<HeapInfo, 4> heaps{};
+    UINT sliceCount = 1;
+    UINT sliceSize = 0;
 
-    UINT sliceCount = 1;   // swap-chain buffer count
-    UINT sliceSize = 0;   // per-frame capacity for CBV_SRV_UAV heap
+    ComPtr<ID3D12DescriptorHeap> imguiSrvHeap;
+    ComPtr<ID3D12DescriptorHeap> imguiSamplerHeap;
 
     bool CreateHeap(ID3D12Device* device,
         D3D12_DESCRIPTOR_HEAP_TYPE type,
         UINT count,
         bool shaderVisible);
+
+    D3D12_GPU_DESCRIPTOR_HANDLE wrapSamplerHandle;
+    D3D12_GPU_DESCRIPTOR_HANDLE clampSamplerHandle;
 };

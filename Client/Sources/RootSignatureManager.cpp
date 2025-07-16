@@ -141,11 +141,11 @@ bool RootSignatureManager::InitializeDescs()
         params[7].DescriptorTable.pDescriptorRanges = &lutRange;
         params[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // 6) Sampler 테이블 → root 8 (s0)
+        // 6) Sampler 테이블 → root 8 (s0~s1)
         D3D12_DESCRIPTOR_RANGE sampRange{};
         sampRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-        sampRange.NumDescriptors = 1;  // s0
-        sampRange.BaseShaderRegister = 0;
+        sampRange.NumDescriptors = 2;      // s0, s1
+        sampRange.BaseShaderRegister = 0;     // s0 시작
         sampRange.RegisterSpace = 0;
         sampRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
@@ -218,6 +218,29 @@ bool RootSignatureManager::InitializeDescs()
         // 생성 호출 ("SkyboxRS"로 식별)
         if (!Create(L"SkyboxRS", rsDesc))
             throw std::runtime_error("RootSignatureManager::Create(\"SkyboxRS\") failed");
+    }
+
+
+    // DebugNormal RS
+    {
+        // 1) 파라미터 배열: CBV b0 하나
+        D3D12_ROOT_PARAMETER debugParams[1] = {};
+        debugParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        debugParams[0].Descriptor.ShaderRegister = 0; // b0
+        debugParams[0].Descriptor.RegisterSpace = 0;
+        debugParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL; // VS/GS/PS 전부 사용
+
+        // 2) 루트 시그니처 Desc
+        D3D12_ROOT_SIGNATURE_DESC debugRSDesc = {};
+        debugRSDesc.NumParameters = 1;
+        debugRSDesc.pParameters = debugParams;
+        debugRSDesc.NumStaticSamplers = 0;
+        debugRSDesc.pStaticSamplers = nullptr;
+        debugRSDesc.Flags =
+            D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+        // 3) 생성
+        Create(L"DebugNormalRS", debugRSDesc);
     }
 
     return true;

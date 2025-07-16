@@ -42,6 +42,7 @@ public:
 
     static std::shared_ptr<Mesh> CreateCube(Renderer* renderer);
     static std::shared_ptr<Mesh> CreateQuad(Renderer* renderer);
+    static std::shared_ptr<Mesh> CreateSphere(Renderer* renderer, uint32_t latitudeSegments = 16, uint32_t longitudeSegments = 16);
 
 private:
     bool UploadBuffers(Renderer* renderer,

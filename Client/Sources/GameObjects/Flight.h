@@ -1,6 +1,7 @@
 #pragma once
 #include "GameObject.h"
 #include "Material.h"
+#include "Camera.h"
 #include <memory>
 
 class Mesh;
@@ -23,6 +24,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> materialConstantBuffer;
     std::byte* mappedMaterialBuffer = nullptr;
 
-    float yaw = 0.f;
-    float pitch = 0.f;
+    std::shared_ptr<Camera> camera;
+    float yawCam = 0, pitchCam = 0;
+    bool showNormalDebug = false;
 };

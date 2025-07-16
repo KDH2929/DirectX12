@@ -3,6 +3,7 @@
 #include "DebugManager.h"
 #include "TriangleObject.h"
 #include "BoxObject.h"
+#include "SphereObject.h"
 #include "Flight.h"
 #include "Skybox.h"
 
@@ -167,8 +168,10 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
     */
 
     // Flight 객체 생성
+    
     flightMaterial = std::make_shared<Material>();
     flightMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
+    flightMaterial->parameters.ambientOcclusion = 1.0f;
     flightMaterial->SetAllTextures(flightTextures);
 
     auto flightObject = std::make_shared<Flight>(flight1Mesh, flightTextures);
@@ -177,6 +180,16 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
 
     renderer.AddGameObject(flightObject);
     
+
+    auto sphereMaterial = std::make_shared<Material>();
+    sphereMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
+    sphereMaterial->parameters.ambientOcclusion = 1.0f;
+
+    auto sphereObject = std::make_shared<SphereObject>(sphereMaterial, 32, 32);
+    if (!sphereObject->Initialize(&renderer))
+        throw std::runtime_error("Failed to initialize SphereObject");
+
+    renderer.AddGameObject(sphereObject);
     
     auto skybox = std::make_shared<Skybox>(skyboxTexture);
     if (!skybox->Initialize(&renderer)) {
@@ -214,7 +227,7 @@ void Game::LoadTexture()
     flightTextures.albedoTexture = renderer.GetTextureManager()->LoadTexture(
         L"Assets/spitfirev6/spitfirev6_Textures/base_Base_Color_1002.png");
     if (!flightTextures.albedoTexture) MessageBox(hwnd, L"Failed to load flight albedo texture!", L"Error", MB_OK);
-
+    
     flightTextures.normalTexture = renderer.GetTextureManager()->LoadTexture(
         L"Assets/spitfirev6/spitfirev6_Textures/base_Normal_DirectX_1002.png");
     if (!flightTextures.normalTexture) MessageBox(hwnd, L"Failed to load flight normal texture!", L"Error", MB_OK);
@@ -292,6 +305,8 @@ int Game::Run() {
             HandleInput(deltaTime);  // 키보드와 마우스 입력 처리
             ProcessNetwork();  // 서버에서 받은 데이터 반영
             Update(deltaTime);      // 게임 로직 갱신
+
+            ImGui::Render();
 
             physicsManager.Simulate(deltaTime);
             physicsManager.FetchResults();

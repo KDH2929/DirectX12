@@ -23,6 +23,7 @@ public:
     XMMATRIX GetProjectionMatrix() const;
 
     XMFLOAT3 GetForwardVector() const;
+    XMFLOAT3 GetUpVector() const;
 
     void LookAt(XMVECTOR eye, XMVECTOR target);
 

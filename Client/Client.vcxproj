@@ -156,6 +156,7 @@
     <ClCompile Include="Sources\GameObjects\Flight.cpp" />
     <ClCompile Include="Sources\GameObjects\GameObject.cpp" />
     <ClCompile Include="Sources\GameObjects\Skybox.cpp" />
+    <ClCompile Include="Sources\GameObjects\SphereObject.cpp" />
     <ClCompile Include="Sources\InputManager.cpp" />
     <ClCompile Include="Sources\main.cpp" />
     <ClCompile Include="Sources\Material.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="Sources\GameObjects\Flight.h" />
     <ClInclude Include="Sources\GameObjects\GameObject.h" />
     <ClInclude Include="Sources\GameObjects\Skybox.h" />
+    <ClInclude Include="Sources\GameObjects\SphereObject.h" />
     <ClInclude Include="Sources\InputManager.h" />
     <ClInclude Include="Sources\Light.h" />
     <ClInclude Include="Sources\Material.h" />
@@ -203,6 +205,10 @@
     <ClInclude Include="Sources\GameObjects\TriangleObject.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Shaders\DebugNormalShader.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="Shaders\ExplosionPixelShader.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>

@@ -64,7 +64,7 @@ public:
 
     void Update(float deltaTime);
     void Render();
-    void WaitForPreviousFrame();
+
     void UpdateGlobalTime(float seconds);
 
     // Direct queue(그래픽스) 접근자
@@ -72,6 +72,7 @@ public:
     ID3D12CommandQueue* GetDirectQueue() const;
     ID3D12GraphicsCommandList* GetDirectCommandList() const;
     ID3D12CommandAllocator* GetDirectCommandAllocator() const;
+    void WaitForDirectQueue();
 
     // Copy queue(업로드 전용) 접근자
     ID3D12CommandQueue* GetCopyQueue() const;
@@ -102,12 +103,10 @@ public:
     // 상수 버퍼
     ID3D12Resource* GetLightingConstantBuffer() const;
     ID3D12Resource* GetGlobalConstantBuffer()   const;
-    D3D12_GPU_DESCRIPTOR_HANDLE GetSamplerGpuHandle() const;
 
     // ImGui 함수들
     bool InitImGui(HWND hwnd);
-    void ImGuiNewFrame();                        // 호출 순서: NewFrame → 위젯 → Render
-    void ImGuiRenderDrawData();
+    void ImGuiNewFrame();
     void ShutdownImGui();
 
 private:
@@ -179,6 +178,4 @@ private:
     // 환경맵
     EnvironmentMaps environmentMaps;
 
-    // Shared sampler handle (s0)
-    D3D12_GPU_DESCRIPTOR_HANDLE samplerGpuHandle{};
 };

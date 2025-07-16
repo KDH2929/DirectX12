@@ -36,6 +36,7 @@ private:
     PipelineStateDesc CreatePhongPSODesc() const;
     PipelineStateDesc CreatePbrPSODesc() const;
     PipelineStateDesc CreateSkyboxPSODesc() const;
+    PipelineStateDesc CreateDebugNormalPSODesc() const;
 
 
     // PSO 积己 郴何 肺流

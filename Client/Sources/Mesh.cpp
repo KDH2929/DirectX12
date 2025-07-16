@@ -64,6 +64,61 @@ static void BuildQuad(std::vector<MeshVertex>& outVertices,
     outIndices = { 0,1,2, 2,1,3 };
 }
 
+static void BuildSphere(
+    uint32_t latitudeSegments,
+    uint32_t longitudeSegments,
+    std::vector<MeshVertex>& outVertices,
+    std::vector<uint32_t>& outIndices)
+{
+    outVertices.clear();
+    outIndices.clear();
+
+    // 1) 버텍스 생성
+    for (uint32_t lat = 0; lat <= latitudeSegments; ++lat) {
+        float phi = float(lat) / latitudeSegments * XM_PI;           // 0 ~ π
+        float y = std::cos(phi);
+        float r = std::sin(phi);
+        for (uint32_t lon = 0; lon <= longitudeSegments; ++lon) {
+            float theta = float(lon) / longitudeSegments * 2.0f * XM_PI; // 0 ~ 2π
+            float x = r * std::cos(theta);
+            float z = r * std::sin(theta);
+
+            MeshVertex v;
+            v.position = XMFLOAT3{ x, y, z };
+            v.normal = XMFLOAT3{ x, y, z };  // 단위 구이므로 위치 벡터 = 노멀
+            v.texCoord = XMFLOAT2{
+                float(lon) / longitudeSegments,
+                float(lat) / latitudeSegments
+            };
+            // tangent = ∂position/∂θ normalized
+            XMFLOAT3 tan = { -r * std::sin(theta), 0.0f, r * std::cos(theta) };
+            float invLen = 1.0f / std::sqrt(
+                tan.x * tan.x + tan.y * tan.y + tan.z * tan.z);
+            v.tangent = XMFLOAT3{ tan.x * invLen, tan.y * invLen, tan.z * invLen };
+
+            outVertices.push_back(v);
+        }
+    }
+
+    // 2) 인덱스 생성 (각 사각형을 두 개의 삼각형으로, CW 전면 기준)
+    for (uint32_t lat = 0; lat < latitudeSegments; ++lat) {
+        for (uint32_t lon = 0; lon < longitudeSegments; ++lon) {
+            uint32_t current = lat * (longitudeSegments + 1) + lon;
+            uint32_t next = current + (longitudeSegments + 1);
+
+            // 삼각형1: (current, current+1, next) → CW 순서
+            outIndices.push_back(current);
+            outIndices.push_back(current + 1);
+            outIndices.push_back(next);
+
+            // 삼각형2: (current+1, next+1, next) → CW 순서
+            outIndices.push_back(current + 1);
+            outIndices.push_back(next + 1);
+            outIndices.push_back(next);
+        }
+    }
+}
+
 bool Mesh::Initialize(Renderer* renderer,
     const std::vector<MeshVertex>& vertices,
     const std::vector<uint32_t>& indices) {
@@ -79,6 +134,8 @@ bool Mesh::Initialize(Renderer* renderer,
         vertices.data(), vertexBytes,
         indices.data(), indexBytes);
 }
+
+
 
 bool Mesh::UploadBuffers(Renderer* renderer,
     const void* vertexData, size_t vertexByteSize,
@@ -203,4 +260,14 @@ std::shared_ptr<Mesh> Mesh::CreateQuad(Renderer* renderer) {
     BuildQuad(v, i);
     auto mesh = std::make_shared<Mesh>();
     return mesh->Initialize(renderer, v, i) ? mesh : nullptr;
+}
+
+std::shared_ptr<Mesh> Mesh::CreateSphere(Renderer* renderer, uint32_t latitudeSegments, uint32_t longitudeSegments)
+{
+    std::vector<MeshVertex> vertices;
+    std::vector<uint32_t>   indices;
+    BuildSphere(latitudeSegments, longitudeSegments, vertices, indices);
+
+    auto mesh = std::make_shared<Mesh>();
+    return mesh->Initialize(renderer, vertices, indices) ? mesh : nullptr;
 }

@@ -27,7 +27,11 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
         { L"PbrPixelShader",       L"Shaders/PbrPixelShader.hlsl",       "PSMain", "ps_5_1" },
 
         { L"SkyboxVertexShader",     L"Shaders/SkyboxVertexShader.hlsl",     "VSMain", "vs_5_0" },
-        { L"SkyboxPixelShader",      L"Shaders/SkyboxPixelShader.hlsl",      "PSMain", "ps_5_0" }
+        { L"SkyboxPixelShader",      L"Shaders/SkyboxPixelShader.hlsl",      "PSMain", "ps_5_0" },
+        
+        {L"DebugNormalVS", L"Shaders/DebugNormalShader.hlsl", "VSMain", "vs_5_0"},
+        {L"DebugNormalGS", L"Shaders/DebugNormalShader.hlsl", "GSMain", "gs_5_0"},
+        {L"DebugNormalPS", L"Shaders/DebugNormalShader.hlsl", "PSMain", "ps_5_0"},
     };
 
     if (!shaderManager->CompileAll(shaderDescs))
@@ -62,7 +66,7 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
     // Setup camera
     mainCamera = std::make_shared<Camera>();
     mainCamera->SetPosition({ 0, 0, -30 });
-    mainCamera->SetPerspective(XM_PIDIV4, float(width) / height, 0.1f, 100.f);
+    mainCamera->SetPerspective(XM_PIDIV4, float(width) / height, 0.1f, 1000.f);
 
     // Global constant buffer (b3)
     {
@@ -89,39 +93,57 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
 
         // 기본 라이팅 값 설정
         lightingData = {};
-        lightingData.cameraWorld = { 0.f, 0.f, -5.f };
+        lightingData.cameraWorld = mainCamera->GetPosition();
 
-        Light directionalLight{};
-        directionalLight.strength = { 1.f, 1.f, 1.f };
-        directionalLight.direction = { 0.f, -1.f, 0.f };
-        directionalLight.specPower = 32.f;
-        directionalLight.type = 0; // 0 = Directional
-        directionalLight.color = { 1.f, 1.f, 1.f };
+        // 카메라 기준 벡터
+        auto cameraPos = mainCamera->GetPosition();
+        auto cameraForward = mainCamera->GetForwardVector();
+        auto cameraUp = mainCamera->GetUpVector();
 
-        lightingData.lights[0] = directionalLight;
+        // Directional
+        auto& Directional = lightingData.lights[0];
+        Directional.type = 0;
+        Directional.color = { 1,1,1 };
+        Directional.strength = { 1,1,1 };
+        Directional.direction = { 0,-1,0 };
+        Directional.falloffStart = 0;
+        Directional.falloffEnd = 0;      // 사용 안 함
+        Directional.specPower = 32;
+
+        // Point
+        auto& Point = lightingData.lights[1];
+        Point.type = 1;
+        Point.color = { 1,1,1 };
+        Point.strength = { 2,2,2 };
+        Point.position = { cameraPos.x, cameraPos.y + 2.0f, cameraPos.z };
+        Point.falloffStart = 1;
+        Point.falloffEnd = 20;
+        Point.specPower = 32;
+
+        // Spot
+        auto& Spot = lightingData.lights[2];
+        Spot.type = 2;
+        Spot.color = { 1,1,1 };
+        Spot.strength = { 2,2,2 };
+        Spot.position = { cameraPos.x + cameraForward.x * 3.0f,
+                              cameraPos.y + cameraForward.y * 3.0f,
+                              cameraPos.z + cameraForward.z * 3.0f };
+        Spot.direction = { cameraForward.x, cameraForward.y, cameraForward.z };
+        Spot.falloffStart = 5;
+        Spot.falloffEnd = 30;
+        Spot.specPower = 64;
+
         memcpy(mappedLightingPtr, &lightingData, sizeof(lightingData));
     }
 
-    // Sampler (s0)
-    {
-        auto samplerHandle = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
-        samplerGpuHandle = samplerHandle.gpu; // root slot 5
-
-        D3D12_SAMPLER_DESC samplerDesc = {};
-        samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-        samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-
-        device->CreateSampler(&samplerDesc, samplerHandle.cpu);
-    }
+    descriptorHeapManager->CreateWrapSampler(device.Get());
+    descriptorHeapManager->CreateClampSampler(device.Get());
 
     return true;
 }
 
 void Renderer::Cleanup() {
-    WaitForPreviousFrame();
+    WaitForDirectQueue();
     if (directFenceEvent != nullptr && directFenceEvent != INVALID_HANDLE_VALUE) {
         CloseHandle(directFenceEvent);
         directFenceEvent = nullptr;
@@ -137,12 +159,68 @@ void Renderer::RemoveGameObject(std::shared_ptr<GameObject> obj) {
         std::remove(gameObjects.begin(), gameObjects.end(), obj),
         gameObjects.end());
 }
-
 void Renderer::Update(float deltaTime) {
+
+    for (auto& obj : gameObjects) {
+        obj->Update(deltaTime);
+    }
+
+    ImGui::Begin("Lighting Controls");
+
+    // Directional Light
+    {
+        Light& L = lightingData.lights[0];
+        ImGui::Text("Directional Light");
+        ImGui::ColorEdit3("Color##Dir", reinterpret_cast<float*>(&L.color));
+        ImGui::SliderFloat("Strength##Dir", &L.strength.x, 0.0f, 10.0f);
+        L.strength.y = L.strength.z = L.strength.x;
+        ImGui::DragFloat3("Direction##Dir",
+            reinterpret_cast<float*>(&L.direction),
+            0.01f,
+            -5.0f, 5.0f);  // ← 범위 확장
+    }
+    ImGui::Separator();
+
+    // Point Light
+    {
+        Light& L = lightingData.lights[1];
+        ImGui::Text("Point Light");
+        ImGui::ColorEdit3("Color##Point", reinterpret_cast<float*>(&L.color));
+        ImGui::SliderFloat("Strength##Point", &L.strength.x, 0.0f, 10.0f);
+        L.strength.y = L.strength.z = L.strength.x;
+        ImGui::DragFloat3("Position##Point",
+            reinterpret_cast<float*>(&L.position),
+            0.1f,
+            -5.0f, 5.0f);
+        ImGui::SliderFloat("FalloffStart##Point", &L.falloffStart, 0.0f, 20.0f);
+        ImGui::SliderFloat("FalloffEnd##Point", &L.falloffEnd, 1.0f, 100.0f);
+    }
+    ImGui::Separator();
+
+    // Spot Light
+    {
+        Light& L = lightingData.lights[2];
+        ImGui::Text("Spot Light");
+        ImGui::ColorEdit3("Color##Spot", reinterpret_cast<float*>(&L.color));
+        ImGui::SliderFloat("Strength##Spot", &L.strength.x, 0.0f, 10.0f);
+        L.strength.y = L.strength.z = L.strength.x;
+        ImGui::DragFloat3("Position##Spot",
+            reinterpret_cast<float*>(&L.position),
+            0.1f,
+            -5.0f, 5.0f);
+        ImGui::DragFloat3("Direction##Spot",
+            reinterpret_cast<float*>(&L.direction),
+            0.01f,
+            -5.0f, 5.0f);
+        ImGui::SliderFloat("FalloffStart##Spot", &L.falloffStart, 0.0f, 20.0f);
+        ImGui::SliderFloat("FalloffEnd##Spot", &L.falloffEnd, 1.0f, 100.0f);
+        ImGui::SliderFloat("SpecPower##Spot", &L.specPower, 1.0f, 256.0f);
+    }
+
+    ImGui::End();
+
     lightingData.cameraWorld = mainCamera->GetPosition();
     memcpy(mappedLightingPtr, &lightingData, sizeof(lightingData));
-    for (auto& obj : gameObjects)
-        obj->Update(deltaTime);
 }
 
 void Renderer::Render() {
@@ -155,7 +233,7 @@ void Renderer::Render() {
 
     frameIndex = swapChain->GetCurrentBackBufferIndex();
 
-    WaitForPreviousFrame();
+    WaitForDirectQueue();
 }
 
 ID3D12Device* Renderer::GetDevice() const {
@@ -258,11 +336,6 @@ ID3D12Resource* Renderer::GetGlobalConstantBuffer() const {
     return globalConstantBuffer.Get();
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE Renderer::GetSamplerGpuHandle() const
-{
-    return samplerGpuHandle;
-}
-
 bool Renderer::InitImGui(HWND hwnd)
 {
     IMGUI_CHECKVERSION();
@@ -273,9 +346,10 @@ bool Renderer::InitImGui(HWND hwnd)
     if (!ImGui_ImplWin32_Init(hwnd))
         return false;
 
+    descriptorHeapManager->InitializeImGuiHeaps(device.Get());
+
     // 2) DX12 초기화
-    //    FrameCount 멤버 사용
-    auto srvHeap = descriptorHeapManager->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    auto srvHeap = descriptorHeapManager->GetImGuiSrvHeap();
     return ImGui_ImplDX12_Init(
         device.Get(),
         FrameCount,
@@ -290,12 +364,6 @@ void Renderer::ImGuiNewFrame()
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
-}
-
-void Renderer::ImGuiRenderDrawData()
-{
-    ImGui::Render();
-    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetDirectCommandList());
 }
 
 void Renderer::ShutdownImGui()
@@ -510,7 +578,15 @@ void Renderer::PopulateCommandList()
     }
 
     // Imgui 드로우
-    ImGuiRenderDrawData();
+    {
+        ID3D12DescriptorHeap* heaps[] = {
+            descriptorHeapManager->GetImGuiSrvHeap(),
+            descriptorHeapManager->GetImGuiSamplerHeap()
+        };
+        directCommandList->SetDescriptorHeaps(_countof(heaps), heaps);
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetDirectCommandList());
+    }
+
 
     // 6) RENDER_TARGET → PRESENT 전환
     CD3DX12_RESOURCE_BARRIER toPresent =
@@ -525,7 +601,7 @@ void Renderer::PopulateCommandList()
     directCommandList->Close();
 }
 
-void Renderer::WaitForPreviousFrame() {
+void Renderer::WaitForDirectQueue() {
     const UINT64 fenceToWait = directFenceValue;
     directQueue->Signal(directFence.Get(), fenceToWait);
     directFenceValue++;
