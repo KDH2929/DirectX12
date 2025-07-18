@@ -12,7 +12,7 @@
 
 class Game {
 public:
-    bool Init(HINSTANCE hInstance, int nCmdShow);
+    bool Initialize(HINSTANCE hInstance, int nCmdShow);
     int Run();          // 메시지 루프 + 렌더링 루프
     void Cleanup();
 

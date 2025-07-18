@@ -165,7 +165,12 @@
     <ClCompile Include="Sources\NetworkManager.cpp" />
     <ClCompile Include="Sources\PhysicsManager.cpp" />
     <ClCompile Include="Sources\PipelineStateManager.cpp" />
+    <ClCompile Include="Sources\PostEffects\OutlinePostEffect.cpp" />
     <ClCompile Include="Sources\Renderer.cpp" />
+    <ClCompile Include="Sources\RenderPass\ForwardOpaquePass.cpp" />
+    <ClCompile Include="Sources\RenderPass\ForwardTransparentPass.cpp" />
+    <ClCompile Include="Sources\RenderPass\GBufferPass.cpp" />
+    <ClCompile Include="Sources\RenderPass\PostProcessPass.cpp" />
     <ClCompile Include="Sources\RootSignatureManager.cpp" />
     <ClCompile Include="Sources\ShaderCompiler.cpp" />
     <ClCompile Include="Sources\ShaderManager.cpp" />
@@ -174,6 +179,13 @@
     <ClCompile Include="Sources\GameObjects\TriangleObject.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Sources\PostEffects\OutlinePostEffect.h" />
+    <ClInclude Include="Sources\PostEffects\PostEffect.h" />
+    <ClInclude Include="Sources\RenderPass\ForwardOpaquePass.h" />
+    <ClInclude Include="Sources\RenderPass\ForwardTransparentPass.h" />
+    <ClInclude Include="Sources\RenderPass\GBufferPass.h" />
+    <ClInclude Include="Sources\RenderPass\PostProcessPass.h" />
+    <ClInclude Include="Sources\RenderPass\RenderPass.h" />
     <ClInclude Include="Sources\Camera.h" />
     <ClInclude Include="Sources\ConstantBuffers.h" />
     <ClInclude Include="Sources\DebugManager.h" />
@@ -226,6 +238,10 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\OutlinePostEffect.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Shaders\PbrPixelShader.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>

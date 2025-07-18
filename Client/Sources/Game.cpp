@@ -1,11 +1,11 @@
 #include "Game.h"
 #include "InputManager.h"
 #include "DebugManager.h"
-#include "TriangleObject.h"
-#include "BoxObject.h"
-#include "SphereObject.h"
-#include "Flight.h"
-#include "Skybox.h"
+#include "GameObjects/TriangleObject.h"
+#include "GameObjects/BoxObject.h"
+#include "GameObjects/SphereObject.h"
+#include "GameObjects/Flight.h"
+#include "GameObjects/Skybox.h"
 
 #include <filesystem>
 #include <windowsx.h> 
@@ -95,7 +95,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 }
 
 
-bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
+bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
 
     // 윈도우 생성
     if (!InitWindow(hInstance, nCmdShow)) {
@@ -103,7 +103,7 @@ bool Game::Init(HINSTANCE hInstance, int nCmdShow) {
         return false;
     }
 
-    if (!renderer.Init(hwnd, windowWidth, windowHeight)) {
+    if (!renderer.Initialize(hwnd, windowWidth, windowHeight)) {
         MessageBox(nullptr, L"Failed to initialize Direct3D.", L"Error", MB_OK | MB_ICONERROR);
         return false;
     }

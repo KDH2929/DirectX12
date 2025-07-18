@@ -25,6 +25,12 @@ public:
     void SetScale(const XMFLOAT3& scale);
     void SetRotationQuat(const XMVECTOR& quat);
 
+    void  SetTransparent(bool isTransparent);
+    bool  IsTransparent() const;
+
+    float DistanceToCamera(const XMVECTOR& cameraPos) const;
+
+
 protected:
     void UpdateWorldMatrix();
 
@@ -37,4 +43,6 @@ protected:
     XMFLOAT3 scale       = {1,1,1};
     XMVECTOR rotation    = XMQuaternionIdentity();
     XMMATRIX worldMatrix = XMMatrixIdentity();
+
+    bool transparent = false;
 };

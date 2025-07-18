@@ -53,6 +53,13 @@ bool PipelineStateManager::InitializePSOs()
             return false;
     }
 
+    // 6. OutlinePostEffect PSO 전용
+    {
+        PipelineStateDesc desc = CreateOutlinePostEffectPSODesc();
+        if (GetOrCreate(desc) == nullptr)
+            return false;
+    }
+
     return true;
 }
 
@@ -276,6 +283,59 @@ PipelineStateDesc PipelineStateManager::CreateDebugNormalPSODesc() const
     desc.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 
     // 8) 샘플링
+    desc.sampleMask = UINT_MAX;
+    desc.sampleDesc.Count = 1;
+
+    return desc;
+}
+
+PipelineStateDesc PipelineStateManager::CreateOutlinePostEffectPSODesc() const
+{
+    auto rootSig = renderer->GetRootSignatureManager()->Get(L"OutlinePostEffectRS");
+    if (!rootSig)
+        throw std::runtime_error("OutlinePostEffectRS not created");
+
+
+    // 풀스크린 삼각형/쿼드용
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+          0,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,
+          24,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    auto vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"OutlinePostEffectVS");
+    auto psBlob = renderer->GetShaderManager()->GetShaderBlob(L"OutlinePostEffectPS");
+
+    PipelineStateDesc desc;
+    desc.name = L"OutlinePostEffectPSO";
+    desc.rootSignature = rootSig;
+    desc.vsBlob = vsBlob;
+    desc.psBlob = psBlob;
+    desc.inputLayout = std::move(inputLayout);
+    desc.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+
+    desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    desc.blendDesc.RenderTarget[0].BlendEnable = TRUE;
+    desc.blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    desc.blendDesc.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    desc.blendDesc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+    desc.blendDesc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+    desc.blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+    desc.blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
+    // 풀스크린 패스라 DepthStencil은 쓰지 않음
+    desc.depthStencilDesc.DepthEnable = FALSE;
+    desc.depthStencilDesc.StencilEnable = FALSE;
+
+    desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+    // 샘플링
     desc.sampleMask = UINT_MAX;
     desc.sampleDesc.Count = 1;
 

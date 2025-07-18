@@ -8,7 +8,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
     PIXLoadLatestWinPixGpuCapturerLibrary();
 
-    if (!game.Init(hInstance, nCmdShow)) {
+    if (!game.Initialize(hInstance, nCmdShow)) {
         MessageBox(nullptr, L"Failed to initialize the game", L"Error", MB_OK | MB_ICONERROR);
         return -1;
     }

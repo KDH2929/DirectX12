@@ -66,3 +66,14 @@ struct CB_Global {
     float time;
     float padding[3]; // 16바이트 정렬
 };
+
+
+struct CB_OutlineOptions
+{
+    XMFLOAT2 TexelSize;     // 8 bytes
+    float    EdgeThreshold; // 4 bytes
+    float    EdgeThickness; // 4 bytes
+
+    XMFLOAT3 OutlineColor;  // 12 bytes
+    float    MixFactor;     // 4 bytes
+};

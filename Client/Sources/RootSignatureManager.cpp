@@ -243,6 +243,62 @@ bool RootSignatureManager::InitializeDescs()
         Create(L"DebugNormalRS", debugRSDesc);
     }
 
+    
+    // OutlinePostEffect RS
+    {
+        // 1) Root Parameters
+       
+        // b0 ¡æ CB_OutlineOptions
+        // t0 ¡æ SRV table (SceneColor)
+        D3D12_ROOT_PARAMETER params[2] = {};
+
+        // CBV b0
+        params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        params[0].Descriptor.ShaderRegister = 0;      // b0
+        params[0].Descriptor.RegisterSpace = 0;
+        params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // SRV table (SceneColor : register(t0))
+        D3D12_DESCRIPTOR_RANGE srvRange = {};
+        srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        srvRange.NumDescriptors = 1;  // only t0
+        srvRange.BaseShaderRegister = 0;
+        srvRange.RegisterSpace = 0;
+        srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        params[1].DescriptorTable.NumDescriptorRanges = 1;
+        params[1].DescriptorTable.pDescriptorRanges = &srvRange;
+        params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // 2) Static Sampler (SceneSampler : register(s0))
+        D3D12_STATIC_SAMPLER_DESC staticSampler = {};
+        staticSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        staticSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        staticSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        staticSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        staticSampler.MipLODBias = 0;
+        staticSampler.MaxAnisotropy = 1;
+        staticSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+        staticSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        staticSampler.MinLOD = 0.0f;
+        staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
+        staticSampler.ShaderRegister = 0;  // matches s0 in HLSL
+        staticSampler.RegisterSpace = 0;
+        staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // 3) Create Root Signature
+        D3D12_ROOT_SIGNATURE_DESC desc = {};
+        desc.NumParameters = _countof(params);
+        desc.pParameters = params;
+        desc.NumStaticSamplers = 1;
+        desc.pStaticSamplers = &staticSampler;
+        // No input assembler needed for full-screen quad
+        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+        Create(L"OutlinePostEffectRS", desc);
+    }
+
     return true;
 }
 

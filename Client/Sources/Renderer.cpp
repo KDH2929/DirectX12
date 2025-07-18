@@ -1,4 +1,7 @@
 #include "Renderer.h"
+#include "RenderPass/ForwardOpaquePass.h"
+#include "RenderPass/ForwardTransparentPass.h"
+#include "RenderPass/PostProcessPass.h"
 #include <stdexcept>
 
 Renderer::Renderer() {}
@@ -7,11 +10,12 @@ Renderer::~Renderer() {
     Cleanup();
 }
 
-bool Renderer::Init(HWND hwnd, int width, int height) {
+bool Renderer::Initialize(HWND hwnd, int width, int height) {
     if (!InitD3D(hwnd, width, height))
         return false;
 
     // Managers
+
     rootSignatureManager = std::make_unique<RootSignatureManager>(device.Get());
     assert(rootSignatureManager && "rootSignatureManager nullptr!");
     if (!rootSignatureManager->InitializeDescs())
@@ -32,6 +36,9 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
         {L"DebugNormalVS", L"Shaders/DebugNormalShader.hlsl", "VSMain", "vs_5_0"},
         {L"DebugNormalGS", L"Shaders/DebugNormalShader.hlsl", "GSMain", "gs_5_0"},
         {L"DebugNormalPS", L"Shaders/DebugNormalShader.hlsl", "PSMain", "ps_5_0"},
+
+        { L"OutlinePostEffectVS",   L"Shaders/OutlinePostEffect.hlsl",  "VSMain", "vs_5_0" },
+        { L"OutlinePostEffectPS",   L"Shaders/OutlinePostEffect.hlsl",  "PSMain", "ps_5_0" },
     };
 
     if (!shaderManager->CompileAll(shaderDescs))
@@ -47,16 +54,6 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
         if (!pso)
             throw std::runtime_error("Failed to find PhongPSO after initialization");
     }
-
-    descriptorHeapManager = std::make_unique<DescriptorHeapManager>();
-    if (!descriptorHeapManager->Initialize(
-        device.Get(),
-        60000,   // CBV_SRV_UAV
-        256,     // Sampler
-        0,       // RTV
-        0,       // DSV
-        FrameCount))
-        return false;
 
 
     textureManager = std::make_unique<TextureManager>();
@@ -139,6 +136,18 @@ bool Renderer::Init(HWND hwnd, int width, int height) {
     descriptorHeapManager->CreateWrapSampler(device.Get());
     descriptorHeapManager->CreateClampSampler(device.Get());
 
+
+    // 렌더패스 초기화
+    renderPasses[static_cast<size_t>(PassIndex::ForwardOpaque)] = std::make_unique<ForwardOpaquePass>();
+    renderPasses[static_cast<size_t>(PassIndex::ForwardTransparent)] = std::make_unique<ForwardTransparentPass>();
+    renderPasses[static_cast<size_t>(PassIndex::PostProcess)] = std::make_unique<PostProcessPass>();
+
+    for (size_t i = 0; i < static_cast<size_t>(PassIndex::Count); ++i)
+    {
+        renderPasses[i]->Initialize(this);
+    }
+
+
     return true;
 }
 
@@ -150,19 +159,65 @@ void Renderer::Cleanup() {
     }
 }
 
-void Renderer::AddGameObject(std::shared_ptr<GameObject> obj) {
-    gameObjects.push_back(obj);
+void Renderer::AddGameObject(std::shared_ptr<GameObject> object) {
+
+    gameObjects.push_back(object);
+
+    if (object->IsTransparent())
+    {
+        transparentObjects.push_back(object);
+    }
+    else
+    {
+        opaqueObjects.push_back(object);
+    }
 }
 
-void Renderer::RemoveGameObject(std::shared_ptr<GameObject> obj) {
+void Renderer::RemoveGameObject(std::shared_ptr<GameObject> object) {
+
     gameObjects.erase(
-        std::remove(gameObjects.begin(), gameObjects.end(), obj),
+        std::remove(gameObjects.begin(), gameObjects.end(), object),
         gameObjects.end());
+
+    // 투명/불투명 리스트에서도 제거
+    auto removeFrom = [&](auto& list) {
+        list.erase(
+            std::remove(list.begin(), list.end(), object),
+            list.end());
+        };
+
+    if (object->IsTransparent()) {
+        removeFrom(transparentObjects);
+    }
+
+    else {
+        removeFrom(opaqueObjects);
+    }
 }
+
+const std::vector<std::shared_ptr<GameObject>>& Renderer::GetOpaqueObjects() const
+{
+    return opaqueObjects;
+}
+
+const std::vector<std::shared_ptr<GameObject>>& Renderer::GetTransparentObjects() const
+{
+    return transparentObjects;
+}
+
+const std::vector<std::shared_ptr<GameObject>>& Renderer::GetAllGameObjects() const
+{
+    return gameObjects;
+}
+
 void Renderer::Update(float deltaTime) {
 
-    for (auto& obj : gameObjects) {
-        obj->Update(deltaTime);
+    for (auto& object : gameObjects) {
+        object->Update(deltaTime);
+    }
+
+    for (auto& pass : renderPasses) {
+        pass->Update(deltaTime);
     }
 
     ImGui::Begin("Lighting Controls");
@@ -231,7 +286,7 @@ void Renderer::Render() {
 
     swapChain->Present(1, 0);
 
-    frameIndex = swapChain->GetCurrentBackBufferIndex();
+    backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
     WaitForDirectQueue();
 }
@@ -352,7 +407,7 @@ bool Renderer::InitImGui(HWND hwnd)
     auto srvHeap = descriptorHeapManager->GetImGuiSrvHeap();
     return ImGui_ImplDX12_Init(
         device.Get(),
-        FrameCount,
+        BackBufferCount,
         DXGI_FORMAT_R8G8B8A8_UNORM,
         srvHeap,
         srvHeap->GetCPUDescriptorHandleForHeapStart(),
@@ -371,6 +426,21 @@ void Renderer::ShutdownImGui()
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
+}
+
+UINT Renderer::GetBackBufferIndex() const
+{
+    return backBufferIndex;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE Renderer::GetSceneColorSrvHandle() const
+{
+    return sceneColorSrvHandle.gpu;
+}
+
+ID3D12Resource* Renderer::GetSceneColorBuffer() const
+{
+    return sceneColorBuffer.Get();
 }
 
 bool Renderer::InitD3D(HWND hwnd, int width, int height)
@@ -439,7 +509,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
     // 7) 스왑체인 생성 (Flip Discard)
     {
         DXGI_SWAP_CHAIN_DESC1 scDesc = {};
-        scDesc.BufferCount = FrameCount;
+        scDesc.BufferCount = BackBufferCount;
         scDesc.Width = width;
         scDesc.Height = height;
         scDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -453,36 +523,83 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
             &scDesc, nullptr, nullptr,
             &swapChain1));
         ThrowIfFailed(swapChain1.As(&swapChain));
-        frameIndex = swapChain->GetCurrentBackBufferIndex();
+        backBufferIndex = swapChain->GetCurrentBackBufferIndex();
     }
 
-    // 8) RTV / DSV 힙 생성
+    // 8) Descriptor Heap 생성
+    // SceneColor 는 BackBuffer에도 저장되야하므로 RTV 메모리공간할당은 아래와 같이 수행한다.
+    descriptorHeapManager = std::make_unique<DescriptorHeapManager>();
+    if (!descriptorHeapManager->Initialize(
+        device.Get(),
+        10000,   // CBV_SRV_UAV
+        16,     // Sampler
+        static_cast<UINT>(RtvIndex::RtvCount),       // RTV
+        static_cast<UINT>(DsvIndex::DsvCount),       // DSV
+        BackBufferCount))    // Back Buffer 수
+        return false;
+
+
+    // 9) RTV 생성
+    // 추후에 여기에 GBuffer 도 처리하면 됨
+    // Off-screen SceneColor RTV 생성
     {
-        D3D12_DESCRIPTOR_HEAP_DESC rtvDesc = {};
-        rtvDesc.NumDescriptors = FrameCount;
-        rtvDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        rtvDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        ThrowIfFailed(device->CreateDescriptorHeap(&rtvDesc, IID_PPV_ARGS(&rtvHeap)));
-        rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        D3D12_RESOURCE_DESC texDesc = {};
+        texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        texDesc.Alignment = 0;
+        texDesc.Width = width;
+        texDesc.Height = height;
+        texDesc.DepthOrArraySize = 1;
+        texDesc.MipLevels = 1;
+        texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texDesc.SampleDesc.Count = 1;
+        texDesc.SampleDesc.Quality = 0;
+        texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
-        D3D12_DESCRIPTOR_HEAP_DESC dsvDesc = {};
-        dsvDesc.NumDescriptors = 1;
-        dsvDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        dsvDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        ThrowIfFailed(device->CreateDescriptorHeap(&dsvDesc, IID_PPV_ARGS(&dsvHeap)));
+
+        D3D12_CLEAR_VALUE clearValue = {};
+        clearValue.Format = texDesc.Format;
+        clearValue.Color[0] = 0.0f;
+        clearValue.Color[1] = 0.0f;
+        clearValue.Color[2] = 0.0f;
+        clearValue.Color[3] = 1.0f;
+
+        CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
+        ThrowIfFailed(device->CreateCommittedResource(
+            &heapProps,                           // 임시 대신 l-value 변수의 주소
+            D3D12_HEAP_FLAG_NONE,
+            &texDesc,
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            &clearValue,
+            IID_PPV_ARGS(&sceneColorBuffer)));
+
+        // RTV 생성 (SceneColor slot)
+        descriptorHeapManager->CreateRenderTargetView(
+            device.Get(),
+            sceneColorBuffer.Get(),
+            static_cast<UINT>(Renderer::RtvIndex::SceneColor));
+
+        // SRV 생성 (PostProcess에서 읽을 수 있도록)
+        sceneColorSrvHandle = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        
+        device->CreateShaderResourceView(
+            sceneColorBuffer.Get(),   // SRV를 만들 리소스
+            nullptr,                  // nullptr 쓰면 리소스 포맷에 맞는 기본 디스크립터
+            sceneColorSrvHandle.cpu            // CPU 디스크립터 핸들
+        );
     }
 
-    // 9) 백버퍼용 RTV 생성
-    {
-        auto rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-        for (UINT i = 0; i < FrameCount; ++i) {
-            ThrowIfFailed(swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTargets[i])));
-            device->CreateRenderTargetView(renderTargets[i].Get(), nullptr, rtvHandle);
-            rtvHandle.ptr += rtvDescriptorSize;
-        }
+    // 10) Swap-Chain BackBuffer용 RTV 생성
+    for (UINT i = 0; i < BackBufferCount; ++i) {
+        UINT backBufferIndex_ = static_cast<UINT>(RtvIndex::BackBuffer0) + i;
+
+        ThrowIfFailed(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
+        descriptorHeapManager->CreateRenderTargetView(device.Get(),
+            backBuffers[i].Get(),
+            backBufferIndex_);
     }
 
-    // 10) Depth-Stencil 버퍼 및 DSV 생성
+    // 11) Depth-Stencil 버퍼 및 DSV 생성
     {
         D3D12_HEAP_PROPERTIES heapProps = {};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -510,13 +627,13 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
             &clearValue,
             IID_PPV_ARGS(&depthStencilBuffer)));
 
-        device->CreateDepthStencilView(
+        descriptorHeapManager->CreateDepthStencilView(
+            device.Get(),
             depthStencilBuffer.Get(),
-            nullptr,
-            dsvHeap->GetCPUDescriptorHandleForHeapStart());
+            static_cast<UINT>(DsvIndex::DepthStencil));
     }
 
-    // 11) Direct 커맨드 할당자 & 리스트
+    // 12) Direct 커맨드 할당자 & 리스트
     ThrowIfFailed(device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(&directCommandAllocator)));
@@ -528,14 +645,14 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         IID_PPV_ARGS(&directCommandList)));
     directCommandList->Close();
 
-    // 12) Direct 큐용 펜스 & 이벤트
+    // 13) Direct 큐용 펜스 & 이벤트
     ThrowIfFailed(device->CreateFence(
         0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&directFence)));
     directFenceValue = 1;
     directFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (!directFenceEvent) return false;
 
-    // 13) Viewport & Scissor 설정
+    // 14) Viewport & Scissor 설정
     viewport = { 0.0f, 0.0f, float(width), float(height), 0.0f, 1.0f };
     scissorRect = { 0, 0, width, height };
 
@@ -552,17 +669,18 @@ void Renderer::PopulateCommandList()
     // 2) 백버퍼 Transition: PRESENT → RENDER_TARGET
     CD3DX12_RESOURCE_BARRIER toRT =
         CD3DX12_RESOURCE_BARRIER::Transition(
-            renderTargets[frameIndex].Get(),
+            backBuffers[backBufferIndex].Get(),
             D3D12_RESOURCE_STATE_PRESENT,
             D3D12_RESOURCE_STATE_RENDER_TARGET);
     directCommandList->ResourceBarrier(1, &toRT);
 
     // 3) RTV/DSV 바인딩 & 클리어
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-    rtvHandle.ptr += frameIndex * rtvDescriptorSize;
-    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle =
+        descriptorHeapManager->GetRtvHandle(static_cast<UINT>(RtvIndex::BackBuffer0) + backBufferIndex);
 
-    directCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle =
+        descriptorHeapManager->GetDsvHandle(static_cast<UINT>(DsvIndex::DepthStencil));
+
     const FLOAT clearColor[4] = { 0, 0, 0, 1 };
     directCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     directCommandList->ClearDepthStencilView(dsvHandle,
@@ -572,9 +690,10 @@ void Renderer::PopulateCommandList()
     directCommandList->RSSetViewports(1, &viewport);
     directCommandList->RSSetScissorRects(1, &scissorRect);
 
-    // 5) 각 게임 오브젝트 렌더 호출
-    for (auto& obj : gameObjects) {
-        obj->Render(this);
+    // 5) 렌더 패스 수행
+    for (size_t i = 0; i < static_cast<size_t>(PassIndex::Count); ++i)
+    {
+        renderPasses[i]->Render(this);
     }
 
     // Imgui 드로우
@@ -591,7 +710,7 @@ void Renderer::PopulateCommandList()
     // 6) RENDER_TARGET → PRESENT 전환
     CD3DX12_RESOURCE_BARRIER toPresent =
         CD3DX12_RESOURCE_BARRIER::Transition(
-            renderTargets[frameIndex].Get(),
+            backBuffers[backBufferIndex].Get(),
             D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PRESENT);
     directCommandList->ResourceBarrier(1, &toPresent);
@@ -611,7 +730,7 @@ void Renderer::WaitForDirectQueue() {
         WaitForSingleObject(directFenceEvent, INFINITE);
     }
 
-    frameIndex = swapChain->GetCurrentBackBufferIndex();
+    backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 }
 
 void Renderer::UpdateGlobalTime(float seconds) {

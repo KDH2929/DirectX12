@@ -17,6 +17,7 @@
 #include "RootSignatureManager.h"
 #include "DescriptorHeapManager.h"
 #include "TextureManager.h"
+#include "RenderPass/RenderPass.h"
 #include "Camera.h"
 #include "Light.h"
 #include "EnvironmentMaps.h"
@@ -55,12 +56,16 @@ public:
     Renderer();
     ~Renderer();
 
-    bool Init(HWND hwnd, int width, int height);
+    bool Initialize(HWND hwnd, int width, int height);
     void Cleanup();
 
     // Game object 관리
-    void AddGameObject(std::shared_ptr<GameObject> obj);
-    void RemoveGameObject(std::shared_ptr<GameObject> obj);
+    void AddGameObject(std::shared_ptr<GameObject> object);
+    void RemoveGameObject(std::shared_ptr<GameObject> object);
+
+    const std::vector<std::shared_ptr<GameObject>>& GetOpaqueObjects() const;
+    const std::vector<std::shared_ptr<GameObject>>& GetTransparentObjects() const;
+    const std::vector<std::shared_ptr<GameObject>>& GetAllGameObjects() const;
 
     void Update(float deltaTime);
     void Render();
@@ -109,17 +114,50 @@ public:
     void ImGuiNewFrame();
     void ShutdownImGui();
 
+
+    UINT GetBackBufferIndex() const;
+
+    D3D12_GPU_DESCRIPTOR_HANDLE GetSceneColorSrvHandle() const;
+    ID3D12Resource* GetSceneColorBuffer() const;
+
+
 private:
     bool InitD3D(HWND hwnd, int w, int h);
     void PopulateCommandList();
 
+
+public:
+
+    static const UINT BackBufferCount = 2;
+
+    enum class RtvIndex : uint8_t {
+        SceneColor = 0,
+        GBufferAlbedo = 1,
+        GBufferNormal = 2,
+        GBufferMaterial = 3,
+        BackBuffer0 = 4,        // 반드시 마지막에 둘 것
+        RtvCount = BackBuffer0 + BackBufferCount
+    };
+
+    enum class DsvIndex : uint8_t {
+        DepthStencil = 0,
+        DsvCount = 1
+    };
+
+    enum class GBufferSlot : uint8_t {
+        Albedo = 0,   // RGB: 알베도, A: Specula
+        Normal = 1,   // RGB: 법선, A: Glossiness
+        Material = 2,   // R: Metallic, G: Roughness, B: AO, A: 빈 공간/추가 파라미터
+        Count = 3
+    };
+
+
 private:
-    static const UINT FrameCount = 2;
 
     // Device & swap chain
     ComPtr<ID3D12Device>            device;
     ComPtr<IDXGISwapChain3>         swapChain;
-    UINT                            frameIndex = 0;
+    UINT                                     backBufferIndex = 0;
 
     // Direct queue & lists
     ComPtr<ID3D12CommandQueue>           directQueue;
@@ -131,13 +169,10 @@ private:
     ComPtr<ID3D12CommandAllocator>       copyCommandAllocator;
     ComPtr<ID3D12GraphicsCommandList>    copyCommandList;
 
-    // RTV / DSV 힙
-    ComPtr<ID3D12DescriptorHeap>    rtvHeap;
-    ComPtr<ID3D12DescriptorHeap>    dsvHeap;
-    UINT                            rtvDescriptorSize = 0;
-
     // Render targets & depth
-    ComPtr<ID3D12Resource>          renderTargets[FrameCount];
+    ComPtr<ID3D12Resource>          backBuffers[BackBufferCount];
+    ComPtr<ID3D12Resource>          GBuffer[UINT(GBufferSlot::Count)];
+    ComPtr<ID3D12Resource>          sceneColorBuffer;
     ComPtr<ID3D12Resource>          depthStencilBuffer;
 
     // Direct-queue Fence
@@ -162,7 +197,11 @@ private:
     std::unique_ptr<TextureManager>          textureManager;
 
     std::vector<std::shared_ptr<GameObject>> gameObjects;
-    std::shared_ptr<Camera>                  mainCamera;
+    std::vector<std::shared_ptr<GameObject>> opaqueObjects;
+    std::vector<std::shared_ptr<GameObject>> transparentObjects;
+
+    std::shared_ptr<Camera>       mainCamera;
+
 
     // Constant buffers
     CB_Global           globalData;
@@ -177,5 +216,18 @@ private:
 
     // 환경맵
     EnvironmentMaps environmentMaps;
+
+
+    enum PassIndex : uint8_t {
+        ForwardOpaque = 0,
+        ForwardTransparent,
+        PostProcess,
+        Count       // 렌더패스 종류개수
+    };
+
+    std::array<std::unique_ptr<RenderPass>, PassIndex::Count> renderPasses;
+
+    // Off‑screen scene render target SRV handle
+    DescriptorHandle sceneColorSrvHandle;
 
 };

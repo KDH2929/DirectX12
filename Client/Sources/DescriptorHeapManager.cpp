@@ -11,14 +11,21 @@ bool DescriptorHeapManager::Initialize(ID3D12Device* device,
 {
     sliceCount = backBufferCount;
 
-    if (!CreateHeap(device, HeapType::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-        cbvSrvUavCount, true))  return false;
-    if (!CreateHeap(device, HeapType::D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
-        samplerCount, true))    return false;
-    if (!CreateHeap(device, HeapType::D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-        rtvCount, false))       return false;
-    if (!CreateHeap(device, HeapType::D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-        dsvCount, false))       return false;
+    if (!CreateHeap(device, HeapType::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, cbvSrvUavCount, true)) {
+        return false;
+    }
+
+    if (!CreateHeap(device, HeapType::D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, samplerCount, true)) {
+        return false;
+    }
+
+    if (!CreateHeap(device, HeapType::D3D12_DESCRIPTOR_HEAP_TYPE_RTV, rtvCount, false)) {
+        return false;
+    }
+
+    if (!CreateHeap(device, HeapType::D3D12_DESCRIPTOR_HEAP_TYPE_DSV, dsvCount, false)) {
+        return false;
+    }
 
     sliceSize = cbvSrvUavCount / sliceCount;
     return true;
@@ -56,10 +63,10 @@ bool DescriptorHeapManager::InitializeImGuiHeaps(
     return true;
 }
 
-void DescriptorHeapManager::BeginFrame(UINT frameIndex)
+void DescriptorHeapManager::BeginFrame(UINT backBufferIndex)
 {
     auto& cbvHeap = heaps[HeapType::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV];
-    cbvHeap.cursor = sliceSize * (frameIndex % sliceCount);
+    cbvHeap.cursor = sliceSize * (backBufferIndex % sliceCount);
 }
 
 ID3D12DescriptorHeap* DescriptorHeapManager::GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const
@@ -108,6 +115,44 @@ D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeapManager::CreateClampSampler(ID3D12Devi
     device->CreateSampler(&desc, handle.cpu);
     clampSamplerHandle = handle.gpu;
     return clampSamplerHandle;
+}
+
+bool DescriptorHeapManager::CreateRenderTargetView(ID3D12Device* device, ID3D12Resource* resource, UINT heapIndex)
+{
+    // Allocate 함수를 호출해도됨
+    auto& rtvHeap = heaps[static_cast<size_t>(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)];
+    if (heapIndex >= rtvHeap.capacity) return false;
+    D3D12_CPU_DESCRIPTOR_HANDLE handle{
+        rtvHeap.cpuBase.ptr + SIZE_T(heapIndex) * rtvHeap.stride
+    };
+
+    device->CreateRenderTargetView(resource, nullptr, handle);
+    return true;
+}
+
+bool DescriptorHeapManager::CreateDepthStencilView(ID3D12Device* device, ID3D12Resource* resource, UINT heapIndex)
+{
+    // Allocate 함수를 호출해도됨
+    auto& dsvHeap = heaps[static_cast<size_t>(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)];
+    if (heapIndex >= dsvHeap.capacity) return false;
+    D3D12_CPU_DESCRIPTOR_HANDLE handle{
+        dsvHeap.cpuBase.ptr + SIZE_T(heapIndex) * dsvHeap.stride
+    };
+
+    device->CreateDepthStencilView(resource, nullptr, handle);
+    return true;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapManager::GetRtvHandle(UINT heapIndex) const
+{
+    const auto& rtvHeap = heaps[static_cast<size_t>(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)];
+    return { rtvHeap.cpuBase.ptr + SIZE_T(heapIndex) * rtvHeap.stride };
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapManager::GetDsvHandle(UINT heapIndex) const
+{
+    const auto& dsvHeap = heaps[static_cast<size_t>(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)];
+    return { dsvHeap.cpuBase.ptr + SIZE_T(heapIndex) * dsvHeap.stride };
 }
 
 bool DescriptorHeapManager::CreateHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT count, bool shaderVisible)

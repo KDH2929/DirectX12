@@ -58,6 +58,22 @@ void GameObject::SetRotationQuat(const XMVECTOR& quat) {
     rotation = XMQuaternionNormalize(quat);
 }
 
+void GameObject::SetTransparent(bool isTransparent)
+{
+    transparent = isTransparent;
+}
+
+bool GameObject::IsTransparent() const
+{
+    return transparent;
+}
+
+float GameObject::DistanceToCamera(const XMVECTOR& cameraPos) const
+{
+    XMVECTOR worldPos = XMLoadFloat3(&position);
+    return XMVectorGetX(XMVector3Length(worldPos - cameraPos));
+}
+
 void GameObject::UpdateWorldMatrix() {
     XMMATRIX S = XMMatrixScaling(scale.x, scale.y, scale.z);
     XMMATRIX R = XMMatrixRotationQuaternion(rotation);

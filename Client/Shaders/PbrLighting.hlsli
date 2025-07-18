@@ -6,11 +6,11 @@ static const float3 F_DIELECTRIC = float3(0.04, 0.04, 0.04);
 // 0=Albedo, 1=Normal, 2=Metallic, 3=Roughness
 Texture2D<float4> textureHeap[4] : register(t0, space0);
 
-// 샘플러
+// Sampler
 SamplerState linearWrapSampler : register(s0);
 SamplerState linearClampSampler : register(s1);
 
-// IBL 텍스처
+// IBL Texture
 TextureCube<float4> irradianceMap : register(t4, space0);
 TextureCube<float4> prefilteredMap : register(t5, space0);
 Texture2D<float2> brdfLut : register(t6, space0);
