@@ -17,10 +17,10 @@ void ForwardTransparentPass::Render(Renderer* renderer)
 	UINT backBufferIndex = renderer->GetBackBufferIndex();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle =
-		descriptorHeapManager->GetRtvHandle(static_cast<UINT>(Renderer::RtvIndex::SceneColor));
+		descriptorHeapManager->GetRtvCpuHandle(static_cast<UINT>(Renderer::RtvIndex::SceneColor));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle =
-		descriptorHeapManager->GetDsvHandle(static_cast<UINT>(Renderer::DsvIndex::DepthStencil));
+		descriptorHeapManager->GetDsvCpuHandle(static_cast<UINT>(Renderer::DsvIndex::DepthStencil));
 
 	directCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 

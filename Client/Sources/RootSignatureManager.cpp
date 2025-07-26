@@ -1,4 +1,5 @@
 #include "RootSignatureManager.h"
+#include "ShadowMap.h"
 #include <stdexcept>
 #include <format>
 #include <assert.h>
@@ -32,7 +33,7 @@ bool RootSignatureManager::InitializeDescs()
         Create(L"TriangleRS", desc);
     }
 
-    
+
     // 2) 퐁 조명용 PhongRS 생성
     {
         // b0~b3: CBVs for MVP, Lighting, Material, Global
@@ -86,7 +87,7 @@ bool RootSignatureManager::InitializeDescs()
 
     // 3) PBR용 루트 시그니처 PbrRS 생성
     {
-        // 1) b0~b3: CBV (b0=MVP, b1=Lighting, b2=Material, b3=Global)
+        // b0~b3: CBV (b0=MVP, b1=Lighting, b2=Material, b3=Global)
         D3D12_ROOT_PARAMETER params[9] = {};
         for (UINT i = 0; i < 4; ++i)
         {
@@ -98,7 +99,7 @@ bool RootSignatureManager::InitializeDescs()
                 : D3D12_SHADER_VISIBILITY_PIXEL;
         }
 
-        // 2) Material(4) Descriptor Table → root 4
+        // Material(4) Descriptor Table → root 4
         D3D12_DESCRIPTOR_RANGE matRange{};
         matRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         matRange.NumDescriptors = 4;   // t0~t3
@@ -111,7 +112,7 @@ bool RootSignatureManager::InitializeDescs()
         params[4].DescriptorTable.pDescriptorRanges = &matRange;
         params[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // 3) IrradianceCube → root 5 (t4)
+        // IrradianceCube → root 5 (t4)
         D3D12_DESCRIPTOR_RANGE irrRange = matRange;
         irrRange.NumDescriptors = 1;
         irrRange.BaseShaderRegister = 4;  // t4
@@ -121,7 +122,7 @@ bool RootSignatureManager::InitializeDescs()
         params[5].DescriptorTable.pDescriptorRanges = &irrRange;
         params[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // 4) PrefilteredCube → root 6 (t5)
+        // PrefilteredCube → root 6 (t5)
         D3D12_DESCRIPTOR_RANGE prefRange = matRange;
         prefRange.NumDescriptors = 1;
         prefRange.BaseShaderRegister = 5;  // t5
@@ -131,7 +132,7 @@ bool RootSignatureManager::InitializeDescs()
         params[6].DescriptorTable.pDescriptorRanges = &prefRange;
         params[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // 5) BRDF LUT → root 7 (t6)
+        // BRDF LUT → root 7 (t6)
         D3D12_DESCRIPTOR_RANGE lutRange = matRange;
         lutRange.NumDescriptors = 1;
         lutRange.BaseShaderRegister = 6;  // t6
@@ -141,7 +142,23 @@ bool RootSignatureManager::InitializeDescs()
         params[7].DescriptorTable.pDescriptorRanges = &lutRange;
         params[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // 6) Sampler 테이블 → root 8 (s0~s1)
+        
+        // ShadowMap → root 8
+        /*
+        D3D12_DESCRIPTOR_RANGE shadowRange{};
+        shadowRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        shadowRange.NumDescriptors = MAX_SHADOW_DSV_COUNT; // t7 ~ t7+N-1
+        shadowRange.BaseShaderRegister = 7;                   // t7
+        shadowRange.RegisterSpace = 0;
+        shadowRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        params[8].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        params[8].DescriptorTable.NumDescriptorRanges = 1;
+        params[8].DescriptorTable.pDescriptorRanges = &shadowRange;
+        params[8].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        */
+
+        // Sampler 테이블 → root 9 (s0~s1)
         D3D12_DESCRIPTOR_RANGE sampRange{};
         sampRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         sampRange.NumDescriptors = 2;      // s0, s1
@@ -154,12 +171,30 @@ bool RootSignatureManager::InitializeDescs()
         params[8].DescriptorTable.pDescriptorRanges = &sampRange;
         params[8].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // 7) 루트 시그니처 설명 생성
+
+        // static sampler for shadow comparison (s2)
+        static D3D12_STATIC_SAMPLER_DESC staticShadowSampler{};
+        staticShadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+        staticShadowSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        staticShadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        staticShadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+        staticShadowSampler.MipLODBias = 0;
+        staticShadowSampler.MaxAnisotropy = 1;      // comparison sampler에서는 1이상이 아니면 에러
+        staticShadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        staticShadowSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+        staticShadowSampler.MinLOD = 0;
+        staticShadowSampler.MaxLOD = D3D12_FLOAT32_MAX;
+        staticShadowSampler.ShaderRegister = 2;  // s2
+        staticShadowSampler.RegisterSpace = 0;
+        staticShadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+
+        // 루트 시그니처 Desc 생성
         D3D12_ROOT_SIGNATURE_DESC desc{};
         desc.NumParameters = _countof(params);
         desc.pParameters = params;
         desc.NumStaticSamplers = 0;
-        desc.pStaticSamplers = nullptr;
+        desc.pStaticSamplers = nullptr;  //&staticShadowSampler;
         desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
         // 8) 생성 호출
@@ -243,26 +278,93 @@ bool RootSignatureManager::InitializeDescs()
         Create(L"DebugNormalRS", debugRSDesc);
     }
 
-    
-    // OutlinePostEffect RS
+
+    // PostProcess RS
     {
-        // 1) Root Parameters
-       
-        // b0 → CB_OutlineOptions
-        // t0 → SRV table (SceneColor)
+        //  b0 : 파라미터 CBV ( PostProcess 옵션들 )
+        //  t0 : 입력 텍스처 (SceneColor, 또는 별도 SRV 슬롯)
+        //  s0 : 정적샘플러 (linear clamp)
+        D3D12_ROOT_PARAMETER postParams[2] = {};
+
+        // b0 → CBV
+        postParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        postParams[0].Descriptor.ShaderRegister = 0;      // b0
+        postParams[0].Descriptor.RegisterSpace = 0;
+        postParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // t0 → SRV 테이블
+        D3D12_DESCRIPTOR_RANGE descTable = {};
+        descTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        descTable.NumDescriptors = 1;
+        descTable.BaseShaderRegister = 0;      // t0
+        descTable.RegisterSpace = 0;
+        descTable.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        postParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        postParams[1].DescriptorTable.NumDescriptorRanges = 1;
+        postParams[1].DescriptorTable.pDescriptorRanges = &descTable;
+        postParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        // Static Sampler (s0)
+        D3D12_STATIC_SAMPLER_DESC postSampler = {};
+        postSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        postSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        postSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        postSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        postSampler.ShaderRegister = 0;  // s0
+        postSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        D3D12_ROOT_SIGNATURE_DESC postDesc = {};
+        postDesc.NumParameters = _countof(postParams);
+        postDesc.pParameters = postParams;
+        postDesc.NumStaticSamplers = 1;
+        postDesc.pStaticSamplers = &postSampler;
+        postDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+        // 생성
+        Create(L"PostProcessRS", postDesc);
+    }
+
+    
+    // ShadowMapPass RS :  깊이값만 기록함
+    {
+        // b0 : CBV (world, lightViewProj)
+        D3D12_ROOT_PARAMETER shadowParams[1] = {};
+
+        shadowParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        shadowParams[0].Descriptor.ShaderRegister = 0;     // b0
+        shadowParams[0].Descriptor.RegisterSpace = 0;
+        shadowParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+        D3D12_ROOT_SIGNATURE_DESC shadowDesc = {};
+        shadowDesc.NumParameters = _countof(shadowParams);
+        shadowDesc.pParameters = shadowParams;
+        shadowDesc.NumStaticSamplers = 0;
+        shadowDesc.pStaticSamplers = nullptr;
+        shadowDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+        Create(L"ShadowMapPassRS", shadowDesc);
+    }
+
+
+
+    // CloudVolume 렌더링용 루트 시그니처
+    {
+        // b1 : CB_CloudParameters
+        // t2 : (선택) 3D 노이즈 볼륨 텍스처 SRV
         D3D12_ROOT_PARAMETER params[2] = {};
 
-        // CBV b0
+        // CBV b1 → CloudParameters
         params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        params[0].Descriptor.ShaderRegister = 0;      // b0
+        params[0].Descriptor.ShaderRegister = 1;    // b1
         params[0].Descriptor.RegisterSpace = 0;
         params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // SRV table (SceneColor : register(t0))
+        // SRV 테이블 t2 → Noise Texture
         D3D12_DESCRIPTOR_RANGE srvRange = {};
         srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srvRange.NumDescriptors = 1;  // only t0
-        srvRange.BaseShaderRegister = 0;
+        srvRange.NumDescriptors = 1;    // t2 하나
+        srvRange.BaseShaderRegister = 2;    // t2
         srvRange.RegisterSpace = 0;
         srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
@@ -271,7 +373,7 @@ bool RootSignatureManager::InitializeDescs()
         params[1].DescriptorTable.pDescriptorRanges = &srvRange;
         params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // 2) Static Sampler (SceneSampler : register(s0))
+        // 2) Static Sampler (NoiseSampler : register(s2))
         D3D12_STATIC_SAMPLER_DESC staticSampler = {};
         staticSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
         staticSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -283,20 +385,20 @@ bool RootSignatureManager::InitializeDescs()
         staticSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
         staticSampler.MinLOD = 0.0f;
         staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
-        staticSampler.ShaderRegister = 0;  // matches s0 in HLSL
+        staticSampler.ShaderRegister = 2;    // s2
         staticSampler.RegisterSpace = 0;
         staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
         // 3) Create Root Signature
-        D3D12_ROOT_SIGNATURE_DESC desc = {};
-        desc.NumParameters = _countof(params);
-        desc.pParameters = params;
-        desc.NumStaticSamplers = 1;
-        desc.pStaticSamplers = &staticSampler;
-        // No input assembler needed for full-screen quad
-        desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
+        rsDesc.NumParameters = _countof(params);
+        rsDesc.pParameters = params;
+        rsDesc.NumStaticSamplers = 1;
+        rsDesc.pStaticSamplers = &staticSampler;
+        rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-        Create(L"OutlinePostEffectRS", desc);
+        if (!Create(L"VolumetricCloudRS", rsDesc))
+            throw std::runtime_error("RootSignatureManager::Create(\"VolumetricCloudRS\") failed");
     }
 
     return true;

@@ -41,6 +41,8 @@ bool SphereObject::Initialize(Renderer* renderer)
         return false;
     }
 
+    SetMesh(sphereMesh);
+
     // 2) 머티리얼 상수 버퍼 생성 (256B aligned)
     auto device = renderer->GetDevice();
     CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
@@ -58,7 +60,7 @@ bool SphereObject::Initialize(Renderer* renderer)
     }
 
     materialConstantBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedMaterialBuffer));
-    materialPBR->WriteToGpu(mappedMaterialBuffer);
+    materialPBR->WriteToConstantBuffer(mappedMaterialBuffer);
 
     // 3) 텍스처 리소스 상태 전환
     auto directAlloc = renderer->GetDirectCommandAllocator();
@@ -173,9 +175,6 @@ void SphereObject::Render(Renderer* renderer)
     };
     directCommandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
-    // WorldMatrix 업데이트
-    UpdateWorldMatrix();
-
     // MVP CBV (b0) 업데이트
     {
         CB_MVP mvp{};
@@ -206,7 +205,7 @@ void SphereObject::Render(Renderer* renderer)
         directCommandList->SetGraphicsRootConstantBufferView(0, constantMVPBuffer->GetGPUVirtualAddress());
         
         // b1 = 조명 CB, b3 = 글로벌 CB
-        directCommandList->SetGraphicsRootConstantBufferView(1, renderer->GetLightingConstantBuffer()->GetGPUVirtualAddress());
+        directCommandList->SetGraphicsRootConstantBufferView(1, renderer->GetLightingManager()->GetConstantBuffer()->GetGPUVirtualAddress());
         directCommandList->SetGraphicsRootConstantBufferView(3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
         
         // 알베도 SRV
@@ -215,12 +214,18 @@ void SphereObject::Render(Renderer* renderer)
         
         // 환경맵 바인딩 (irradiance, prefiltered, BRDF LUT)
         renderer->GetEnvironmentMaps().Bind(directCommandList, 5, 6, 7);
+
+        // shadow map SRV 테이블 바인딩 (t7~t7+N-1) → root 8
+        const auto& shadowMaps = renderer->GetShadowMaps();
+        // shadowMaps[i].srvHandle 에 연속으로 할당된 NUM_SHADOW_DSV_COUNT 개의 SRV가 있으므로,
+        // 첫 핸들만 넘기면 전체 테이블이 바인딩됨
+        //directCommandList->SetGraphicsRootDescriptorTable(8, shadowMaps[0].srvHandle.gpuHandle);
         
         // 샘플러 (s0)
-        directCommandList->SetGraphicsRootDescriptorTable(8, renderer->GetDescriptorHeapManager()->GetWrapSamplerHandle());
+        directCommandList->SetGraphicsRootDescriptorTable(8, renderer->GetDescriptorHeapManager()->GetLinearWrapSamplerGpuHandle());
         
         // 머티리얼 CBV (b2)
-        materialPBR->WriteToGpu(mappedMaterialBuffer);
+        materialPBR->WriteToConstantBuffer(mappedMaterialBuffer);
         directCommandList->SetGraphicsRootConstantBufferView(2, materialConstantBuffer->GetGPUVirtualAddress());
         
         // 삼각형 리스트로 그리기

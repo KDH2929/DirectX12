@@ -30,6 +30,8 @@ bool BoxObject::Initialize(Renderer* renderer)
     cubeMesh = Mesh::CreateCube(renderer);
     if (!cubeMesh) return false;
 
+    SetMesh(cubeMesh);
+
     // 2) Create material constant buffer (256B aligned Upload)
     ID3D12Device* device = renderer->GetDevice();
     CD3DX12_HEAP_PROPERTIES uploadProps(D3D12_HEAP_TYPE_UPLOAD);
@@ -106,10 +108,8 @@ void BoxObject::Render(Renderer* renderer)
     directCommandList->SetPipelineState(pipelineState);
 
     // 4) 프레임 전역 CBV 바인딩 (b1: Lighting, b3: Global)
-    directCommandList->SetGraphicsRootConstantBufferView(
-        1, renderer->GetLightingConstantBuffer()->GetGPUVirtualAddress());
-    directCommandList->SetGraphicsRootConstantBufferView(
-        3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
+    directCommandList->SetGraphicsRootConstantBufferView(1, renderer->GetLightingManager()->GetConstantBuffer()->GetGPUVirtualAddress());
+    directCommandList->SetGraphicsRootConstantBufferView(3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
 
     // 5) SRV 및 Sampler 테이블 바인딩 (root slot 4, 5)
     D3D12_GPU_DESCRIPTOR_HANDLE srvStart = descriptorHeaps[0]->GetGPUDescriptorHandleForHeapStart();

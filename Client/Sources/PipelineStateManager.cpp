@@ -18,47 +18,70 @@ bool PipelineStateManager::InitializePSOs()
 {
     psoMap.clear();         // 캐시 비우기
 
-    // 1. Triangle용 PSO
+    // 1. Triangle
     {
         PipelineStateDesc desc = CreateTrianglePSODesc();
         if (GetOrCreate(desc) == nullptr)
             return false;
     }
 
-    // 2. Phong-Lighting용 PSO
+    // 2. Phong-Lighting
     {
         PipelineStateDesc desc = CreatePhongPSODesc();
         if (GetOrCreate(desc) == nullptr)
             return false;
     }
 
-    // 3. PBR-Lighting 전용
+    // 3. PBR-Lighting
     {
         PipelineStateDesc desc = CreatePbrPSODesc();
         if (GetOrCreate(desc) == nullptr)
             return false;
     }
 
-    // 4. Skybox 전용
+    // 4. Skybox
     {
         PipelineStateDesc desc = CreateSkyboxPSODesc();
         if (GetOrCreate(desc) == nullptr)
             return false;
     }
 
-    // 5. 노말 디버그용 PSO 전용
+    // 5. 노말 디버그용 PSO
     {
         PipelineStateDesc desc = CreateDebugNormalPSODesc();
         if (GetOrCreate(desc) == nullptr)
             return false;
     }
 
-    // 6. OutlinePostEffect PSO 전용
+    // 6. OutlinePostEffect PSO
     {
         PipelineStateDesc desc = CreateOutlinePostEffectPSODesc();
         if (GetOrCreate(desc) == nullptr)
             return false;
     }
+
+    // 7. ToneMappingPostEffect PSO
+    {
+        PipelineStateDesc desc = CreateToneMappingPostEffectPSODesc();
+        if (GetOrCreate(desc) == nullptr)
+            return false;
+    }
+
+    // 8. ShadowMapPass PSO
+    {
+        PipelineStateDesc desc = CreateShadowMapPassPSODesc();
+        if (GetOrCreate(desc) == nullptr)
+            return false;
+    }
+
+    // 9. VolumetricCloud PSO
+    /*
+    {
+        PipelineStateDesc desc = CreateVolumetricCloudPSODesc();
+        if (GetOrCreate(desc) == nullptr)
+            return false;
+    }
+    */
 
     return true;
 }
@@ -78,8 +101,8 @@ PipelineStateDesc PipelineStateManager::CreateTrianglePSODesc() const {
     };
 
     // 쉐이더 Blob
-    ComPtr<ID3DBlob> vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"TriangleVertexShader");
-    ComPtr<ID3DBlob> psBlob = renderer->GetShaderManager()->GetShaderBlob(L"TrianglePixelShader");
+    ComPtr<ID3DBlob> vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"TriangleVS");
+    ComPtr<ID3DBlob> psBlob = renderer->GetShaderManager()->GetShaderBlob(L"TrianglePS");
 
     PipelineStateDesc desc;
     desc.name = L"TrianglePSO";
@@ -124,9 +147,9 @@ PipelineStateDesc PipelineStateManager::CreatePhongPSODesc() const
     // 3) 셰이더 : Phong 전용 VS / PS
 
     ComPtr<ID3DBlob> vsBlob =
-        renderer->GetShaderManager()->GetShaderBlob(L"PhongVertexShader");
+        renderer->GetShaderManager()->GetShaderBlob(L"PhongVS");
     ComPtr<ID3DBlob> psBlob =
-        renderer->GetShaderManager()->GetShaderBlob(L"PhongPixelShader");
+        renderer->GetShaderManager()->GetShaderBlob(L"PhongPS");
 
 
     // 4) 파이프라인 상태 기본값 구성
@@ -173,9 +196,9 @@ PipelineStateDesc PipelineStateManager::CreatePbrPSODesc() const
 
     // 3) Shaders : PBR 전용 VS / PS
     ComPtr<ID3DBlob> vsBlob =
-        renderer->GetShaderManager()->GetShaderBlob(L"PbrVertexShader");
+        renderer->GetShaderManager()->GetShaderBlob(L"PbrVS");
     ComPtr<ID3DBlob> psBlob =
-        renderer->GetShaderManager()->GetShaderBlob(L"PbrPixelShader");
+        renderer->GetShaderManager()->GetShaderBlob(L"PbrPS");
 
     // 4) 기본 파이프라인 설정
     PipelineStateDesc desc;
@@ -190,7 +213,7 @@ PipelineStateDesc PipelineStateManager::CreatePbrPSODesc() const
     desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
     // HDR/톤매핑을 고려해 sRGB 백버퍼라면 RTV 포맷도 맞출 것
-    // 예) desc.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    desc.rtvFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     return desc;
 }
@@ -207,9 +230,9 @@ PipelineStateDesc PipelineStateManager::CreateSkyboxPSODesc() const
     };
 
     ComPtr<ID3DBlob> vsBlob =
-        renderer->GetShaderManager()->GetShaderBlob(L"SkyboxVertexShader");
+        renderer->GetShaderManager()->GetShaderBlob(L"SkyboxVS");
     ComPtr<ID3DBlob> psBlob =
-        renderer->GetShaderManager()->GetShaderBlob(L"SkyboxPixelShader");
+        renderer->GetShaderManager()->GetShaderBlob(L"SkyboxPS");
 
     PipelineStateDesc desc;
     desc.name = L"SkyboxPSO";
@@ -230,6 +253,8 @@ PipelineStateDesc PipelineStateManager::CreateSkyboxPSODesc() const
     desc.sampleMask = UINT_MAX;
     desc.sampleDesc.Count = 1;
 
+    // HDR/톤매핑을 고려해 sRGB 백버퍼라면 RTV 포맷도 맞출 것
+    desc.rtvFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     return desc;
 }
@@ -286,14 +311,17 @@ PipelineStateDesc PipelineStateManager::CreateDebugNormalPSODesc() const
     desc.sampleMask = UINT_MAX;
     desc.sampleDesc.Count = 1;
 
+    // HDR/톤매핑을 고려해 sRGB 백버퍼라면 RTV 포맷도 맞출 것
+    desc.rtvFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+
     return desc;
 }
 
 PipelineStateDesc PipelineStateManager::CreateOutlinePostEffectPSODesc() const
 {
-    auto rootSig = renderer->GetRootSignatureManager()->Get(L"OutlinePostEffectRS");
+    auto rootSig = renderer->GetRootSignatureManager()->Get(L"PostProcessRS");
     if (!rootSig)
-        throw std::runtime_error("OutlinePostEffectRS not created");
+        throw std::runtime_error("PostProcessRS not created");
 
 
     // 풀스크린 삼각형/쿼드용
@@ -336,6 +364,144 @@ PipelineStateDesc PipelineStateManager::CreateOutlinePostEffectPSODesc() const
     desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
     // 샘플링
+    desc.sampleMask = UINT_MAX;
+    desc.sampleDesc.Count = 1;
+
+    return desc;
+}
+
+PipelineStateDesc PipelineStateManager::CreateToneMappingPostEffectPSODesc() const
+{
+    // 공통 PostProcess Root Signature 사용
+    auto rootSig = renderer->GetRootSignatureManager()->Get(L"PostProcessRS");
+    if (!rootSig)
+        throw std::runtime_error("PostProcessRS not created");
+
+    // 풀스크린 삼각형/쿼드용 입력 레이아웃
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
+    {
+        { "POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+          0,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+        { "TEXCOORD",  0, DXGI_FORMAT_R32G32_FLOAT,    0,
+          24,
+          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    // 톤매핑용 셰이더
+    auto vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"ToneMappingPostEffectVS");
+    auto psBlob = renderer->GetShaderManager()->GetShaderBlob(L"ToneMappingPostEffectPS");
+
+    PipelineStateDesc desc;
+    desc.name = L"ToneMappingPostEffectPSO";
+    desc.rootSignature = rootSig;
+    desc.vsBlob = vsBlob;
+    desc.psBlob = psBlob;
+    desc.inputLayout = std::move(inputLayout);
+    desc.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+    desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+
+    desc.depthStencilDesc.DepthEnable = FALSE;
+    desc.depthStencilDesc.StencilEnable = FALSE;
+
+    desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+    desc.sampleMask = UINT_MAX;
+    desc.sampleDesc.Count = 1;
+
+    return desc;
+}
+
+PipelineStateDesc PipelineStateManager::CreateShadowMapPassPSODesc() const
+{
+    auto rootSig = renderer->GetRootSignatureManager()->Get(L"ShadowMapPassRS");
+    if (!rootSig)
+        throw std::runtime_error("ShadowMapPassRS not created");
+
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
+          0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+    };
+
+    auto vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"ShadowMapPassVS");
+    auto psBlob = renderer->GetShaderManager()->GetShaderBlob(L"ShadowMapPassPS");
+
+    PipelineStateDesc desc;
+    desc.name = L"ShadowMapPassPSO";
+    desc.rootSignature = rootSig;
+    desc.vsBlob = vsBlob;
+    desc.psBlob = psBlob;
+    desc.inputLayout = std::move(inputLayout);
+    desc.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+    // 깊이만 기록, RTV 없음
+    desc.rtvFormats[0] = DXGI_FORMAT_UNKNOWN;
+    desc.numRenderTargets = 0;
+
+    // Depth 사용
+    desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    desc.depthStencilDesc.DepthEnable = TRUE;
+    desc.depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    desc.depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    desc.depthStencilDesc.StencilEnable = FALSE;
+
+    desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    desc.sampleMask = UINT_MAX;
+    desc.sampleDesc.Count = 1;
+
+    return desc;
+}
+
+PipelineStateDesc PipelineStateManager::CreateVolumetricCloudPSODesc() const
+{
+
+    auto rootSig = renderer->GetRootSignatureManager()->Get(L"VolumetricCloudRS");
+    if (!rootSig)
+        throw std::runtime_error("VolumetricCloudRS not created");
+
+    // No vertex buffer layout (we use SV_VertexID / point list)
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;
+
+
+    auto vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"VolumetricCloudVS");
+    auto gsBlob = renderer->GetShaderManager()->GetShaderBlob(L"VolumetricCloudGS");
+    auto psBlob = renderer->GetShaderManager()->GetShaderBlob(L"VolumetricCloudPS");
+
+
+    PipelineStateDesc desc;
+    desc.name = L"VolumetricCloudPSO";
+    desc.rootSignature = rootSig;
+    desc.vsBlob = vsBlob;
+    desc.gsBlob = gsBlob;
+    desc.psBlob = psBlob;
+    desc.inputLayout = std::move(inputLayout);
+
+
+    desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    desc.rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
+
+    desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    desc.depthStencilDesc.DepthEnable = TRUE;
+    desc.depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+    desc.depthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    desc.depthStencilDesc.StencilEnable = FALSE;
+
+    desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    auto& rt0 = desc.blendDesc.RenderTarget[0];
+    rt0.BlendEnable = TRUE;
+    rt0.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    rt0.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    rt0.BlendOp = D3D12_BLEND_OP_ADD;
+    rt0.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rt0.DestBlendAlpha = D3D12_BLEND_ZERO;
+    rt0.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+    rt0.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    desc.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+
     desc.sampleMask = UINT_MAX;
     desc.sampleDesc.Count = 1;
 

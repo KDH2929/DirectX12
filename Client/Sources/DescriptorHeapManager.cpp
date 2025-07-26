@@ -93,9 +93,9 @@ D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeapManager::CreateWrapSampler(ID3D12Devic
     desc.MaxAnisotropy = 0;
     desc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 
-    device->CreateSampler(&desc, handle.cpu);
-    wrapSamplerHandle = handle.gpu;
-    return wrapSamplerHandle;
+    device->CreateSampler(&desc, handle.cpuHandle);
+    linearWrapSamplerHandle = handle.gpuHandle;
+    return linearWrapSamplerHandle;
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeapManager::CreateClampSampler(ID3D12Device* device)
@@ -112,9 +112,9 @@ D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeapManager::CreateClampSampler(ID3D12Devi
     desc.MaxAnisotropy = 0;
     desc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 
-    device->CreateSampler(&desc, handle.cpu);
-    clampSamplerHandle = handle.gpu;
-    return clampSamplerHandle;
+    device->CreateSampler(&desc, handle.cpuHandle);
+    linearClampSamplerHandle = handle.gpuHandle;
+    return linearClampSamplerHandle;
 }
 
 bool DescriptorHeapManager::CreateRenderTargetView(ID3D12Device* device, ID3D12Resource* resource, UINT heapIndex)
@@ -130,7 +130,7 @@ bool DescriptorHeapManager::CreateRenderTargetView(ID3D12Device* device, ID3D12R
     return true;
 }
 
-bool DescriptorHeapManager::CreateDepthStencilView(ID3D12Device* device, ID3D12Resource* resource, UINT heapIndex)
+bool DescriptorHeapManager::CreateDepthStencilView(ID3D12Device* device, ID3D12Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* desc, UINT heapIndex)
 {
     // Allocate 함수를 호출해도됨
     auto& dsvHeap = heaps[static_cast<size_t>(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)];
@@ -139,20 +139,40 @@ bool DescriptorHeapManager::CreateDepthStencilView(ID3D12Device* device, ID3D12R
         dsvHeap.cpuBase.ptr + SIZE_T(heapIndex) * dsvHeap.stride
     };
 
-    device->CreateDepthStencilView(resource, nullptr, handle);
+    device->CreateDepthStencilView(resource, desc, handle);
     return true;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapManager::GetRtvHandle(UINT heapIndex) const
+D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapManager::GetRtvCpuHandle(UINT heapIndex) const
 {
     const auto& rtvHeap = heaps[static_cast<size_t>(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)];
     return { rtvHeap.cpuBase.ptr + SIZE_T(heapIndex) * rtvHeap.stride };
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapManager::GetDsvHandle(UINT heapIndex) const
+D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeapManager::GetDsvCpuHandle(UINT heapIndex) const
 {
     const auto& dsvHeap = heaps[static_cast<size_t>(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)];
     return { dsvHeap.cpuBase.ptr + SIZE_T(heapIndex) * dsvHeap.stride };
+}
+
+DescriptorHandle DescriptorHeapManager::GetRtvHandle(UINT heapIndex) const
+{
+    const auto& rtvHeap = heaps[static_cast<size_t>(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)];
+    DescriptorHandle handle;
+    handle.cpuHandle.ptr = rtvHeap.cpuBase.ptr + SIZE_T(heapIndex) * rtvHeap.stride;
+    handle.gpuHandle.ptr = 0;         // RTV 는 gpu handle을 쓰지 않는다.
+    handle.index = heapIndex;
+    return handle;
+}
+
+DescriptorHandle DescriptorHeapManager::GetDsvHandle(UINT heapIndex) const
+{
+    const auto& dsvHeap = heaps[static_cast<size_t>(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)];
+    DescriptorHandle handle;
+    handle.cpuHandle.ptr = dsvHeap.cpuBase.ptr + SIZE_T(heapIndex) * dsvHeap.stride;
+    handle.gpuHandle.ptr = 0;         // DSV는 GPU에서 참조하지 않음
+    handle.index = heapIndex;
+    return handle;
 }
 
 bool DescriptorHeapManager::CreateHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT count, bool shaderVisible)
@@ -189,15 +209,15 @@ DescriptorHandle DescriptorHeapManager::Allocate(D3D12_DESCRIPTOR_HEAP_TYPE heap
 
     DescriptorHandle handle;
 
-    handle.cpu.ptr = selectedHeap.cpuBase.ptr + static_cast<SIZE_T>(selectedHeap.cursor) * selectedHeap.stride;
+    handle.cpuHandle.ptr = selectedHeap.cpuBase.ptr + static_cast<SIZE_T>(selectedHeap.cursor) * selectedHeap.stride;
 
     if (selectedHeap.shaderVisible)
     {
-        handle.gpu.ptr = selectedHeap.gpuBase.ptr + static_cast<UINT64>(selectedHeap.cursor) * selectedHeap.stride;
+        handle.gpuHandle.ptr = selectedHeap.gpuBase.ptr + static_cast<UINT64>(selectedHeap.cursor) * selectedHeap.stride;
     }
     else
     {
-        handle.gpu.ptr = 0;
+        handle.gpuHandle.ptr = 0;
     }
 
     handle.index = selectedHeap.cursor;

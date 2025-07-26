@@ -37,9 +37,9 @@ std::shared_ptr<Texture> TextureManager::LoadTexture(const std::wstring& filePat
     srvDesc.Texture2D.MipLevels = 1;
 
     renderer->GetDevice()->CreateShaderResourceView(
-        texture->GetResource(), &srvDesc, handle.cpu);
+        texture->GetResource(), &srvDesc, handle.cpuHandle);
 
-    texture->SetDescriptorHandles(handle.cpu, handle.gpu, handle.index);
+    texture->SetDescriptorHandles(handle.cpuHandle, handle.gpuHandle, handle.index);
 
     // 5) 캐시에 저장
     textureCache[filePath] = texture;
@@ -71,9 +71,9 @@ std::shared_ptr<Texture> TextureManager::LoadCubeMap(const std::wstring& filePat
     srvDesc.TextureCube.MipLevels = texture->GetResource()->GetDesc().MipLevels;
 
     renderer->GetDevice()->CreateShaderResourceView(
-        texture->GetResource(), &srvDesc, handle.cpu);
+        texture->GetResource(), &srvDesc, handle.cpuHandle);
 
-    texture->SetDescriptorHandles(handle.cpu, handle.gpu, handle.index);
+    texture->SetDescriptorHandles(handle.cpuHandle, handle.gpuHandle, handle.index);
 
     // 5) 캐시에 저장
     textureCache[filePath] = texture;

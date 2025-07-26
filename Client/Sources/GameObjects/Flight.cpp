@@ -14,6 +14,8 @@ Flight::Flight(std::shared_ptr<Mesh> mesh,
 {
     materialPBR = std::make_shared<Material>();
     materialPBR->SetAllTextures(textures);
+
+    SetMesh(flightMesh.lock());
 }
 
 bool Flight::Initialize(Renderer* renderer)
@@ -25,21 +27,28 @@ bool Flight::Initialize(Renderer* renderer)
     camera->SetPosition({ 0.0f, 0.0f, -10.0f });
     float aspect = float(renderer->GetViewportWidth())
         / float(renderer->GetViewportHeight());
-    camera->SetPerspective(XM_PIDIV4, aspect, 0.1f, 1000.0f);
+    camera->SetPerspective(XM_PIDIV4, aspect, 0.1f, 800.0f);
 
 
     ID3D12Device* device = renderer->GetDevice();
     CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
-    CD3DX12_RESOURCE_DESC   bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(256);
+
+    UINT64 rawSize = sizeof(MaterialPbrParameters); 
+    UINT64 alignedSize = (rawSize + 255) & ~static_cast<UINT64>(255); // 256의 배수로 맞춰줌
+
+    CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(alignedSize);
+
     if (FAILED(device->CreateCommittedResource(
         &uploadHeap, D3D12_HEAP_FLAG_NONE,
         &bufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr, IID_PPV_ARGS(&materialConstantBuffer))))
         return false;
+
     materialConstantBuffer->Map(
         0, nullptr,
         reinterpret_cast<void**>(&mappedMaterialBuffer));
-    materialPBR->WriteToGpu(mappedMaterialBuffer);
+
+    materialPBR->WriteToConstantBuffer(mappedMaterialBuffer);
 
     // 텍스처 리소스 상태 전환
     auto directList = renderer->GetDirectCommandList();
@@ -178,14 +187,14 @@ void Flight::Render(Renderer* renderer)
         renderer->GetPSOManager()->Get(L"PbrPSO"));
 
     // 4) 프레임 전역 CBV 바인딩 (b1: Lighting, b3: Global)
-    directCommandList->SetGraphicsRootConstantBufferView(
-        1, renderer->GetLightingConstantBuffer()->GetGPUVirtualAddress());
-    directCommandList->SetGraphicsRootConstantBufferView(
-        3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
+    directCommandList->SetGraphicsRootConstantBufferView(1, renderer->GetLightingManager()->GetConstantBuffer()->GetGPUVirtualAddress());
+    directCommandList->SetGraphicsRootConstantBufferView(3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
 
-    // 5) SRV 및 Sampler 테이블 바인딩 (root slot 4~8)
+    // 5) SRV 및 Sampler 테이블 바인딩 (root slot 4~9)
     {
         // material textures (t0~t3) → root 4
+        // 하나만 설정하는 이유는 일단 Root Descriptor Table 구성에서 D3D12_DESCRIPTOR_RANGE 로 할당했고
+        // 4개의 텍스쳐를 연속적으로 할당했기 때문이다.
         directCommandList->SetGraphicsRootDescriptorTable(
             4, materialPBR->GetAlbedoTexture()->GetGpuHandle());
 
@@ -197,10 +206,19 @@ void Flight::Render(Renderer* renderer)
             7   // BrdfLut
         );
 
-        // sampler (s0, s1)
+        // shadow map SRV 테이블 바인딩 (t7~t7+N-1) → root 8
+        const auto& shadowMaps = renderer->GetShadowMaps();
+        // shadowMaps[i].srvHandle 에 연속으로 할당된 NUM_SHADOW_DSV_COUNT 개의 SRV가 있으므로,
+        // 첫 핸들만 넘기면 전체 테이블이 바인딩됨
+        // directCommandList->SetGraphicsRootDescriptorTable(8, shadowMaps[0].srvHandle.gpuHandle);
+
+
+        // sampler (s0, s1) → root 9
+        // 하나만 설정하는 이유는 일단 Root Descriptor Table 구성에서 D3D12_DESCRIPTOR_RANGE 로 할당했고
+        // LinearWrapSampler 메모리 할당 후 바로 ClampSampler를 할당했기 때문이다.
         directCommandList->SetGraphicsRootDescriptorTable(
-            8, renderer->GetDescriptorHeapManager()->GetWrapSamplerHandle());
-        // directCommandList->SetGraphicsRootDescriptorTable(9, renderer->GetDescriptorHeapManager()->GetClampSamplerHandle());
+           8, renderer->GetDescriptorHeapManager()->GetLinearWrapSamplerGpuHandle());
+        // directCommandList->SetGraphicsRootDescriptorTable(10, renderer->GetDescriptorHeapManager()->GetClampSamplerHandle());
     }
 
     // 6) MVP CBV (b0) 업데이트 & 바인딩
@@ -218,7 +236,7 @@ void Flight::Render(Renderer* renderer)
 
     // 7) Material CBV (b2) 업데이트 & 바인딩
     {
-        materialPBR->WriteToGpu(mappedMaterialBuffer);
+        materialPBR->WriteToConstantBuffer(mappedMaterialBuffer);
         directCommandList->SetGraphicsRootConstantBufferView(
             2, materialConstantBuffer->GetGPUVirtualAddress());
     }

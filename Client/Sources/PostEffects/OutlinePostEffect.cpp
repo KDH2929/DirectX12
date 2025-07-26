@@ -75,7 +75,7 @@ void OutlinePostEffect::Render(Renderer* renderer)
 
     // 3) 루트 시그니처 & PSO 바인딩
     commandList->SetGraphicsRootSignature(
-       renderer->GetRootSignatureManager()->Get(L"OutlinePostEffectRS"));
+       renderer->GetRootSignatureManager()->Get(L"PostProcessRS"));
     commandList->SetPipelineState(
         renderer->GetPSOManager()->Get(L"OutlinePostEffectPSO"));
 

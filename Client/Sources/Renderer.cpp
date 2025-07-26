@@ -1,7 +1,11 @@
 #include "Renderer.h"
+#include "RenderPass/ShadowMapPass.h"
 #include "RenderPass/ForwardOpaquePass.h"
 #include "RenderPass/ForwardTransparentPass.h"
 #include "RenderPass/PostProcessPass.h"
+#include "Lights/DirectionalLight.h"
+#include "Lights/PointLight.h"
+#include "Lights/SpotLight.h"
 #include <stdexcept>
 
 Renderer::Renderer() {}
@@ -23,15 +27,15 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
 
     shaderManager = std::make_unique<ShaderManager>(device.Get());
     std::vector<ShaderCompileDesc> shaderDescs = {
-        { L"TriangleVertexShader", L"Shaders/TriangleVertexShader.hlsl", "VSMain", "vs_5_0" },
-        { L"TrianglePixelShader",  L"Shaders/TrianglePixelShader.hlsl",  "PSMain", "ps_5_0" },
-        { L"PhongVertexShader",    L"Shaders/PhongVertexShader.hlsl",    "VSMain", "vs_5_1" },
-        { L"PhongPixelShader",     L"Shaders/PhongPixelShader.hlsl",     "PSMain", "ps_5_1" },
-        { L"PbrVertexShader",      L"Shaders/PbrVertexShader.hlsl",      "VSMain", "vs_5_1" },
-        { L"PbrPixelShader",       L"Shaders/PbrPixelShader.hlsl",       "PSMain", "ps_5_1" },
+        { L"TriangleVS", L"Shaders/TriangleVS.hlsl", "VSMain", "vs_5_0" },
+        { L"TrianglePS",  L"Shaders/TrianglePS.hlsl",  "PSMain", "ps_5_0" },
+        { L"PhongVS",    L"Shaders/PhongVS.hlsl",    "VSMain", "vs_5_1" },
+        { L"PhongPS",     L"Shaders/PhongPS.hlsl",     "PSMain", "ps_5_1" },
+        { L"PbrVS",      L"Shaders/PbrVS.hlsl",      "VSMain", "vs_5_1" },
+        { L"PbrPS",       L"Shaders/PbrPS.hlsl",       "PSMain", "ps_5_1" },
 
-        { L"SkyboxVertexShader",     L"Shaders/SkyboxVertexShader.hlsl",     "VSMain", "vs_5_0" },
-        { L"SkyboxPixelShader",      L"Shaders/SkyboxPixelShader.hlsl",      "PSMain", "ps_5_0" },
+        { L"SkyboxVS",     L"Shaders/SkyboxVS.hlsl",     "VSMain", "vs_5_0" },
+        { L"SkyboxPS",      L"Shaders/SkyboxPS.hlsl",      "PSMain", "ps_5_0" },
         
         {L"DebugNormalVS", L"Shaders/DebugNormalShader.hlsl", "VSMain", "vs_5_0"},
         {L"DebugNormalGS", L"Shaders/DebugNormalShader.hlsl", "GSMain", "gs_5_0"},
@@ -39,6 +43,17 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
 
         { L"OutlinePostEffectVS",   L"Shaders/OutlinePostEffect.hlsl",  "VSMain", "vs_5_0" },
         { L"OutlinePostEffectPS",   L"Shaders/OutlinePostEffect.hlsl",  "PSMain", "ps_5_0" },
+
+        { L"ToneMappingPostEffectVS", L"Shaders/ToneMappingPostEffect.hlsl", "VSMain", "vs_5_0" },
+        { L"ToneMappingPostEffectPS", L"Shaders/ToneMappingPostEffect.hlsl", "PSMain", "ps_5_0" },
+
+        { L"ShadowMapPassVS", L"Shaders/ShadowMapPass.hlsl", "VSMain", "vs_5_0" },
+        { L"ShadowMapPassPS", L"Shaders/ShadowMapPass.hlsl", "PSMain", "ps_5_0" },
+
+        { L"VolumetricCloudVS",    L"Shaders/VolumetricCloudVS.hlsl",   "VSMain", "vs_5_0" },
+        { L"VolumetricCloudGS",    L"Shaders/VolumetricCloudGS.hlsl",   "GSMain", "gs_5_0" },
+        { L"VolumetricCloudPS",    L"Shaders/VolumetricCloudPS.hlsl",   "PSMain", "ps_5_0" },
+    
     };
 
     if (!shaderManager->CompileAll(shaderDescs))
@@ -65,7 +80,7 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
     mainCamera->SetPosition({ 0, 0, -30 });
     mainCamera->SetPerspective(XM_PIDIV4, float(width) / height, 0.1f, 1000.f);
 
-    // Global constant buffer (b3)
+    // Global Constant Buffer (b3)
     {
         CD3DX12_HEAP_PROPERTIES props(D3D12_HEAP_TYPE_UPLOAD);
         CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(256);
@@ -77,60 +92,54 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
             reinterpret_cast<void**>(&mappedGlobalPtr));
     }
 
-    // Lighting constant buffer (b1)
+
+
+    // LightingManager 초기화
     {
-        CD3DX12_HEAP_PROPERTIES props(D3D12_HEAP_TYPE_UPLOAD);
-        CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(256);
-        ThrowIfFailed(device->CreateCommittedResource(
-            &props, D3D12_HEAP_FLAG_NONE, &desc,
-            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-            IID_PPV_ARGS(&lightingConstantBuffer)));
-        lightingConstantBuffer->Map(0, nullptr,
-            reinterpret_cast<void**>(&mappedLightingPtr));
+        // 1) LightingManager 생성
+        lightingManager = std::make_unique<LightingManager>(device.Get());
 
-        // 기본 라이팅 값 설정
-        lightingData = {};
-        lightingData.cameraWorld = mainCamera->GetPosition();
+        // 2) 카메라 정보
+        XMFLOAT3 cameraPosition = mainCamera->GetPosition();
+        XMFLOAT3 cameraForward = mainCamera->GetForwardVector();
 
-        // 카메라 기준 벡터
-        auto cameraPos = mainCamera->GetPosition();
-        auto cameraForward = mainCamera->GetForwardVector();
-        auto cameraUp = mainCamera->GetUpVector();
+        // 3) Directional Light
+        auto directionalLight = std::make_shared<DirectionalLight>();
+        directionalLight->SetStrength({ 1.0f, 1.0f, 1.0f });
+        directionalLight->SetColor({ 1.0f, 1.0f, 1.0f });
+        directionalLight->SetDirection({ 0.0f, -1.0f, 0.0f }); // 태양처럼 위에서 아래로
+        directionalLight->SetSpecularPower(64.0f);
 
-        // Directional
-        auto& Directional = lightingData.lights[0];
-        Directional.type = 0;
-        Directional.color = { 1,1,1 };
-        Directional.strength = { 1,1,1 };
-        Directional.direction = { 0,-1,0 };
-        Directional.falloffStart = 0;
-        Directional.falloffEnd = 0;      // 사용 안 함
-        Directional.specPower = 32;
+        // 4) Point Light
+        auto pointLight = std::make_shared<PointLight>();
+        pointLight->SetStrength({ 2.0f, 2.0f, 2.0f });
+        pointLight->SetColor({ 1.0f, 0.95f, 0.85f }); // 약간 따뜻한 조명
+        pointLight->SetPosition({ cameraPosition.x, cameraPosition.y + 2.0f, cameraPosition.z });
+        pointLight->SetFalloff(1.0f, 20.0f);
+        pointLight->SetSpecularPower(32.0f);
 
-        // Point
-        auto& Point = lightingData.lights[1];
-        Point.type = 1;
-        Point.color = { 1,1,1 };
-        Point.strength = { 2,2,2 };
-        Point.position = { cameraPos.x, cameraPos.y + 2.0f, cameraPos.z };
-        Point.falloffStart = 1;
-        Point.falloffEnd = 20;
-        Point.specPower = 32;
+        // 5) Spot Light (플래시라이트 느낌)
+        auto spotLight = std::make_shared<SpotLight>();
+        spotLight->SetStrength({ 3.0f, 3.0f, 3.0f });
+        spotLight->SetColor({ 1.0f, 1.0f, 1.0f });
+        spotLight->SetPosition({
+            cameraPosition.x + cameraForward.x * 3.0f,
+            cameraPosition.y + cameraForward.y * 3.0f,
+            cameraPosition.z + cameraForward.z * 3.0f
+            });
+        spotLight->SetDirection(cameraForward);
+        spotLight->SetFalloff(5.0f, 30.0f);
+        spotLight->SetSpecularPower(64.0f);
 
-        // Spot
-        auto& Spot = lightingData.lights[2];
-        Spot.type = 2;
-        Spot.color = { 1,1,1 };
-        Spot.strength = { 2,2,2 };
-        Spot.position = { cameraPos.x + cameraForward.x * 3.0f,
-                              cameraPos.y + cameraForward.y * 3.0f,
-                              cameraPos.z + cameraForward.z * 3.0f };
-        Spot.direction = { cameraForward.x, cameraForward.y, cameraForward.z };
-        Spot.falloffStart = 5;
-        Spot.falloffEnd = 30;
-        Spot.specPower = 64;
+        // 6) LightingManager에 추가
+        lightingManager->ClearLights();
+        lightingManager->AddLight(directionalLight);
+        lightingManager->AddLight(pointLight);
+        lightingManager->AddLight(spotLight);
 
-        memcpy(mappedLightingPtr, &lightingData, sizeof(lightingData));
+        // 7) 상수버퍼에 초기값 업로드
+        lightingManager->Update(cameraPosition);
+        lightingManager->WriteToConstantBuffer();
     }
 
     descriptorHeapManager->CreateWrapSampler(device.Get());
@@ -138,6 +147,7 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
 
 
     // 렌더패스 초기화
+    renderPasses[static_cast<size_t>(PassIndex::ShadowMap)] = std::make_unique<ShadowMapPass>();
     renderPasses[static_cast<size_t>(PassIndex::ForwardOpaque)] = std::make_unique<ForwardOpaquePass>();
     renderPasses[static_cast<size_t>(PassIndex::ForwardTransparent)] = std::make_unique<ForwardTransparentPass>();
     renderPasses[static_cast<size_t>(PassIndex::PostProcess)] = std::make_unique<PostProcessPass>();
@@ -212,6 +222,8 @@ const std::vector<std::shared_ptr<GameObject>>& Renderer::GetAllGameObjects() co
 
 void Renderer::Update(float deltaTime) {
 
+    lightingManager->Update(mainCamera->GetPosition());
+
     for (auto& object : gameObjects) {
         object->Update(deltaTime);
     }
@@ -220,62 +232,8 @@ void Renderer::Update(float deltaTime) {
         pass->Update(deltaTime);
     }
 
-    ImGui::Begin("Lighting Controls");
-
-    // Directional Light
-    {
-        Light& L = lightingData.lights[0];
-        ImGui::Text("Directional Light");
-        ImGui::ColorEdit3("Color##Dir", reinterpret_cast<float*>(&L.color));
-        ImGui::SliderFloat("Strength##Dir", &L.strength.x, 0.0f, 10.0f);
-        L.strength.y = L.strength.z = L.strength.x;
-        ImGui::DragFloat3("Direction##Dir",
-            reinterpret_cast<float*>(&L.direction),
-            0.01f,
-            -5.0f, 5.0f);  // ← 범위 확장
-    }
-    ImGui::Separator();
-
-    // Point Light
-    {
-        Light& L = lightingData.lights[1];
-        ImGui::Text("Point Light");
-        ImGui::ColorEdit3("Color##Point", reinterpret_cast<float*>(&L.color));
-        ImGui::SliderFloat("Strength##Point", &L.strength.x, 0.0f, 10.0f);
-        L.strength.y = L.strength.z = L.strength.x;
-        ImGui::DragFloat3("Position##Point",
-            reinterpret_cast<float*>(&L.position),
-            0.1f,
-            -5.0f, 5.0f);
-        ImGui::SliderFloat("FalloffStart##Point", &L.falloffStart, 0.0f, 20.0f);
-        ImGui::SliderFloat("FalloffEnd##Point", &L.falloffEnd, 1.0f, 100.0f);
-    }
-    ImGui::Separator();
-
-    // Spot Light
-    {
-        Light& L = lightingData.lights[2];
-        ImGui::Text("Spot Light");
-        ImGui::ColorEdit3("Color##Spot", reinterpret_cast<float*>(&L.color));
-        ImGui::SliderFloat("Strength##Spot", &L.strength.x, 0.0f, 10.0f);
-        L.strength.y = L.strength.z = L.strength.x;
-        ImGui::DragFloat3("Position##Spot",
-            reinterpret_cast<float*>(&L.position),
-            0.1f,
-            -5.0f, 5.0f);
-        ImGui::DragFloat3("Direction##Spot",
-            reinterpret_cast<float*>(&L.direction),
-            0.01f,
-            -5.0f, 5.0f);
-        ImGui::SliderFloat("FalloffStart##Spot", &L.falloffStart, 0.0f, 20.0f);
-        ImGui::SliderFloat("FalloffEnd##Spot", &L.falloffEnd, 1.0f, 100.0f);
-        ImGui::SliderFloat("SpecPower##Spot", &L.specPower, 1.0f, 256.0f);
-    }
-
-    ImGui::End();
-
-    lightingData.cameraWorld = mainCamera->GetPosition();
-    memcpy(mappedLightingPtr, &lightingData, sizeof(lightingData));
+    lightingManager->UpdateImGui();
+    lightingManager->WriteToConstantBuffer();
 }
 
 void Renderer::Render() {
@@ -362,6 +320,11 @@ TextureManager* Renderer::GetTextureManager() const
     return textureManager.get();
 }
 
+LightingManager* Renderer::GetLightingManager() const
+{
+    return lightingManager.get();
+}
+
 Camera* Renderer::GetCamera() const {
     return mainCamera.get();
 }
@@ -375,20 +338,17 @@ EnvironmentMaps& Renderer::GetEnvironmentMaps()
     return environmentMaps;
 }
 
+ID3D12Resource* Renderer::GetGlobalConstantBuffer() const
+{
+    return globalConstantBuffer.Get();
+}
+
 int Renderer::GetViewportWidth() const {
     return int(viewport.Width);
 }
 
 int Renderer::GetViewportHeight() const {
     return int(viewport.Height);
-}
-
-ID3D12Resource* Renderer::GetLightingConstantBuffer() const {
-    return lightingConstantBuffer.Get();
-}
-
-ID3D12Resource* Renderer::GetGlobalConstantBuffer() const {
-    return globalConstantBuffer.Get();
 }
 
 bool Renderer::InitImGui(HWND hwnd)
@@ -435,12 +395,17 @@ UINT Renderer::GetBackBufferIndex() const
 
 D3D12_GPU_DESCRIPTOR_HANDLE Renderer::GetSceneColorSrvHandle() const
 {
-    return sceneColorSrvHandle.gpu;
+    return sceneColorSrvHandle.gpuHandle;
 }
 
 ID3D12Resource* Renderer::GetSceneColorBuffer() const
 {
     return sceneColorBuffer.Get();
+}
+
+const std::array<ShadowMap, MAX_SHADOW_DSV_COUNT>& Renderer::GetShadowMaps() const
+{
+    return shadowMaps;
 }
 
 bool Renderer::InitD3D(HWND hwnd, int width, int height)
@@ -543,6 +508,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
     // 추후에 여기에 GBuffer 도 처리하면 됨
     // Off-screen SceneColor RTV 생성
     {
+        // Format 을 Float16으로 해야 HDR 이미지 처리가 가능
         D3D12_RESOURCE_DESC texDesc = {};
         texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
         texDesc.Alignment = 0;
@@ -550,7 +516,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         texDesc.Height = height;
         texDesc.DepthOrArraySize = 1;
         texDesc.MipLevels = 1;
-        texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
         texDesc.SampleDesc.Count = 1;
         texDesc.SampleDesc.Quality = 0;
         texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -585,7 +551,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         device->CreateShaderResourceView(
             sceneColorBuffer.Get(),   // SRV를 만들 리소스
             nullptr,                  // nullptr 쓰면 리소스 포맷에 맞는 기본 디스크립터
-            sceneColorSrvHandle.cpu            // CPU 디스크립터 핸들
+            sceneColorSrvHandle.cpuHandle            // CPU 디스크립터 핸들
         );
     }
 
@@ -630,10 +596,72 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         descriptorHeapManager->CreateDepthStencilView(
             device.Get(),
             depthStencilBuffer.Get(),
+            nullptr,        // 디폴트값 사용
             static_cast<UINT>(DsvIndex::DepthStencil));
     }
 
-    // 12) Direct 커맨드 할당자 & 리스트
+
+    // 12) ShadowMap DSV 및 SRV 생성
+    for (int i = 0; i < MAX_SHADOW_DSV_COUNT; ++i)
+    {
+        // 리소스 생성
+        D3D12_RESOURCE_DESC shadowDesc = {};
+        shadowDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        shadowDesc.Width = SHADOW_MAP_WIDTH;
+        shadowDesc.Height = SHADOW_MAP_HEIGHT;
+        shadowDesc.DepthOrArraySize = 1;
+        shadowDesc.MipLevels = 1;
+        shadowDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;  // SRV 로도 사용하기 위함
+        shadowDesc.SampleDesc.Count = 1;
+        shadowDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+        D3D12_CLEAR_VALUE clearValue = {};
+        clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;  // DSV에서 사용할 포맷
+        clearValue.DepthStencil.Depth = 1.0f;
+        clearValue.DepthStencil.Stencil = 0;
+
+        CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
+        ThrowIfFailed(device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &shadowDesc,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &clearValue,
+            IID_PPV_ARGS(&shadowMaps[i].depthBuffer)
+        ));
+
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+        dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; // 또는 DXGI_FORMAT_D32_FLOAT, 용도에 따라
+        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+
+        // DSV 등록
+        descriptorHeapManager->CreateDepthStencilView(
+            device.Get(),
+            shadowMaps[i].depthBuffer.Get(),
+            &dsvDesc,
+            static_cast<UINT>(DsvIndex::ShadowMap0) + i);
+
+        shadowMaps[i].dsvHandle = descriptorHeapManager->GetDsvHandle(static_cast<UINT>(DsvIndex::ShadowMap0) + i);
+
+        // SRV 등록 (shader에서 샘플링 용도)
+        shadowMaps[i].srvHandle = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;  // 반드시 이 포맷 사용해야 SRV로 가능
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+        device->CreateShaderResourceView(
+            shadowMaps[i].depthBuffer.Get(),
+            &srvDesc,
+            shadowMaps[i].srvHandle.cpuHandle);
+    }
+
+
+    // 13) Direct 커맨드 할당자 & 리스트
     ThrowIfFailed(device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(&directCommandAllocator)));
@@ -645,14 +673,14 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         IID_PPV_ARGS(&directCommandList)));
     directCommandList->Close();
 
-    // 13) Direct 큐용 펜스 & 이벤트
+    // 14) Direct 큐용 펜스 & 이벤트
     ThrowIfFailed(device->CreateFence(
         0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&directFence)));
     directFenceValue = 1;
     directFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (!directFenceEvent) return false;
 
-    // 14) Viewport & Scissor 설정
+    // 15) Viewport & Scissor 설정
     viewport = { 0.0f, 0.0f, float(width), float(height), 0.0f, 1.0f };
     scissorRect = { 0, 0, width, height };
 
@@ -661,12 +689,12 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
 
 void Renderer::PopulateCommandList()
 {
-    // 1) Reset allocator & list
+    // Reset allocator & list
     directCommandAllocator->Reset();
     directCommandList->Reset(directCommandAllocator.Get(), nullptr);
 
 
-    // 2) 백버퍼 Transition: PRESENT → RENDER_TARGET
+    // 백버퍼 Transition: PRESENT → RENDER_TARGET
     CD3DX12_RESOURCE_BARRIER toRT =
         CD3DX12_RESOURCE_BARRIER::Transition(
             backBuffers[backBufferIndex].Get(),
@@ -674,23 +702,7 @@ void Renderer::PopulateCommandList()
             D3D12_RESOURCE_STATE_RENDER_TARGET);
     directCommandList->ResourceBarrier(1, &toRT);
 
-    // 3) RTV/DSV 바인딩 & 클리어
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle =
-        descriptorHeapManager->GetRtvHandle(static_cast<UINT>(RtvIndex::BackBuffer0) + backBufferIndex);
 
-    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle =
-        descriptorHeapManager->GetDsvHandle(static_cast<UINT>(DsvIndex::DepthStencil));
-
-    const FLOAT clearColor[4] = { 0, 0, 0, 1 };
-    directCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-    directCommandList->ClearDepthStencilView(dsvHandle,
-        D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-    // 4) 뷰포트/시저 설정
-    directCommandList->RSSetViewports(1, &viewport);
-    directCommandList->RSSetScissorRects(1, &scissorRect);
-
-    // 5) 렌더 패스 수행
     for (size_t i = 0; i < static_cast<size_t>(PassIndex::Count); ++i)
     {
         renderPasses[i]->Render(this);
@@ -707,7 +719,7 @@ void Renderer::PopulateCommandList()
     }
 
 
-    // 6) RENDER_TARGET → PRESENT 전환
+    // RENDER_TARGET → PRESENT 전환
     CD3DX12_RESOURCE_BARRIER toPresent =
         CD3DX12_RESOURCE_BARRIER::Transition(
             backBuffers[backBufferIndex].Get(),
@@ -716,7 +728,7 @@ void Renderer::PopulateCommandList()
     directCommandList->ResourceBarrier(1, &toPresent);
 
 
-    // 7) 리스트 종료
+    // 리스트 종료
     directCommandList->Close();
 }
 

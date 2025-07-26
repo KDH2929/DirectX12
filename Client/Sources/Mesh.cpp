@@ -50,13 +50,13 @@ static void BuildCube(std::vector<MeshVertex>& outVertices,
          // Bottom face (-Y)
           4, 6, 5,   4, 7, 6,
           // Back face (-Z)
-           8,10, 9,   8,11,10,
-           // Front face (+Z)
-           12,14,13,  12,15,14,
-           // Left face (-X)
-           16,18,17,  16,19,18,
-           // Right face (+X)
-           20,22,21,  20,23,22
+            8,10, 9,   8,11,10,
+            // Front face (+Z)
+            12,14,13,  12,15,14,
+            // Left face (-X)
+            16,18,17,  16,19,18,
+            // Right face (+X)
+            20,22,21,  20,23,22
     };
 }
 

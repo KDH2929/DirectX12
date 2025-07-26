@@ -57,8 +57,8 @@ public:
     std::shared_ptr<Texture> GetAmbientOcclusionTexture() const { return ambientOcclusionTexture; }
     std::shared_ptr<Texture> GetEmissiveTexture() const { return emissiveTexture; }
 
-    // destination: CB_MaterialPBR mapped CPU address
-    void WriteToGpu(void* destination) const;
+    // GPU에서 사용할 CB_MaterialPBR 채우는 함수
+    void WriteToConstantBuffer(void* constantBuffer) const;
 
 private:
     std::shared_ptr<Texture> albedoTexture;

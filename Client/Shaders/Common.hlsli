@@ -5,6 +5,8 @@
 #define NUM_POINT_LIGHTS 1
 #define NUM_SPOT_LIGHTS 1
 
+#define MAX_SHADOW_DSV_COUNT (NUM_DIR_LIGHTS + NUM_SPOT_LIGHTS + 6 * NUM_POINT_LIGHTS)
+
 
 struct Light
 {

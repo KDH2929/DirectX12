@@ -158,6 +158,10 @@
     <ClCompile Include="Sources\GameObjects\Skybox.cpp" />
     <ClCompile Include="Sources\GameObjects\SphereObject.cpp" />
     <ClCompile Include="Sources\InputManager.cpp" />
+    <ClCompile Include="Sources\LightingManager.cpp" />
+    <ClCompile Include="Sources\Lights\DirectionalLight.cpp" />
+    <ClCompile Include="Sources\Lights\PointLight.cpp" />
+    <ClCompile Include="Sources\Lights\SpotLight.cpp" />
     <ClCompile Include="Sources\main.cpp" />
     <ClCompile Include="Sources\Material.cpp" />
     <ClCompile Include="Sources\Mesh.cpp" />
@@ -166,11 +170,13 @@
     <ClCompile Include="Sources\PhysicsManager.cpp" />
     <ClCompile Include="Sources\PipelineStateManager.cpp" />
     <ClCompile Include="Sources\PostEffects\OutlinePostEffect.cpp" />
+    <ClCompile Include="Sources\PostEffects\ToneMappingPostEffect.cpp" />
     <ClCompile Include="Sources\Renderer.cpp" />
     <ClCompile Include="Sources\RenderPass\ForwardOpaquePass.cpp" />
     <ClCompile Include="Sources\RenderPass\ForwardTransparentPass.cpp" />
     <ClCompile Include="Sources\RenderPass\GBufferPass.cpp" />
     <ClCompile Include="Sources\RenderPass\PostProcessPass.cpp" />
+    <ClCompile Include="Sources\RenderPass\ShadowMapPass.cpp" />
     <ClCompile Include="Sources\RootSignatureManager.cpp" />
     <ClCompile Include="Sources\ShaderCompiler.cpp" />
     <ClCompile Include="Sources\ShaderManager.cpp" />
@@ -179,8 +185,17 @@
     <ClCompile Include="Sources\GameObjects\TriangleObject.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Sources\DescriptorHandle.h" />
+    <ClInclude Include="Sources\Lights\BaseLight.h" />
+    <ClInclude Include="Sources\Lights\DirectionalLight.h" />
+    <ClInclude Include="Sources\Lights\LightData.h" />
+    <ClInclude Include="Sources\LightingManager.h" />
+    <ClInclude Include="Sources\Lights\LightType.h" />
+    <ClInclude Include="Sources\Lights\PointLight.h" />
+    <ClInclude Include="Sources\Lights\SpotLight.h" />
     <ClInclude Include="Sources\PostEffects\OutlinePostEffect.h" />
     <ClInclude Include="Sources\PostEffects\PostEffect.h" />
+    <ClInclude Include="Sources\PostEffects\ToneMappingPostEffect.h" />
     <ClInclude Include="Sources\RenderPass\ForwardOpaquePass.h" />
     <ClInclude Include="Sources\RenderPass\ForwardTransparentPass.h" />
     <ClInclude Include="Sources\RenderPass\GBufferPass.h" />
@@ -198,7 +213,6 @@
     <ClInclude Include="Sources\GameObjects\Skybox.h" />
     <ClInclude Include="Sources\GameObjects\SphereObject.h" />
     <ClInclude Include="Sources\InputManager.h" />
-    <ClInclude Include="Sources\Light.h" />
     <ClInclude Include="Sources\Material.h" />
     <ClInclude Include="Sources\MathUtil.h" />
     <ClInclude Include="Sources\Mesh.h" />
@@ -208,42 +222,58 @@
     <ClInclude Include="Sources\PipelineStateDesc.h" />
     <ClInclude Include="Sources\PipelineStateManager.h" />
     <ClInclude Include="Sources\Renderer.h" />
+    <ClInclude Include="Sources\RenderPass\ShadowMapPass.h" />
     <ClInclude Include="Sources\RootSignatureManager.h" />
     <ClInclude Include="Sources\ShaderCompileDesc.h" />
     <ClInclude Include="Sources\ShaderCompiler.h" />
     <ClInclude Include="Sources\ShaderManager.h" />
+    <ClInclude Include="Sources\ShadowMap.h" />
     <ClInclude Include="Sources\Texture.h" />
     <ClInclude Include="Sources\TextureManager.h" />
     <ClInclude Include="Sources\GameObjects\TriangleObject.h" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\DebugNormalShader.hlsl">
+    <FxCompile Include="Shaders\ShadowMapPass.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Shaders\ExplosionPixelShader.hlsl">
+    <FxCompile Include="Shaders\ToneMappingPostEffect.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Shaders\VolumetricCloudGS.hlsl">
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">GSMain</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">GSMain</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Geometry</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\VolumetricCloudPS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Shaders\FlashPixelShader.hlsl">
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="Shaders\FlashVertexShader.hlsl">
+    <FxCompile Include="Shaders\VolumetricCloudVS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\DebugNormalShader.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Shaders\SpritePS.hlsl">
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="Shaders\OutlinePostEffect.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Shaders\PbrPixelShader.hlsl">
+    <FxCompile Include="Shaders\PbrPS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
@@ -251,7 +281,7 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
     </FxCompile>
-    <FxCompile Include="Shaders\PbrVertexShader.hlsl">
+    <FxCompile Include="Shaders\PbrVS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.1</ShaderModel>
@@ -259,53 +289,47 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.1</ShaderModel>
     </FxCompile>
-    <FxCompile Include="Shaders\PhongPixelShader.hlsl">
+    <FxCompile Include="Shaders\PhongPS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Shaders\PhongVertexShader.hlsl">
+    <FxCompile Include="Shaders\PhongVS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VSMain</EntryPointName>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Shaders\TrianglePixelShader.hlsl">
+    <FxCompile Include="Shaders\TrianglePS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
     </FxCompile>
-    <FxCompile Include="Shaders\TriangleVertexShader.hlsl">
+    <FxCompile Include="Shaders\TriangleVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VSMain</EntryPointName>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VSMain</EntryPointName>
     </FxCompile>
-    <FxCompile Include="Shaders\SkyboxPixelShader.hlsl">
+    <FxCompile Include="Shaders\SkyboxPS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Shaders\SkyboxVertexShader.hlsl">
+    <FxCompile Include="Shaders\SkyboxVS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Shaders\SmokePixelShader.hlsl">
+    <FxCompile Include="Shaders\UVDistortionPS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="Shaders\SmokeVertexShader.hlsl">
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VSMain</EntryPointName>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VSMain</EntryPointName>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="Shaders\WireframeShader.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VSMain</EntryPointName>
@@ -315,13 +339,13 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Shaders\UI2DPixelShader.hlsl">
+    <FxCompile Include="Shaders\UI2DPS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Shaders\UI2DVertexShader.hlsl">
+    <FxCompile Include="Shaders\UI2DVS.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VSMain</EntryPointName>
@@ -330,7 +354,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Shaders\CloudCommon.hlsli" />
     <None Include="Shaders\Common.hlsli" />
+    <None Include="Shaders\Noise3D.hlsli" />
     <None Include="Shaders\PbrLighting.hlsli">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>

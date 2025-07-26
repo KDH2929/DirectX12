@@ -108,6 +108,24 @@
     <ClCompile Include="Sources\PostEffects\OutlinePostEffect.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\PostEffects\ToneMappingPostEffect.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\LightingManager.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\RenderPass\ShadowMapPass.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Lights\DirectionalLight.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Lights\PointLight.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\Lights\SpotLight.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Game.h">
@@ -141,9 +159,6 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Sources\Mesh.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Sources\Light.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Sources\ConstantBuffers.h">
@@ -218,60 +233,89 @@
     <ClInclude Include="Sources\PostEffects\PostEffect.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Sources\PostEffects\ToneMappingPostEffect.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Lights\BaseLight.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Lights\LightData.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Lights\LightType.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Lights\DirectionalLight.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Lights\PointLight.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Lights\SpotLight.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\LightingManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ShadowMap.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\DescriptorHandle.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\RenderPass\ShadowMapPass.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\TriangleVertexShader.hlsl">
+    <FxCompile Include="Shaders\TriangleVS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\TrianglePixelShader.hlsl">
+    <FxCompile Include="Shaders\TrianglePS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\PhongVertexShader.hlsl">
+    <FxCompile Include="Shaders\PhongVS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\PhongPixelShader.hlsl">
+    <FxCompile Include="Shaders\PhongPS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\SkyboxVertexShader.hlsl">
+    <FxCompile Include="Shaders\SkyboxVS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\SkyboxPixelShader.hlsl">
+    <FxCompile Include="Shaders\SkyboxPS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\FlashVertexShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\FlashPixelShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\SmokeVertexShader.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\SmokePixelShader.hlsl">
+    <FxCompile Include="Shaders\UVDistortionPS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\WireframeShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\UI2DVertexShader.hlsl">
+    <FxCompile Include="Shaders\UI2DVS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\UI2DPixelShader.hlsl">
+    <FxCompile Include="Shaders\UI2DPS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\ExplosionPixelShader.hlsl">
+    <FxCompile Include="Shaders\SpritePS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\PbrVertexShader.hlsl">
+    <FxCompile Include="Shaders\PbrVS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\PbrPixelShader.hlsl">
+    <FxCompile Include="Shaders\PbrPS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\DebugNormalShader.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\OutlinePostEffect.hlsl" />
+    <FxCompile Include="Shaders\VolumetricCloudPS.hlsl" />
+    <FxCompile Include="Shaders\VolumetricCloudVS.hlsl" />
+    <FxCompile Include="Shaders\VolumetricCloudGS.hlsl" />
+    <FxCompile Include="Shaders\ToneMappingPostEffect.hlsl" />
+    <FxCompile Include="Shaders\ShadowMapPass.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Common.hlsli">
@@ -284,5 +328,7 @@
     <None Include="Shaders\PbrLighting.hlsli">
       <Filter>Shader</Filter>
     </None>
+    <None Include="Shaders\Noise3D.hlsli" />
+    <None Include="Shaders\CloudCommon.hlsli" />
   </ItemGroup>
 </Project>

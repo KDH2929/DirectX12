@@ -17,11 +17,12 @@
 #include "RootSignatureManager.h"
 #include "DescriptorHeapManager.h"
 #include "TextureManager.h"
+#include "LightingManager.h"
 #include "RenderPass/RenderPass.h"
 #include "Camera.h"
-#include "Light.h"
 #include "EnvironmentMaps.h"
 #include "ConstantBuffers.h"
+#include "ShadowMap.h"
 
 
 #pragma comment(lib, "d3d12.lib")
@@ -94,20 +95,20 @@ public:
     ShaderManager* GetShaderManager() const;
     DescriptorHeapManager* GetDescriptorHeapManager() const;
     TextureManager* GetTextureManager() const;
+    LightingManager* GetLightingManager() const;
 
     // 카메라
     Camera* GetCamera() const;
     void SetCamera(std::shared_ptr<Camera> cam);
 
     EnvironmentMaps& GetEnvironmentMaps();
+    ID3D12Resource* GetGlobalConstantBuffer() const;
+
 
     // Viewport
     int GetViewportWidth() const;
     int GetViewportHeight() const;
 
-    // 상수 버퍼
-    ID3D12Resource* GetLightingConstantBuffer() const;
-    ID3D12Resource* GetGlobalConstantBuffer()   const;
 
     // ImGui 함수들
     bool InitImGui(HWND hwnd);
@@ -119,6 +120,9 @@ public:
 
     D3D12_GPU_DESCRIPTOR_HANDLE GetSceneColorSrvHandle() const;
     ID3D12Resource* GetSceneColorBuffer() const;
+
+    const std::array<ShadowMap, MAX_SHADOW_DSV_COUNT>& GetShadowMaps() const;
+
 
 
 private:
@@ -139,11 +143,16 @@ public:
         RtvCount = BackBuffer0 + BackBufferCount
     };
 
+    // 섀도우맵은 라이팅개수만큼 필요하지만 현재구조에선 라이팅 개수는 3개로 고정하였음
+    // 추후 경우에 따라 구조변경 필요할 수도 있음
+    // Point Light 는 6면 큐브맵이 필요하여 ShadowMap 개수를 정하였음
     enum class DsvIndex : uint8_t {
         DepthStencil = 0,
-        DsvCount = 1
+        ShadowMap0 = 1,
+        DsvCount = ShadowMap0 + MAX_SHADOW_DSV_COUNT
     };
 
+    // 디퍼드렌더링은 현재 미구현
     enum class GBufferSlot : uint8_t {
         Albedo = 0,   // RGB: 알베도, A: Specula
         Normal = 1,   // RGB: 법선, A: Glossiness
@@ -175,6 +184,9 @@ private:
     ComPtr<ID3D12Resource>          sceneColorBuffer;
     ComPtr<ID3D12Resource>          depthStencilBuffer;
 
+    // Shadow Map
+    std::array<ShadowMap, MAX_SHADOW_DSV_COUNT> shadowMaps;
+
     // Direct-queue Fence
     ComPtr<ID3D12Fence>             directFence;
     UINT64                          directFenceValue = 0;
@@ -195,6 +207,7 @@ private:
     std::unique_ptr<PipelineStateManager>    psoManager;
     std::unique_ptr<DescriptorHeapManager>   descriptorHeapManager;
     std::unique_ptr<TextureManager>          textureManager;
+    std::unique_ptr<LightingManager>         lightingManager;
 
     std::vector<std::shared_ptr<GameObject>> gameObjects;
     std::vector<std::shared_ptr<GameObject>> opaqueObjects;
@@ -203,15 +216,11 @@ private:
     std::shared_ptr<Camera>       mainCamera;
 
 
-    // Constant buffers
+    // Global Constant buffer
+
     CB_Global           globalData;
     ComPtr<ID3D12Resource> globalConstantBuffer;
-    UINT8* mappedGlobalPtr = nullptr;
-
-    std::vector<Light>  lights;
-    CB_Lighting         lightingData;
-    ComPtr<ID3D12Resource> lightingConstantBuffer;
-    UINT8* mappedLightingPtr = nullptr;
+    UINT8* mappedGlobalPtr = nullptr;           // GPU에 있는 Constant Buffer 리소스를 CPU에서 접근 가능한 메모리 주소로 맵핑된 포인터
 
 
     // 환경맵
@@ -219,10 +228,11 @@ private:
 
 
     enum PassIndex : uint8_t {
-        ForwardOpaque = 0,
+        ShadowMap = 0,
+        ForwardOpaque,
         ForwardTransparent,
         PostProcess,
-        Count       // 렌더패스 종류개수
+        Count
     };
 
     std::array<std::unique_ptr<RenderPass>, PassIndex::Count> renderPasses;

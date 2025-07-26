@@ -1,7 +1,9 @@
 #pragma once
-
-#include "Light.h"
+    
+#include "Lights/LightData.h"
+#include "Lights/LightType.h"
 #include <DirectXMath.h>
+
 
 using namespace DirectX;
 
@@ -17,7 +19,7 @@ struct CB_Lighting
 {
     XMFLOAT3 cameraWorld;
     float padding; // align 16 bytes
-    Light lights[MAX_LIGHTS];
+    LightData lights[MAX_LIGHTS];
 };
 
 
@@ -76,4 +78,31 @@ struct CB_OutlineOptions
 
     XMFLOAT3 OutlineColor;  // 12 bytes
     float    MixFactor;     // 4 bytes
+};
+
+
+struct CB_ToneMapping
+{
+    float    Exposure;
+    float    Gamma;
+    XMFLOAT2 _pad;
+};
+
+
+struct CB_ShadowMapPass {
+    XMMATRIX modelWorld;
+    XMMATRIX lightViewProj;
+};
+
+
+struct CB_CloudParameters {
+    XMFLOAT3 VolumeAABBMin;
+    float    _pad0;
+    XMFLOAT3 VolumeAABBMax;
+    float    _pad1;
+    XMFLOAT3 CameraPosition;
+    float    StepSize;
+    XMFLOAT3 SunDirection;
+    float    NoiseFrequency;
+    XMFLOAT4X4 InverseViewProj;
 };

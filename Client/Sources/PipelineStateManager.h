@@ -18,7 +18,7 @@ public:
     explicit PipelineStateManager(Renderer* renderer_);
     ~PipelineStateManager();
 
-    // 초기화 단계에서 삼각형 전용 PSO 생성
+    // 초기화 단계에서 전용 PSO 생성
     bool InitializePSOs();
 
     // 필요 시 PSO를 생성하거나 기존 캐시 반환
@@ -38,6 +38,9 @@ private:
     PipelineStateDesc CreateSkyboxPSODesc() const;
     PipelineStateDesc CreateDebugNormalPSODesc() const;
     PipelineStateDesc CreateOutlinePostEffectPSODesc() const;
+    PipelineStateDesc CreateToneMappingPostEffectPSODesc() const;
+    PipelineStateDesc CreateShadowMapPassPSODesc() const;
+    PipelineStateDesc CreateVolumetricCloudPSODesc() const;
 
 
     // PSO 생성 내부 로직

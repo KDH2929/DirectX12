@@ -23,6 +23,8 @@ bool Skybox::Initialize(Renderer* renderer)
     cubeMesh = Mesh::CreateCube(renderer);
     if (!cubeMesh)
         return false;
+    
+    // SetMesh(cubeMesh);
 
     // 2) RS/PSO ÂüÁ¶¸¸
     rootSignature = renderer->GetRootSignatureManager()->Get(L"SkyboxRS");

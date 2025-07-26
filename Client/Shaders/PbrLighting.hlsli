@@ -1,9 +1,12 @@
 #include "Common.hlsli"
 
+// reference : https://github.com/JoeyDeVries/LearnOpenGL/blob/master/src/6.pbr/1.1.lighting/1.1.pbr.fs
+
 static const float PI = 3.14159265;
 static const float3 F_DIELECTRIC = float3(0.04, 0.04, 0.04);
 
 // 0=Albedo, 1=Normal, 2=Metallic, 3=Roughness
+// 추후 하나의 텍스쳐의 R, G, B 채널로 값을 전달하도록 변경해야함
 Texture2D<float4> textureHeap[4] : register(t0, space0);
 
 // Sampler
@@ -14,6 +17,12 @@ SamplerState linearClampSampler : register(s1);
 TextureCube<float4> irradianceMap : register(t4, space0);
 TextureCube<float4> prefilteredMap : register(t5, space0);
 Texture2D<float2> brdfLut : register(t6, space0);
+
+
+// Shadow depth maps
+// Texture2D<float> shadowDepthMap[MAX_SHADOW_DSV_COUNT] : register(t7, space0);
+// SamplerComparisonState shadowSampler : register(s2);        // 깊이비교용 샘플러
+
 
 struct MaterialPBR
 {
@@ -86,6 +95,7 @@ float SampleMetallic(float2 uv)
     float m = material.metallic;
     if (HasMap(USE_METALLIC_MAP))
     {
+        // Flight Asset 의 alpha 채널에 Roughness 텍스쳐를 넣어놓았음. 
         m *= textureHeap[2].Sample(linearWrapSampler, uv).a;
     }
     return saturate(m);
@@ -222,10 +232,14 @@ float3 ComputePBR(float3 worldPos, float3 worldNormal, float2 uv)
             if (dist > Ld.falloffEnd)
                 continue;
             L = toLight / dist;
+            
+            // 거리 감쇠
             atten = saturate((Ld.falloffEnd - dist) / (Ld.falloffEnd - Ld.falloffStart));
             if (Ld.type == 2)
             {
                 float cosTheta = dot(L, normalize(-Ld.direction));
+                
+                // 각도 감쇠
                 float spotAtt = saturate((cosTheta - Ld.falloffStart) / (Ld.falloffEnd - Ld.falloffStart));
                 atten *= spotAtt;
             }

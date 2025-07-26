@@ -5,14 +5,9 @@
 #include <array>
 #include <stdexcept>
 
-using Microsoft::WRL::ComPtr;
+#include "DescriptorHandle.h"
 
-struct DescriptorHandle
-{
-    D3D12_CPU_DESCRIPTOR_HANDLE cpu{ 0 };
-    D3D12_GPU_DESCRIPTOR_HANDLE gpu{ 0 };
-    UINT index = 0;   // offset inside the heap
-};
+using Microsoft::WRL::ComPtr;
 
 /*
 현재 ImGui 와 Sampler 관련 Heap 의 CPU/GPU Handle은 관리하지만 
@@ -68,16 +63,19 @@ public:
     D3D12_GPU_DESCRIPTOR_HANDLE CreateWrapSampler(ID3D12Device* device);
     D3D12_GPU_DESCRIPTOR_HANDLE CreateClampSampler(ID3D12Device* device);
 
-    D3D12_GPU_DESCRIPTOR_HANDLE GetWrapSamplerHandle() const { return wrapSamplerHandle; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetClampSamplerHandle() const { return clampSamplerHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetLinearWrapSamplerGpuHandle() const { return linearWrapSamplerHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetLinearClampSamplerGpuHandle() const { return linearClampSamplerHandle; }
 
     // RTV/DSV 뷰 생성
     bool CreateRenderTargetView(ID3D12Device* device, ID3D12Resource* resource, UINT heapIndex);
-    bool CreateDepthStencilView(ID3D12Device* device, ID3D12Resource* resource, UINT heapIndex);
+    bool CreateDepthStencilView(ID3D12Device* device, ID3D12Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* desc, UINT heapIndex);
 
     // RTV/DSV CPU 핸들 조회
-    D3D12_CPU_DESCRIPTOR_HANDLE GetRtvHandle(UINT heapIndex) const;
-    D3D12_CPU_DESCRIPTOR_HANDLE GetDsvHandle(UINT heapIndex) const;
+    D3D12_CPU_DESCRIPTOR_HANDLE GetRtvCpuHandle(UINT heapIndex) const;
+    D3D12_CPU_DESCRIPTOR_HANDLE GetDsvCpuHandle(UINT heapIndex) const;
+
+    DescriptorHandle GetRtvHandle(UINT heapIndex) const;
+    DescriptorHandle GetDsvHandle(UINT heapIndex) const;
 
 private:
     struct HeapInfo
@@ -106,6 +104,6 @@ private:
 
     bool CreateHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT count, bool shaderVisible);
 
-    D3D12_GPU_DESCRIPTOR_HANDLE wrapSamplerHandle;
-    D3D12_GPU_DESCRIPTOR_HANDLE clampSamplerHandle;
+    D3D12_GPU_DESCRIPTOR_HANDLE linearWrapSamplerHandle;
+    D3D12_GPU_DESCRIPTOR_HANDLE linearClampSamplerHandle;
 };

@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include "ConstantBuffers.h"
 
-void Material::WriteToGpu(void* destination) const
+void Material::WriteToConstantBuffer(void* constantBuffer) const
 {
     CB_MaterialPBR cb{};
     cb.baseColor = parameters.baseColor;
@@ -21,5 +21,5 @@ void Material::WriteToGpu(void* destination) const
     if (roughnessTexture) flags |= USE_ROUGHNESS_MAP;
     cb.flags = flags;
 
-    std::memcpy(destination, &cb, sizeof(cb));
+    std::memcpy(constantBuffer, &cb, sizeof(cb));
 }
