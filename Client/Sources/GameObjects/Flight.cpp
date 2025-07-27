@@ -170,55 +170,50 @@ void Flight::Render(Renderer* renderer)
     directCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 
-    // DebugNormalRS & PSO 바인딩
-    directCommandList->SetGraphicsRootSignature(
-        renderer->GetRootSignatureManager()->Get(L"DebugNormalRS"));
-    directCommandList->SetGraphicsRootConstantBufferView(
-        0, constantMVPBuffer->GetGPUVirtualAddress());
-    directCommandList->SetPipelineState(
-        renderer->GetPSOManager()->Get(L"DebugNormalPSO"));
-    // 포인트 리스트로 법선만 찍기
-    directCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-
     // 3) PBR 전용 RS & PSO 바인딩
-    directCommandList->SetGraphicsRootSignature(
-        renderer->GetRootSignatureManager()->Get(L"PbrRS"));
-    directCommandList->SetPipelineState(
-        renderer->GetPSOManager()->Get(L"PbrPSO"));
+    ID3D12RootSignature* pbrRootSignature = renderer->GetRootSignatureManager()->Get(L"PbrRS");
+    ID3D12PipelineState* pbrPso = renderer->GetPSOManager()->Get(L"PbrPSO");
 
-    // 4) 프레임 전역 CBV 바인딩 (b1: Lighting, b3: Global)
-    directCommandList->SetGraphicsRootConstantBufferView(1, renderer->GetLightingManager()->GetConstantBuffer()->GetGPUVirtualAddress());
+    directCommandList->SetGraphicsRootSignature(pbrRootSignature);
+    directCommandList->SetPipelineState(pbrPso);
+    
+    // 4) 프레임 전역 CBV 바인딩 (b1: Lighting, b3: Global, b4: ShadowMapViewProj)
+    directCommandList->SetGraphicsRootConstantBufferView(1, renderer->GetLightingManager()->GetLightingCB()->GetGPUVirtualAddress());
     directCommandList->SetGraphicsRootConstantBufferView(3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
+    directCommandList->SetGraphicsRootConstantBufferView(4, renderer->GetLightingManager()->GetShadowViewProjCB()->GetGPUVirtualAddress());
 
-    // 5) SRV 및 Sampler 테이블 바인딩 (root slot 4~9)
+    // 5) SRV 및 Sampler 테이블 바인딩 (root slot 5~10)
     {
-        // material textures (t0~t3) → root 4
+        // material textures (t0~t3) → root 5
         // 하나만 설정하는 이유는 일단 Root Descriptor Table 구성에서 D3D12_DESCRIPTOR_RANGE 로 할당했고
         // 4개의 텍스쳐를 연속적으로 할당했기 때문이다.
-        directCommandList->SetGraphicsRootDescriptorTable(
-            4, materialPBR->GetAlbedoTexture()->GetGpuHandle());
 
+        directCommandList->SetGraphicsRootDescriptorTable(
+            5, materialPBR->GetAlbedoTexture()->GetGpuHandle());
+        
         // IBL 환경맵 바인딩 (t4~t6)
         renderer->GetEnvironmentMaps().Bind(
             directCommandList,
-            5,  // Irradiance
-            6,  // Specular
-            7   // BrdfLut
+            6,  // Irradiance
+            7,  // Specular
+            8   // BrdfLut
         );
-
-        // shadow map SRV 테이블 바인딩 (t7~t7+N-1) → root 8
-        const auto& shadowMaps = renderer->GetShadowMaps();
-        // shadowMaps[i].srvHandle 에 연속으로 할당된 NUM_SHADOW_DSV_COUNT 개의 SRV가 있으므로,
-        // 첫 핸들만 넘기면 전체 테이블이 바인딩됨
-        // directCommandList->SetGraphicsRootDescriptorTable(8, shadowMaps[0].srvHandle.gpuHandle);
 
 
         // sampler (s0, s1) → root 9
         // 하나만 설정하는 이유는 일단 Root Descriptor Table 구성에서 D3D12_DESCRIPTOR_RANGE 로 할당했고
         // LinearWrapSampler 메모리 할당 후 바로 ClampSampler를 할당했기 때문이다.
         directCommandList->SetGraphicsRootDescriptorTable(
-           8, renderer->GetDescriptorHeapManager()->GetLinearWrapSamplerGpuHandle());
+           9, renderer->GetDescriptorHeapManager()->GetLinearWrapSamplerGpuHandle());
         // directCommandList->SetGraphicsRootDescriptorTable(10, renderer->GetDescriptorHeapManager()->GetClampSamplerHandle());
+        
+
+        // shadow map SRV 테이블 바인딩 (t7~t7+N-1) → root 10
+        // shadowMaps[i].srvHandle 에 연속으로 할당된 NUM_SHADOW_DSV_COUNT 개의 SRV가 있으므로,
+        // 첫 핸들만 넘기면 전체 테이블이 바인딩됨
+        const auto& shadowMaps = renderer->GetShadowMaps();
+        directCommandList->SetGraphicsRootDescriptorTable(10, shadowMaps[0].srvHandle.gpuHandle);
+
     }
 
     // 6) MVP CBV (b0) 업데이트 & 바인딩

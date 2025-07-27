@@ -14,27 +14,37 @@ LightType DirectionalLight::GetType() const
     return LightType::Directional;
 }
 
-void DirectionalLight::Update(const XMFLOAT3& cameraPosition)
+void DirectionalLight::Update(Camera* camera)
 {
-    const float orthoWidth = 500.0f;
-    const float orthoHeight = 500.0f;
+    const float orthoWidth = 200.0f;
+    const float orthoHeight = 200.0f;
     const float nearZ = 1.0f;
-    const float farZ = 100.0f;
+    const float farZ = 200.0f;
     const float shadowDistance = farZ * 0.5f;
+    constexpr float epsilon = 1e-6f;
 
-    XMVECTOR lightDir = XMVector3Normalize(XMLoadFloat3(&lightData.direction));
-    XMVECTOR camPos = XMLoadFloat3(&cameraPosition);
+    XMVECTOR lightDir = XMLoadFloat3(&lightData.direction);
+
+    // 길이 작으면 아래 방향으로 대체, 아니면 정규화
+    float lengthSq = XMVectorGetX(XMVector3Dot(lightDir, lightDir));
+    if (lengthSq < epsilon)
+    {
+        // 기본 태양빛은 위에서 아래로
+        lightDir = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
+    }
+    else
+    {
+        lightDir = XMVector3Normalize(lightDir);
+    }
+
+    XMFLOAT3 camPosFloat = camera->GetPosition();
+    XMVECTOR camPos = XMLoadFloat3(&camPosFloat);
     XMVECTOR lightPos = camPos - lightDir * shadowDistance;
-
-    // 타겟(빛이 향하는 위치)
     XMVECTOR target = lightPos + lightDir;
 
-    // up 벡터 기본값 (Y축)
+    // up 벡터: 기본 Y축, 너무 평행하면 X축으로
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-    // lightDir 와 up 이 너무 평행하다면 Z축으로 대체
-    float cosAngle = XMVectorGetX(XMVector3Dot(up, lightDir));
-    if (fabsf(cosAngle) > 0.99f)
+    if (fabsf(XMVectorGetX(XMVector3Dot(up, lightDir))) > 0.99f)
     {
         up = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
     }
@@ -42,5 +52,5 @@ void DirectionalLight::Update(const XMFLOAT3& cameraPosition)
     XMMATRIX lightView = XMMatrixLookAtLH(lightPos, target, up);
     XMMATRIX lightProj = XMMatrixOrthographicLH(orthoWidth, orthoHeight, nearZ, farZ);
 
-    shadowViewProjMatrices[0] = XMMatrixMultiply(lightView, lightProj);
+    shadowViewProjMatrices[0] = lightView * lightProj;
 }

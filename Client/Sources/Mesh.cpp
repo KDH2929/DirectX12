@@ -44,19 +44,20 @@ static void BuildCube(std::vector<MeshVertex>& outVertices,
         {{ 1,-1, 1},{ 1, 0, 0},{0,1},{0,1,0}}
     };
 
+    // Top face (+Y)
     outIndices = {
         // Top face (+Y)
-         0, 2, 1,   0, 3, 2,
-         // Bottom face (-Y)
-          4, 6, 5,   4, 7, 6,
-          // Back face (-Z)
-            8,10, 9,   8,11,10,
-            // Front face (+Z)
-            12,14,13,  12,15,14,
-            // Left face (-X)
-            16,18,17,  16,19,18,
-            // Right face (+X)
-            20,22,21,  20,23,22
+        0, 1, 2,   0, 2, 3,
+        // Bottom face (-Y) 역시 반대로
+        4, 5, 6,   4, 6, 7,
+        // Back face (-Z)
+        8, 9,10,   8,10,11,
+        // Front face (+Z)
+        12,13,14,  12,14,15,
+        // Left face (-X)
+        16,17,18,  16,18,19,
+        // Right face (+X)
+        20,21,22,  20,22,23
     };
 }
 
@@ -159,12 +160,12 @@ bool Mesh::UploadBuffers(Renderer* renderer,
     CD3DX12_RESOURCE_DESC     vbDesc = CD3DX12_RESOURCE_DESC::Buffer(UINT(vertexByteSize));
     CD3DX12_RESOURCE_DESC     ibDesc = CD3DX12_RESOURCE_DESC::Buffer(UINT(indexByteSize));
 
-    CHECK_HR(device->CreateCommittedResource(
+    THROW_IF_FAILED(device->CreateCommittedResource(
         &defaultHeap, D3D12_HEAP_FLAG_NONE, &vbDesc,
         D3D12_RESOURCE_STATE_COMMON, nullptr,
         IID_PPV_ARGS(&vertexBuffer)));
 
-    CHECK_HR(device->CreateCommittedResource(
+    THROW_IF_FAILED(device->CreateCommittedResource(
         &defaultHeap, D3D12_HEAP_FLAG_NONE, &ibDesc,
         D3D12_RESOURCE_STATE_COMMON, nullptr,
         IID_PPV_ARGS(&indexBuffer)));
@@ -173,12 +174,12 @@ bool Mesh::UploadBuffers(Renderer* renderer,
     CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
     ComPtr<ID3D12Resource> vertexUpload, indexUpload;
 
-    CHECK_HR(device->CreateCommittedResource(
+    THROW_IF_FAILED(device->CreateCommittedResource(
         &uploadHeap, D3D12_HEAP_FLAG_NONE, &vbDesc,
         D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
         IID_PPV_ARGS(&vertexUpload)));
 
-    CHECK_HR(device->CreateCommittedResource(
+    THROW_IF_FAILED(device->CreateCommittedResource(
         &uploadHeap, D3D12_HEAP_FLAG_NONE, &ibDesc,
         D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
         IID_PPV_ARGS(&indexUpload)));
@@ -201,8 +202,8 @@ bool Mesh::UploadBuffers(Renderer* renderer,
     auto* copyAlloc = renderer->GetCopyCommandAllocator();
     auto* copyList = renderer->GetCopyCommandList();
 
-    CHECK_HR(copyAlloc->Reset());
-    CHECK_HR(copyList->Reset(copyAlloc, nullptr));
+    THROW_IF_FAILED(copyAlloc->Reset());
+    THROW_IF_FAILED(copyList->Reset(copyAlloc, nullptr));
 
     // 4-1) COMMON → COPY_DEST
     {
@@ -238,7 +239,7 @@ bool Mesh::UploadBuffers(Renderer* renderer,
         copyList->ResourceBarrier(_countof(barriers), barriers);
     }
 
-    CHECK_HR(copyList->Close());
+    THROW_IF_FAILED(copyList->Close());
 
     // 5) Copy 큐에 제출 & 완료 대기
     ID3D12CommandList* lists[] = { copyList };

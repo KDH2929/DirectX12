@@ -2,6 +2,7 @@
     
 #include "Lights/LightData.h"
 #include "Lights/LightType.h"
+#include "ShadowMap.h"
 #include <DirectXMath.h>
 
 
@@ -29,7 +30,7 @@ struct CB_MaterialPhong
     float padding0;
 
     XMFLOAT3 diffuse;
-    float padding1;
+    float  shininess;
 
     XMFLOAT3 specular;
     float alpha;
@@ -90,8 +91,12 @@ struct CB_ToneMapping
 
 
 struct CB_ShadowMapPass {
-    XMMATRIX modelWorld;
-    XMMATRIX lightViewProj;
+    XMFLOAT4X4 modelWorld;
+    XMFLOAT4X4 lightViewProj;
+};
+
+struct CB_ShadowMapViewProj {
+    XMFLOAT4X4 ShadowMapViewProj[MAX_SHADOW_DSV_COUNT];
 };
 
 

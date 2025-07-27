@@ -14,7 +14,7 @@ LightType PointLight::GetType() const
     return LightType::Point;
 }
 
-void PointLight::Update(const XMFLOAT3& cameraPosition)
+void PointLight::Update(Camera* camera)
 {
     static const XMVECTOR directions[6] = {
         XMVectorSet(1,  0,  0, 0), XMVectorSet(-1,  0,  0, 0),
@@ -29,10 +29,31 @@ void PointLight::Update(const XMFLOAT3& cameraPosition)
     };
 
     XMVECTOR lightPos = XMLoadFloat3(&lightData.position);
-    XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV2, 1.0f, 0.1f, lightData.falloffEnd); // 90도, 1:1, depth 1~100
+
+    // 감쇠가 1% 이하로 떨어지는 거리를 farZ로
+    float nearZ = 0.1f;
+    float farZ = ComputeShadowFarZ(lightData.constant, lightData.linear, lightData.quadratic, 0.01f); 
+
+    XMMATRIX proj = XMMatrixPerspectiveFovLH(
+        XM_PIDIV2,    // 90도
+        1.0f,         // 정사각
+        nearZ,
+        farZ
+    );
 
     for (int i = 0; i < 6; ++i) {
         XMMATRIX view = XMMatrixLookAtLH(lightPos, lightPos + directions[i], ups[i]);
         shadowViewProjMatrices[i] = XMMatrixMultiply(view, proj);
     }
+}
+
+float PointLight::ComputeShadowFarZ(float constant, float linear, float quadratic, float threshold)
+{
+    // 1/(C + L·d + Q·d²) = threshold  ⇒  C + L·d + Q·d² = 1/threshold
+    float target = 1.0f / threshold - constant;
+    // Q·d² + L·d - target = 0
+    float discr = linear * linear + 4.0f * quadratic * target;
+    if (discr < 0) discr = 0;
+    // 양의 해만 취함
+    return (-linear + sqrtf(discr)) / (2.0f * quadratic);
 }

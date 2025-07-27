@@ -9,9 +9,9 @@
 struct MaterialPbrParameters
 {
     DirectX::XMFLOAT3 baseColor{ 1.f, 1.f, 1.f };
-    float             metallic = 0.f;
-    float             specular = 0.5f;  // 비금속 반사도 기본값
-    float             roughness = 1.f;
+    float             metallic = 0.5f;
+    float             specular = 0.5f;
+    float             roughness = 0.f;
     float             ambientOcclusion = 1.f;
     DirectX::XMFLOAT3 emissiveColor = { 0.f, 0.f, 0.f };
     float             emissiveIntensity = 0.f;

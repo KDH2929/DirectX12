@@ -84,7 +84,7 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
     {
         CD3DX12_HEAP_PROPERTIES props(D3D12_HEAP_TYPE_UPLOAD);
         CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(256);
-        ThrowIfFailed(device->CreateCommittedResource(
+        THROW_IF_FAILED(device->CreateCommittedResource(
             &props, D3D12_HEAP_FLAG_NONE, &desc,
             D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
             IID_PPV_ARGS(&globalConstantBuffer)));
@@ -96,31 +96,28 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
 
     // LightingManager 초기화
     {
-        // 1) LightingManager 생성
         lightingManager = std::make_unique<LightingManager>(device.Get());
 
-        // 2) 카메라 정보
         XMFLOAT3 cameraPosition = mainCamera->GetPosition();
         XMFLOAT3 cameraForward = mainCamera->GetForwardVector();
 
-        // 3) Directional Light
+        // Directional Light
         auto directionalLight = std::make_shared<DirectionalLight>();
-        directionalLight->SetStrength({ 1.0f, 1.0f, 1.0f });
+        directionalLight->SetStrength(1.0f);
         directionalLight->SetColor({ 1.0f, 1.0f, 1.0f });
-        directionalLight->SetDirection({ 0.0f, -1.0f, 0.0f }); // 태양처럼 위에서 아래로
-        directionalLight->SetSpecularPower(64.0f);
+        directionalLight->SetDirection({ 0.0f, -1.0f, 0.0f });
+        directionalLight->SetAttenuation(1.0f, 0.0f, 0.0f);
 
-        // 4) Point Light
+        // Point Light
         auto pointLight = std::make_shared<PointLight>();
-        pointLight->SetStrength({ 2.0f, 2.0f, 2.0f });
-        pointLight->SetColor({ 1.0f, 0.95f, 0.85f }); // 약간 따뜻한 조명
+        pointLight->SetStrength(2.0f);
+        pointLight->SetColor({ 1.0f, 0.95f, 0.85f });
         pointLight->SetPosition({ cameraPosition.x, cameraPosition.y + 2.0f, cameraPosition.z });
-        pointLight->SetFalloff(1.0f, 20.0f);
-        pointLight->SetSpecularPower(32.0f);
+        pointLight->SetAttenuation(1.0f, 0.09f, 0.032f);
 
-        // 5) Spot Light (플래시라이트 느낌)
+        // Spot Light
         auto spotLight = std::make_shared<SpotLight>();
-        spotLight->SetStrength({ 3.0f, 3.0f, 3.0f });
+        spotLight->SetStrength(3.0f);
         spotLight->SetColor({ 1.0f, 1.0f, 1.0f });
         spotLight->SetPosition({
             cameraPosition.x + cameraForward.x * 3.0f,
@@ -128,20 +125,19 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
             cameraPosition.z + cameraForward.z * 3.0f
             });
         spotLight->SetDirection(cameraForward);
-        spotLight->SetFalloff(5.0f, 30.0f);
-        spotLight->SetSpecularPower(64.0f);
+        spotLight->SetCutoffAngles(
+            XMConvertToRadians(12.5f),
+            XMConvertToRadians(17.5f)
+        );
+        spotLight->SetAttenuation(1.0f, 0.09f, 0.032f);
 
-        // 6) LightingManager에 추가
         lightingManager->ClearLights();
         lightingManager->AddLight(directionalLight);
         lightingManager->AddLight(pointLight);
         lightingManager->AddLight(spotLight);
 
-        // 7) 상수버퍼에 초기값 업로드
-        lightingManager->Update(cameraPosition);
-        lightingManager->WriteToConstantBuffer();
+        lightingManager->WriteLightingBuffer();
     }
-
     descriptorHeapManager->CreateWrapSampler(device.Get());
     descriptorHeapManager->CreateClampSampler(device.Get());
 
@@ -222,7 +218,7 @@ const std::vector<std::shared_ptr<GameObject>>& Renderer::GetAllGameObjects() co
 
 void Renderer::Update(float deltaTime) {
 
-    lightingManager->Update(mainCamera->GetPosition());
+    lightingManager->Update(mainCamera.get());
 
     for (auto& object : gameObjects) {
         object->Update(deltaTime);
@@ -231,9 +227,6 @@ void Renderer::Update(float deltaTime) {
     for (auto& pass : renderPasses) {
         pass->Update(deltaTime);
     }
-
-    lightingManager->UpdateImGui();
-    lightingManager->WriteToConstantBuffer();
 }
 
 void Renderer::Render() {
@@ -411,37 +404,37 @@ const std::array<ShadowMap, MAX_SHADOW_DSV_COUNT>& Renderer::GetShadowMaps() con
 bool Renderer::InitD3D(HWND hwnd, int width, int height)
 {
 #ifdef _DEBUG
-    // GPU 기반 검증 및 디버그 레이어 활성화
-    ComPtr<ID3D12Debug3> debugInterface;
+    // GPU 기반 검증 및 디버그 레이어활성화
     if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)))) {
-        debugInterface->SetEnableGPUBasedValidation(TRUE);
+        debugInterface->SetEnableGPUBasedValidation(FALSE);
         debugInterface->EnableDebugLayer();
     }
 #endif
 
     // 1) 팩토리 및 어댑터 생성
     ComPtr<IDXGIFactory4> factory;
-    ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
+    THROW_IF_FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
 
     ComPtr<IDXGIAdapter1> adapter;
     if (FAILED(factory->EnumAdapters1(0, &adapter))) {
         ComPtr<IDXGIAdapter> warpAdapter;
-        ThrowIfFailed(factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
-        ThrowIfFailed(warpAdapter.As(&adapter));
+        THROW_IF_FAILED(factory->EnumWarpAdapter(IID_PPV_ARGS(&warpAdapter)));
+        THROW_IF_FAILED(warpAdapter.As(&adapter));
     }
 
     // 2) 디바이스 생성
-    ThrowIfFailed(D3D12CreateDevice(
+    THROW_IF_FAILED(D3D12CreateDevice(
         adapter.Get(),
         D3D_FEATURE_LEVEL_11_0,
         IID_PPV_ARGS(&device)));
+
 
     // 3) Direct(그래픽스) 커맨드 큐 생성
     {
         D3D12_COMMAND_QUEUE_DESC desc = {};
         desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-        ThrowIfFailed(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&directQueue)));
+        THROW_IF_FAILED(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&directQueue)));
     }
 
     // 4) Copy(업로드) 커맨드 큐 생성
@@ -449,14 +442,14 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         D3D12_COMMAND_QUEUE_DESC desc = {};
         desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
         desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-        ThrowIfFailed(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&copyQueue)));
+        THROW_IF_FAILED(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&copyQueue)));
     }
 
     // 5) Copy 커맨드 할당자 & 리스트
-    ThrowIfFailed(device->CreateCommandAllocator(
+    THROW_IF_FAILED(device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_COPY,
         IID_PPV_ARGS(&copyCommandAllocator)));
-    ThrowIfFailed(device->CreateCommandList(
+    THROW_IF_FAILED(device->CreateCommandList(
         0,
         D3D12_COMMAND_LIST_TYPE_COPY,
         copyCommandAllocator.Get(),
@@ -465,7 +458,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
     copyCommandList->Close();
 
     // 6) Copy 큐용 펜스 & 이벤트
-    ThrowIfFailed(device->CreateFence(
+    THROW_IF_FAILED(device->CreateFence(
         0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&copyFence)));
     copyFenceValue = 0;
     copyFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
@@ -483,11 +476,11 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         scDesc.SampleDesc.Count = 1;
 
         ComPtr<IDXGISwapChain1> swapChain1;
-        ThrowIfFailed(factory->CreateSwapChainForHwnd(
+        THROW_IF_FAILED(factory->CreateSwapChainForHwnd(
             directQueue.Get(), hwnd,
             &scDesc, nullptr, nullptr,
             &swapChain1));
-        ThrowIfFailed(swapChain1.As(&swapChain));
+        THROW_IF_FAILED(swapChain1.As(&swapChain));
         backBufferIndex = swapChain->GetCurrentBackBufferIndex();
     }
 
@@ -531,7 +524,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         clearValue.Color[3] = 1.0f;
 
         CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
-        ThrowIfFailed(device->CreateCommittedResource(
+        THROW_IF_FAILED(device->CreateCommittedResource(
             &heapProps,                           // 임시 대신 l-value 변수의 주소
             D3D12_HEAP_FLAG_NONE,
             &texDesc,
@@ -559,7 +552,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
     for (UINT i = 0; i < BackBufferCount; ++i) {
         UINT backBufferIndex_ = static_cast<UINT>(RtvIndex::BackBuffer0) + i;
 
-        ThrowIfFailed(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
+        THROW_IF_FAILED(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
         descriptorHeapManager->CreateRenderTargetView(device.Get(),
             backBuffers[i].Get(),
             backBufferIndex_);
@@ -585,7 +578,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         clearValue.DepthStencil.Depth = 1.0f;
         clearValue.DepthStencil.Stencil = 0;
 
-        ThrowIfFailed(device->CreateCommittedResource(
+        THROW_IF_FAILED(device->CreateCommittedResource(
             &heapProps,
             D3D12_HEAP_FLAG_NONE,
             &depthDesc,
@@ -621,7 +614,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         clearValue.DepthStencil.Stencil = 0;
 
         CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
-        ThrowIfFailed(device->CreateCommittedResource(
+        THROW_IF_FAILED(device->CreateCommittedResource(
             &heapProps,
             D3D12_HEAP_FLAG_NONE,
             &shadowDesc,
@@ -662,10 +655,10 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
 
 
     // 13) Direct 커맨드 할당자 & 리스트
-    ThrowIfFailed(device->CreateCommandAllocator(
+    THROW_IF_FAILED(device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(&directCommandAllocator)));
-    ThrowIfFailed(device->CreateCommandList(
+    THROW_IF_FAILED(device->CreateCommandList(
         0,
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         directCommandAllocator.Get(),
@@ -674,7 +667,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
     directCommandList->Close();
 
     // 14) Direct 큐용 펜스 & 이벤트
-    ThrowIfFailed(device->CreateFence(
+    THROW_IF_FAILED(device->CreateFence(
         0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&directFence)));
     directFenceValue = 1;
     directFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);

@@ -204,26 +204,28 @@ void SphereObject::Render(Renderer* renderer)
         // b0: MVP CBV
         directCommandList->SetGraphicsRootConstantBufferView(0, constantMVPBuffer->GetGPUVirtualAddress());
         
-        // b1 = 조명 CB, b3 = 글로벌 CB
-        directCommandList->SetGraphicsRootConstantBufferView(1, renderer->GetLightingManager()->GetConstantBuffer()->GetGPUVirtualAddress());
+        // b1 = 조명 CB, b3 = 글로벌 CB,  b4 = ShadowMapViewProj
+        directCommandList->SetGraphicsRootConstantBufferView(1, renderer->GetLightingManager()->GetLightingCB()->GetGPUVirtualAddress());
         directCommandList->SetGraphicsRootConstantBufferView(3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
-        
+        directCommandList->SetGraphicsRootConstantBufferView(4, renderer->GetLightingManager()->GetShadowViewProjCB()->GetGPUVirtualAddress());
+
+
         // 알베도 SRV
         if (auto albedoTex = materialPBR->GetAlbedoTexture())
-            directCommandList->SetGraphicsRootDescriptorTable(4, albedoTex->GetGpuHandle());
+            directCommandList->SetGraphicsRootDescriptorTable(5, albedoTex->GetGpuHandle());
         
         // 환경맵 바인딩 (irradiance, prefiltered, BRDF LUT)
-        renderer->GetEnvironmentMaps().Bind(directCommandList, 5, 6, 7);
-
-        // shadow map SRV 테이블 바인딩 (t7~t7+N-1) → root 8
-        const auto& shadowMaps = renderer->GetShadowMaps();
-        // shadowMaps[i].srvHandle 에 연속으로 할당된 NUM_SHADOW_DSV_COUNT 개의 SRV가 있으므로,
-        // 첫 핸들만 넘기면 전체 테이블이 바인딩됨
-        //directCommandList->SetGraphicsRootDescriptorTable(8, shadowMaps[0].srvHandle.gpuHandle);
+        renderer->GetEnvironmentMaps().Bind(directCommandList, 6, 7, 8);
         
         // 샘플러 (s0)
-        directCommandList->SetGraphicsRootDescriptorTable(8, renderer->GetDescriptorHeapManager()->GetLinearWrapSamplerGpuHandle());
+        directCommandList->SetGraphicsRootDescriptorTable(9, renderer->GetDescriptorHeapManager()->GetLinearWrapSamplerGpuHandle());
         
+        // shadow map SRV 테이블 바인딩 (t7~t7+N-1) → root 10
+        // shadowMaps[i].srvHandle 에 연속으로 할당된 NUM_SHADOW_DSV_COUNT 개의 SRV가 있으므로,
+        // 첫 핸들만 넘기면 전체 테이블이 바인딩됨
+        const auto& shadowMaps = renderer->GetShadowMaps();
+        directCommandList->SetGraphicsRootDescriptorTable(10, shadowMaps[0].srvHandle.gpuHandle);
+
         // 머티리얼 CBV (b2)
         materialPBR->WriteToConstantBuffer(mappedMaterialBuffer);
         directCommandList->SetGraphicsRootConstantBufferView(2, materialConstantBuffer->GetGPUVirtualAddress());

@@ -8,6 +8,8 @@
 #include "Lights/BaseLight.h"
 #include "Lights/LightData.h"
 #include "ConstantBuffers.h"
+#include "ShadowMap.h"
+#include "Camera.h"
 
 using namespace DirectX;
 
@@ -19,22 +21,31 @@ public:
     void AddLight(std::shared_ptr<BaseLight> light);
     void ClearLights();
 
-    void Update(const XMFLOAT3& cameraPosition);
+    void Update(Camera* camera);
     void UpdateImGui();
-    void WriteToConstantBuffer();
+    void WriteLightingBuffer();
+    void WriteShadowViewProjBuffer(const std::vector<XMMATRIX>& shadowViewProj);
 
-    ID3D12Resource* GetConstantBuffer() const;
     const CB_Lighting& GetLightingData() const;
     const std::vector<std::shared_ptr<BaseLight>>& GetLights() const;
 
+    ID3D12Resource* GetLightingCB() const;
+    ID3D12Resource* GetShadowViewProjCB() const;
+
 private:
-    void CreateConstantBuffer(ID3D12Device* device);
+    void CreateConstantBuffer(ID3D12Device* device,
+        UINT64 size,
+        Microsoft::WRL::ComPtr<ID3D12Resource>& buffer,
+        UINT8*& mappedPtr);
 
     std::vector<std::shared_ptr<BaseLight>> lights;
 
-    // CB_Lighting 에서 LightData 배열을 처리
-    CB_Lighting lightingData = {};
+    // CB_Lighting data & buffer
+    CB_Lighting                         lightingData = {};
+    Microsoft::WRL::ComPtr<ID3D12Resource> lightingBuffer;
+    UINT8* lightingMapped = nullptr;
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer;
-    UINT8* mappedPointer = nullptr;
+    // CB_ShadowMapViewProj buffer
+    Microsoft::WRL::ComPtr<ID3D12Resource> shadowViewProjBuffer;
+    UINT8* shadowViewProjMapped = nullptr;
 };

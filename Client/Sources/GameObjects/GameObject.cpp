@@ -81,8 +81,8 @@ void GameObject::RenderShadowMapPass(Renderer* renderer, const XMMATRIX& lightVi
     auto directCommandList = renderer->GetDirectCommandList();
 
     CB_ShadowMapPass cb{};
-    cb.modelWorld = XMMatrixTranspose(worldMatrix);
-    cb.lightViewProj = XMMatrixTranspose(lightViewProj);
+    XMStoreFloat4x4(&cb.modelWorld, XMMatrixTranspose(worldMatrix));
+    XMStoreFloat4x4(&cb.lightViewProj, XMMatrixTranspose(lightViewProj));
 
     memcpy(mappedShadowMapPtrs[shadowMapIndex], &cb, sizeof(cb));
 

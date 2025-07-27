@@ -26,7 +26,7 @@ float4 PSMain(VSOutput input) : SV_Target
         N = normalize(mul(tangentNormal, TBNMatrix(T, B, N)));
     }
 
-    float3 color = ComputePBR(input.positionWorld, N, input.uv);
+    float3 color = ComputePBRWithShadow(input.positionWorld, N, input.uv);
     return float4(color, 1);
 
 }

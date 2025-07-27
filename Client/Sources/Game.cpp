@@ -159,13 +159,18 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
     renderer.AddGameObject(triangleObject);
     */
     
-    /*
-    auto boxObject = std::make_shared<BoxObject>();
+    auto boxMaterial = std::make_shared<Material>();
+    boxMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
+    boxMaterial->parameters.ambientOcclusion = 1.0f;
+    
+    auto boxObject = std::make_shared<BoxObject>(boxMaterial);
     if (!boxObject->Initialize(&renderer)) {
         throw std::runtime_error("Failed to initialize BoxObject");
     }
+    boxObject->SetPosition(XMFLOAT3{ 0.0f, -2.0f, 0.0f });
+    boxObject->SetScale(XMFLOAT3{ 50.0f,  0.5f, 50.0f });
     renderer.AddGameObject(boxObject);
-    */
+    
 
     // Flight °´Ã¼ »ý¼º
     
@@ -188,6 +193,8 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
     auto sphereObject = std::make_shared<SphereObject>(sphereMaterial, 32, 32);
     if (!sphereObject->Initialize(&renderer))
         throw std::runtime_error("Failed to initialize SphereObject");
+
+    sphereObject->SetPosition(XMFLOAT3(3.0f, 0.0f, 0.0f));
 
     renderer.AddGameObject(sphereObject);
     

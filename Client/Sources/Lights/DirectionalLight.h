@@ -8,5 +8,5 @@ public:
     DirectionalLight();
 
     LightType GetType() const override;
-    void Update(const XMFLOAT3& cameraPosition) override;
+    void Update(Camera* camera) override;
 };

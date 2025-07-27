@@ -49,7 +49,8 @@ inline void ThrowIfFailed(HRESULT hr,
     }
 }
 
-#define CHECK_HR(call) ThrowIfFailed((call), #call, __FILE__, __LINE__)
+#define THROW_IF_FAILED(x) ThrowIfFailed( \
+    (x), #x, __FILE__, __LINE__)
 
 class Renderer
 {
@@ -162,6 +163,10 @@ public:
 
 
 private:
+
+#ifdef _DEBUG
+    ComPtr<ID3D12Debug3> debugInterface;
+#endif
 
     // Device & swap chain
     ComPtr<ID3D12Device>            device;

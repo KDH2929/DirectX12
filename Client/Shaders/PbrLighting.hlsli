@@ -1,12 +1,12 @@
 #include "Common.hlsli"
 
-// reference : https://github.com/JoeyDeVries/LearnOpenGL/blob/master/src/6.pbr/1.1.lighting/1.1.pbr.fs
+// pbr 참고코드 : https://github.com/JoeyDeVries/LearnOpenGL/blob/master/src/6.pbr/1.1.lighting/1.1.pbr.fs
 
 static const float PI = 3.14159265;
 static const float3 F_DIELECTRIC = float3(0.04, 0.04, 0.04);
 
 // 0=Albedo, 1=Normal, 2=Metallic, 3=Roughness
-// 추후 하나의 텍스쳐의 R, G, B 채널로 값을 전달하도록 변경해야함
+// 추후 하나의 텍스쳐의 R, G, B, A 채널로 값을 전달하도록 변경해야함
 Texture2D<float4> textureHeap[4] : register(t0, space0);
 
 // Sampler
@@ -20,8 +20,8 @@ Texture2D<float2> brdfLut : register(t6, space0);
 
 
 // Shadow depth maps
-// Texture2D<float> shadowDepthMap[MAX_SHADOW_DSV_COUNT] : register(t7, space0);
-// SamplerComparisonState shadowSampler : register(s2);        // 깊이비교용 샘플러
+Texture2D<float> shadowDepthMap[MAX_SHADOW_DSV_COUNT] : register(t7, space0);
+SamplerComparisonState shadowMapSampler : register(s2);    // 깊이비교용 샘플러
 
 
 struct MaterialPBR
@@ -46,7 +46,7 @@ cbuffer CB_MVP : register(b0)
 };
 cbuffer CB_Lighting : register(b1)
 {
-    float3 cameraWorld;
+    float3 cameraWorcurrentLight;
     float _padL;
     Light lights[MAX_LIGHTS];
 };
@@ -58,6 +58,11 @@ cbuffer CB_Global : register(b3)
 {
     float time;
     float3 _padG;
+};
+
+cbuffer CB_ShadowMapViewProj : register(b4)
+{
+    float4x4 ShadowMapViewProj[MAX_SHADOW_DSV_COUNT];
 };
 
 // Map flags
@@ -198,11 +203,10 @@ float3 IBL_Specular(float3 F0, float3 N, float3 V, float roughness)
     return prefiltered * (F0 * brdfSample.x + brdfSample.y);
 }
 
-// Main PBR computation
-float3 ComputePBR(float3 worldPos, float3 worldNormal, float2 uv)
+float3 ComputePBR(float3 worcurrentLightPos, float3 worcurrentLightNormal, float2 uv)
 {
-    float3 N    = normalize(worldNormal);
-    float3 V    = normalize(cameraWorld - worldPos);
+    float3 N = normalize(worcurrentLightNormal);
+    float3 V = normalize(cameraWorcurrentLight - worcurrentLightPos);
     
     float3 albedo = SampleAlbedo(uv);
     float metal = SampleMetallic(uv);
@@ -210,50 +214,187 @@ float3 ComputePBR(float3 worldPos, float3 worldNormal, float2 uv)
     float ao = SampleAO();
 
     float3 F0 = lerp(F_DIELECTRIC, albedo, metal);
-    float3 Lo = float3(0, 0, 0);
+    float3 accumulatedLight = float3(0, 0, 0);
 
     [unroll]
     for (uint i = 0; i < MAX_LIGHTS; ++i)
     {
-        Light Ld = lights[i];
-        if (all(Ld.strength == 0))
+        Light currentLight = lights[i];
+        if (all(currentLight.Color * currentLight.Strength == 0))
             continue;
 
         float3 L;
-        float atten = 1.0;
-        if (Ld.type == 0)
+        float attenuation = 1.0;
+
+        if (currentLight.Type == 0)  // Directional
         {
-            L = normalize(-Ld.direction);
+            L = normalize(-currentLight.Direction);
         }
         else
         {
-            float3 toLight = Ld.position - worldPos;
+            float3 toLight = currentLight.Position - worcurrentLightPos;
             float dist = length(toLight);
-            if (dist > Ld.falloffEnd)
-                continue;
             L = toLight / dist;
-            
+
             // 거리 감쇠
-            atten = saturate((Ld.falloffEnd - dist) / (Ld.falloffEnd - Ld.falloffStart));
-            if (Ld.type == 2)
+            attenuation = 1.0 / (currentLight.Constant + currentLight.Linear * dist + currentLight.Quadratic * dist * dist);
+
+            if (currentLight.Type == 2)  // Spot
             {
-                float cosTheta = dot(L, normalize(-Ld.direction));
-                
-                // 각도 감쇠
-                float spotAtt = saturate((cosTheta - Ld.falloffStart) / (Ld.falloffEnd - Ld.falloffStart));
-                atten *= spotAtt;
+                float cosTheta = dot(L, normalize(-currentLight.Direction));
+                float innerCos = cos(currentLight.InnerCutoffAngle);
+                float outerCos = cos(currentLight.OuterCutoffAngle);
+                float spotAttenuation = saturate((cosTheta - outerCos) / (innerCos - outerCos));
+                attenuation *= spotAttenuation;
             }
         }
 
         float NdotL = max(dot(N, L), 0.0);
-        float3 radiance = Ld.color * Ld.strength * atten;
+        float3 radiance = currentLight.Color * currentLight.Strength * attenuation;
 
         float3 specular = BRDF_Specular(N, V, L, F0, rough);
         float3 diffuse = BRDF_Diffuse(albedo, N, V, L, F0, metal);
     
-        Lo += (diffuse + specular) * radiance * NdotL;
+        accumulatedLight += (diffuse + specular) * radiance * NdotL;
     }
 
     float3 ambient = IBL_Diffuse(albedo, N) * ao + IBL_Specular(F0, N, V, rough);
-    return Lo + ambient;
+    return accumulatedLight + ambient;
+}
+
+
+
+// 3×3 PCF 샘플링
+float SampleShadowMap(int idx, float4 posLightSpace)
+{
+    float3 ndc = posLightSpace.xyz / posLightSpace.w;
+    float2 uv = float2(ndc.x, -ndc.y) * 0.5f + 0.5f;      // y는 음수를 붙여서
+    float depth = ndc.z;
+
+    if (uv.x < 0.0f || uv.x > 1.0f || uv.y < 0.0f || uv.y > 1.0f)
+    {
+        return 1.0f;
+    }
+
+    // 절두체 검사 (DirectX NDC 기준)
+    if (abs(ndc.x) > 1.0f || abs(ndc.y) > 1.0f || ndc.z < 0.0f || ndc.z > 1.0f)
+    {
+        return 1.0f; // 절두체 밖 → 그림자 없음 처리
+    }
+    
+    float sum = 0.0f;
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+        {
+            float bias = 0.001f;
+            float2 offset = float2(x * INV_SHADOW_MAP_WIDTH, y * INV_SHADOW_MAP_HEIGHT);
+            sum += shadowDepthMap[idx].SampleCmp(shadowMapSampler, uv + offset, depth - bias);
+        }
+    }
+    
+    return sum / 9.0f;
+}
+
+
+float3 ComputePBRWithShadow(float3 worcurrentLightPos, float3 worcurrentLightNormal, float2 uv)
+{
+    float3 N = normalize(worcurrentLightNormal);
+    float3 V = normalize(cameraWorcurrentLight - worcurrentLightPos);
+    
+    float3 albedo = SampleAlbedo(uv);
+    float metal = SampleMetallic(uv);
+    float rough = SampleRoughness(uv);
+    float ao = SampleAO();
+
+    float3 F0 = lerp(F_DIELECTRIC, albedo, metal);
+    float3 accumulatedLight = float3(0, 0, 0);
+    
+    
+    int shadowMapIdx = 0;
+
+    [unroll]
+    for (uint i = 0; i < MAX_LIGHTS; ++i)
+    {
+        Light currentLight = lights[i];
+        
+        int faceCount = (currentLight.Type == 1) ? 6 : 1;     // Point=6 (큐브맵), 나머지=1
+
+        if (all(currentLight.Color * currentLight.Strength == 0))
+        {
+            shadowMapIdx += faceCount;
+            continue;
+        }
+        
+        if (currentLight.ShadowCastingEnabled == 0)
+        {
+            shadowMapIdx += faceCount;
+            continue;
+        }
+
+        // 기존 PBR 루프에서처럼 Radiance 계산
+        float3 L;       // L = lightDirection
+        float attenuation = 1.0f;
+
+        if (currentLight.Type == 0)  // Directional
+        {
+            L = normalize(-currentLight.Direction);
+        }
+        else
+        {
+            float3 toLight = currentLight.Position - worcurrentLightPos;
+            float dist = length(toLight);
+            L = toLight / dist;
+
+            // 거리 감쇠
+            attenuation = 1.0f / (currentLight.Constant + currentLight.Linear * dist + currentLight.Quadratic * dist * dist);
+
+            // Spot 감쇠
+            if (currentLight.Type == 2)
+            {
+                float cosTheta = dot(L, normalize(-currentLight.Direction));
+                float innerCos = cos(currentLight.InnerCutoffAngle);
+                float outerCos = cos(currentLight.OuterCutoffAngle);
+                float spotAttenuation = saturate((cosTheta - outerCos) / (innerCos - outerCos));
+                attenuation *= spotAttenuation;
+            }
+        }
+
+        float NdotL = max(dot(N, L), 0.0f);
+        float3 radiance = currentLight.Color * currentLight.Strength * attenuation;
+
+        float3 specular = BRDF_Specular(N, V, L, F0, rough);
+        float3 diffuse = BRDF_Diffuse(albedo, N, V, L, F0, metal);
+
+        float3 lightContribute = (diffuse + specular) * radiance * NdotL;
+        
+        float lightFactor = 0.0f; // 0 = 그림자,  1 = lit
+
+    [unroll]
+        for (int f = 0; f < faceCount; ++f)
+        {
+            float4 posLightSpace = mul(ShadowMapViewProj[shadowMapIdx + f], float4(worcurrentLightPos, 1));
+            lightFactor += SampleShadowMap(shadowMapIdx + f, posLightSpace);
+        }
+        
+        shadowMapIdx += faceCount;
+        
+        // 6면에 대한 그림자 영향을 평균
+        lightFactor /= faceCount;
+        
+        float3 shadowColor = float3(0.0f, 0.0f, 0.0f);
+        
+        // 빛 기여도에 따라 litColor와 shadowColor 사이를 보간
+        float3 shadedContribution = lerp(shadowColor, lightContribute, lightFactor);
+
+        accumulatedLight += shadedContribution;
+    }
+
+    // Ambient(IBL) 은 그림자의 영향을 받지 않음
+    float3 ambient = IBL_Diffuse(albedo, N) * ao
+                   + IBL_Specular(F0, N, V, rough);
+
+    return accumulatedLight + ambient;
 }

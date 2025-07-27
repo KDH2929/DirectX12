@@ -1,33 +1,31 @@
 #pragma once
 
 #include "GameObject.h"
+#include "Material.h"
 #include "Mesh.h"
-#include "ConstantBuffers.h"   // CB_Material, CB_MVP, …
+#include "ConstantBuffers.h"   // CB_MVP, CB_MaterialPBR
 #include <wrl/client.h>
 #include <memory>
-
-using Microsoft::WRL::ComPtr;
+#include <d3d12.h>
 
 class Renderer;
 
-class BoxObject : public GameObject
+class BoxObject final : public GameObject
 {
 public:
-    BoxObject();
-    virtual ~BoxObject();
+    explicit BoxObject(std::shared_ptr<Material> materialPBR = nullptr);
+    ~BoxObject() override;
 
     bool Initialize(Renderer* renderer) override;
     void Update(float deltaTime) override;
     void Render(Renderer* renderer) override;
 
 private:
-    std::shared_ptr<Mesh> cubeMesh;
+    std::shared_ptr<Mesh>            cubeMesh;
+    std::shared_ptr<Material>        materialPBR;
 
-    // Material constant buffer (Upload heap, mirrors CB_Material layout)
-    ComPtr<ID3D12Resource> materialConstantBuffer;
-    UINT8* mappedMaterialPtr = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12Resource> materialConstantBuffer;
+    std::byte* mappedMaterialBuffer = nullptr;
 
-
-    float yaw = 0.0f;   // 라디안
-    float pitch = 0.0f; // 라디안
+    bool                              showNormalDebug = false;
 };
