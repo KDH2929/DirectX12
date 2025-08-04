@@ -151,6 +151,7 @@
     <ClCompile Include="Sources\DebugManager.cpp" />
     <ClCompile Include="Sources\DescriptorHeapManager.cpp" />
     <ClCompile Include="Sources\EnvironmentMaps.cpp" />
+    <ClCompile Include="Sources\FrameResource\FrameResource.cpp" />
     <ClCompile Include="Sources\Game.cpp" />
     <ClCompile Include="Sources\GameObjects\BoxObject.cpp" />
     <ClCompile Include="Sources\GameObjects\Flight.cpp" />
@@ -163,7 +164,6 @@
     <ClCompile Include="Sources\Lights\PointLight.cpp" />
     <ClCompile Include="Sources\Lights\SpotLight.cpp" />
     <ClCompile Include="Sources\main.cpp" />
-    <ClCompile Include="Sources\Material.cpp" />
     <ClCompile Include="Sources\Mesh.cpp" />
     <ClCompile Include="Sources\ModelLoader.cpp" />
     <ClCompile Include="Sources\NetworkManager.cpp" />
@@ -174,7 +174,6 @@
     <ClCompile Include="Sources\Renderer.cpp" />
     <ClCompile Include="Sources\RenderPass\ForwardOpaquePass.cpp" />
     <ClCompile Include="Sources\RenderPass\ForwardTransparentPass.cpp" />
-    <ClCompile Include="Sources\RenderPass\GBufferPass.cpp" />
     <ClCompile Include="Sources\RenderPass\PostProcessPass.cpp" />
     <ClCompile Include="Sources\RenderPass\ShadowMapPass.cpp" />
     <ClCompile Include="Sources\RootSignatureManager.cpp" />
@@ -183,9 +182,13 @@
     <ClCompile Include="Sources\Texture.cpp" />
     <ClCompile Include="Sources\TextureManager.cpp" />
     <ClCompile Include="Sources\GameObjects\TriangleObject.cpp" />
+    <ClCompile Include="Sources\ThreadPool.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Sources\D3DUtil.h" />
     <ClInclude Include="Sources\DescriptorHandle.h" />
+    <ClInclude Include="Sources\FrameResource\FrameResource.h" />
+    <ClInclude Include="Sources\FrameResource\UploadBuffer.h" />
     <ClInclude Include="Sources\Lights\BaseLight.h" />
     <ClInclude Include="Sources\Lights\DirectionalLight.h" />
     <ClInclude Include="Sources\Lights\LightData.h" />
@@ -198,7 +201,6 @@
     <ClInclude Include="Sources\PostEffects\ToneMappingPostEffect.h" />
     <ClInclude Include="Sources\RenderPass\ForwardOpaquePass.h" />
     <ClInclude Include="Sources\RenderPass\ForwardTransparentPass.h" />
-    <ClInclude Include="Sources\RenderPass\GBufferPass.h" />
     <ClInclude Include="Sources\RenderPass\PostProcessPass.h" />
     <ClInclude Include="Sources\RenderPass\RenderPass.h" />
     <ClInclude Include="Sources\Camera.h" />
@@ -231,6 +233,7 @@
     <ClInclude Include="Sources\Texture.h" />
     <ClInclude Include="Sources\TextureManager.h" />
     <ClInclude Include="Sources\GameObjects\TriangleObject.h" />
+    <ClInclude Include="Sources\ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\ShadowMapPass.hlsl">

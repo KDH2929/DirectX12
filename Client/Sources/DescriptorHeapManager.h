@@ -46,28 +46,24 @@ public:
         UINT dsvCount = 4,
         UINT backBufferCount = 3);
 
-    bool InitializeImGuiHeaps(ID3D12Device* device, UINT imguiSrvCount = 4, UINT imguiSamplerCount = 1);
-    
-
-    // 아직 사용안함. 추후 멀티스레드 렌더링 구현 시 필요할지도?
-    void BeginFrame(UINT backBufferIndex);
+    bool InitializeImGuiDescriptorHeaps(ID3D12Device* device, UINT imguiSrvCount = 4, UINT imguiSamplerCount = 1);
 
     DescriptorHandle Allocate(D3D12_DESCRIPTOR_HEAP_TYPE type, UINT count = 1);
 
-    ID3D12DescriptorHeap* GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
-    UINT GetStride(D3D12_DESCRIPTOR_HEAP_TYPE type) const;      // 하나의 디스크립터 슬롯이 차지하는 바이트 크기 리턴
+    ID3D12DescriptorHeap* GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
+    UINT GetDescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE type) const;      // 하나의 디스크립터 슬롯이 차지하는 바이트 크기 리턴
 
     ID3D12DescriptorHeap* GetImGuiSrvHeap() const { return imguiSrvHeap.Get(); }
     ID3D12DescriptorHeap* GetImGuiSamplerHeap() const { return imguiSamplerHeap.Get(); }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE CreateWrapSampler(ID3D12Device* device);
-    D3D12_GPU_DESCRIPTOR_HANDLE CreateClampSampler(ID3D12Device* device);
+    D3D12_GPU_DESCRIPTOR_HANDLE CreateLinearWrapSampler(ID3D12Device* device);
+    D3D12_GPU_DESCRIPTOR_HANDLE CreateLinearClampSampler(ID3D12Device* device);
 
     D3D12_GPU_DESCRIPTOR_HANDLE GetLinearWrapSamplerGpuHandle() const { return linearWrapSamplerHandle; }
     D3D12_GPU_DESCRIPTOR_HANDLE GetLinearClampSamplerGpuHandle() const { return linearClampSamplerHandle; }
 
     // RTV/DSV 뷰 생성
-    bool CreateRenderTargetView(ID3D12Device* device, ID3D12Resource* resource, UINT heapIndex);
+    bool CreateRenderTargetView(ID3D12Device* device, ID3D12Resource* resource, UINT heapIndex);    
     bool CreateDepthStencilView(ID3D12Device* device, ID3D12Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* desc, UINT heapIndex);
 
     // RTV/DSV CPU 핸들 조회
@@ -78,31 +74,24 @@ public:
     DescriptorHandle GetDsvHandle(UINT heapIndex) const;
 
 private:
-    struct HeapInfo
+    struct DescriptorHeapInfo
     {
-        ComPtr<ID3D12DescriptorHeap> heap;
-        D3D12_CPU_DESCRIPTOR_HANDLE  cpuBase{};
-        D3D12_GPU_DESCRIPTOR_HANDLE  gpuBase{};
-        UINT stride = 0;                 // stride: 해당 힙의 한 디스크립터 슬롯이 차지하는 바이트 크기
-        UINT capacity = 0;              // NumDescriptors 로 설정한 최대 슬롯 개수
-        UINT cursor = 0;                // Allocate 호출 시 다음으로 할당할 슬롯 인덱스
-        bool shaderVisible = false;
+        ComPtr<ID3D12DescriptorHeap> descriptorHeap;    // 실제 ID3D12DescriptorHeap 객체
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuStart;           // 힙의 첫 번째 CPU 핸들
+        D3D12_GPU_DESCRIPTOR_HANDLE gpuStart;           // 힙의 첫 번째 GPU 핸들
+        UINT descriptorSize = 0;                     // 한 슬롯당 바이트 오프셋(= GetDescriptorHandleIncrementSize)
+        UINT maxDescriptors = 0;                     // NumDescriptors
+        UINT nextFreeIndex = 0;                     // Allocate() 시 사용할 다음 인덱스
+        bool isShaderVisible = false;                 // SHADER_VISIBLE 플래그 사용 여부
     };
 
-    // heaps[0] → CBV_SRV_UAV 힙 정보 (stride, capacity, cursor…)
-    // heaps[1] → Sampler 힙 정보
-    // heaps[2] → RTV 힙 정보
-    // heaps[3] → DSV 힙 정보
-    std::array<HeapInfo, 4> heaps{};
-
-
-    UINT sliceCount = 1;
-    UINT sliceSize = 0;
+    // index 0: CBV_SRV_UAV, 1: Sampler, 2: RTV, 3: DSV
+    std::array<DescriptorHeapInfo, 4> descriptorHeaps;
 
     ComPtr<ID3D12DescriptorHeap> imguiSrvHeap;
     ComPtr<ID3D12DescriptorHeap> imguiSamplerHeap;
 
-    bool CreateHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT count, bool shaderVisible);
+    bool CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE type, UINT count, bool shaderVisible);
 
     D3D12_GPU_DESCRIPTOR_HANDLE linearWrapSamplerHandle;
     D3D12_GPU_DESCRIPTOR_HANDLE linearClampSamplerHandle;

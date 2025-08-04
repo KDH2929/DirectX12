@@ -1,101 +1,68 @@
 #include "GameObject.h"
 #include "Renderer.h"
+#include "FrameResource/FrameResource.h"
 
 GameObject::GameObject() {
 }
 
 GameObject::~GameObject()
 {
-    if (constantMVPBuffer) {
-        // Unmap the upload heap before releasing the resource
-        constantMVPBuffer->Unmap(0, nullptr);
-    }
-
 }
 
 bool GameObject::Initialize(Renderer* renderer) {
-    // 1) CBV용 업로드 힙 버퍼 생성
-    auto device = renderer->GetDevice();
-
-    // CB_MVP 전체 크기(4x4 행렬 4개 = 256바이트)를 256바이트 경계로 맞춤
-    // 항상 올림하여 가장 가까운 256의 배수로 맞춰줌
-    // sizeof(CB_MVP)가 192라면 
-    // 192 + 255 = 447
-    // 447 & ~255 = 447 & 0xFFFFFFFFFFFFFF00 = 256
-    
-    // sizeof(CB_MVP)가 300이라면
-    // (300 + 255) & ~255 = 555 & ~255 = 512
-
-    UINT64 rawSize = sizeof(CB_MVP);
-    UINT64 alignedSize = (rawSize + 255) & ~static_cast<UINT64>(255);
-
-    D3D12_HEAP_PROPERTIES heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-    D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(alignedSize);
-
-    HRESULT hr = device->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &desc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&constantMVPBuffer));
-    if (FAILED(hr)) {
-        return false;
-    }
-
-    // 2) 초기 worldMatrix를 버퍼에 복사
-    constantMVPBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedMVPData));
-    memcpy(mappedMVPData, &worldMatrix, sizeof(worldMatrix));
-    // Map 상태 유지 후 리소스 해제 시 UnMap
-
-
-
-     // ShadowMap Constant Buffer
-    for (int i = 0; i < MAX_SHADOW_DSV_COUNT; ++i)
-    {
-        UINT64 rawSize = sizeof(CB_MVP);
-        UINT64 alignedSize = (rawSize + 255) & ~static_cast<UINT64>(255);
-
-        CD3DX12_HEAP_PROPERTIES props(D3D12_HEAP_TYPE_UPLOAD);
-        D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(alignedSize);
-
-        ThrowIfFailed(device->CreateCommittedResource(
-            &props, D3D12_HEAP_FLAG_NONE, &desc,
-            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-            IID_PPV_ARGS(&shadowMapConstantBuffers[i])));
-
-        shadowMapConstantBuffers[i]->Map(0, nullptr,
-            reinterpret_cast<void**>(&mappedShadowMapPtrs[i]));
-    }
-
     return true;
 }
 
-void GameObject::Update(float deltaTime) {
-    // 기본은 WorldMatrix만 갱신 → 서브클래스에서 위치/회전을 바꾸면 
+void GameObject::Update(float deltaTime, Renderer* renderer, UINT objectIndex) {
+
     UpdateWorldMatrix();
+
+    CB_MVP constantBufferData{};
+    XMStoreFloat4x4(&constantBufferData.model, XMMatrixTranspose(worldMatrix));
+    XMStoreFloat4x4(&constantBufferData.view, XMMatrixTranspose(renderer->GetCamera()->GetViewMatrix()));
+    XMStoreFloat4x4(&constantBufferData.projection, XMMatrixTranspose(renderer->GetCamera()->GetProjectionMatrix()));
+    XMStoreFloat4x4(&constantBufferData.modelInvTranspose, XMMatrixTranspose(XMMatrixInverse(nullptr, worldMatrix)));
+
+    FrameResource* frameResource = renderer->GetCurrentFrameResource();
+    assert(frameResource != nullptr && frameResource->cbMVP && "FrameResource or cbMVP is null");
+
+    frameResource->cbMVP->CopyData(objectIndex, constantBufferData);
+
 }
 
-void GameObject::RenderShadowMapPass(Renderer* renderer, const XMMATRIX& lightViewProj, int shadowMapIndex)
+void GameObject::UpdateShadowMap(Renderer* renderer, UINT objectIndex, UINT shadowMapIndex, const XMMATRIX& lightViewProj)
 {
-    auto directCommandList = renderer->GetDirectCommandList();
+    CB_ShadowMapPass data{};
+    XMStoreFloat4x4(&data.modelWorld, XMMatrixTranspose(worldMatrix));
+    XMStoreFloat4x4(&data.lightViewProj, XMMatrixTranspose(lightViewProj));
 
-    CB_ShadowMapPass cb{};
-    XMStoreFloat4x4(&cb.modelWorld, XMMatrixTranspose(worldMatrix));
-    XMStoreFloat4x4(&cb.lightViewProj, XMMatrixTranspose(lightViewProj));
+    FrameResource* frameResource = renderer->GetCurrentFrameResource();
+    assert(frameResource && frameResource->cbShadowPass && "FrameResource or cbShadowPass is null");
 
-    memcpy(mappedShadowMapPtrs[shadowMapIndex], &cb, sizeof(cb));
+    constexpr UINT maxShadowCount = MAX_SHADOW_DSV_COUNT;
+    UINT slot = objectIndex * maxShadowCount + shadowMapIndex;
+    frameResource->cbShadowPass->CopyData(slot, data);
+}
 
-    directCommandList->SetGraphicsRootSignature(renderer->GetRootSignatureManager()->Get(L"ShadowMapPassRS"));
-    directCommandList->SetGraphicsRootConstantBufferView(0, shadowMapConstantBuffers[shadowMapIndex]->GetGPUVirtualAddress());
-    directCommandList->SetPipelineState(renderer->GetPSOManager()->Get(L"ShadowMapPassPSO"));
+void GameObject::RenderShadowMap(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex, UINT shadowMapIndex) 
+{
+    auto& frameResource = *renderer->GetCurrentFrameResource();
+    assert(frameResource.cbShadowPass && "cbShadowPass is null");
 
-    if (auto mesh = GetMesh())
-    {
-        directCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        directCommandList->IASetVertexBuffers(0, 1, &mesh->GetVertexBufferView());
-        directCommandList->IASetIndexBuffer(&mesh->GetIndexBufferView());
-        directCommandList->DrawIndexedInstanced(mesh->GetIndexCount(), 1, 0, 0, 0);
+    constexpr UINT maxShadowCount = MAX_SHADOW_DSV_COUNT;
+    UINT slot = objectIndex * maxShadowCount + shadowMapIndex;
+
+    D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = frameResource.cbShadowPass->GetGPUVirtualAddress(slot);
+
+    commandList->SetGraphicsRootSignature(renderer->GetRootSignatureManager()->Get(L"ShadowMapPassRS"));
+    commandList->SetPipelineState(renderer->GetPSOManager()->Get(L"ShadowMapPassPSO"));
+    commandList->SetGraphicsRootConstantBufferView(0, gpuAddress);
+
+    if (auto mesh = GetMesh()) {
+        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        commandList->IASetVertexBuffers(0, 1, &mesh->GetVertexBufferView());
+        commandList->IASetIndexBuffer(&mesh->GetIndexBufferView());
+        commandList->DrawIndexedInstanced(mesh->GetIndexCount(), 1, 0, 0, 0);
     }
 }
 

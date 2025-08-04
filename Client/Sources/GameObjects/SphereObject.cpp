@@ -1,242 +1,179 @@
 #include "SphereObject.h"
 #include "Renderer.h"
 #include "Mesh.h"
+#include "FrameResource/FrameResource.h"
 #include <directx/d3dx12.h>
 #include <imgui.h>
-#include <algorithm>
+#include <cassert>
 
 using namespace DirectX;
 
 SphereObject::SphereObject(
     std::shared_ptr<Material> material,
-    uint32_t latitudeSegments,
-    uint32_t longitudeSegments)
-    : latitudeSegments(latitudeSegments),
-    longitudeSegments(longitudeSegments),
-    materialPBR(std::move(material))
+    uint32_t latitudeSeg,
+    uint32_t longitudeSeg
+)
+    : latitudeSegments(latitudeSeg)
+    , longitudeSegments(longitudeSeg)
+    , materialPBR(std::move(material))
 {
-}
-
-SphereObject::~SphereObject()
-{
-    if (materialConstantBuffer && mappedMaterialBuffer) {
-        materialConstantBuffer->Unmap(0, nullptr);
-    }
 }
 
 bool SphereObject::Initialize(Renderer* renderer)
 {
-    if (!GameObject::Initialize(renderer)) {
+    if (!GameObject::Initialize(renderer))
         return false;
-    }
 
+    // 카메라 생성 및 설정
     camera = std::make_shared<Camera>();
-    camera->SetPosition({ 0, 0, -10 });
+    camera->SetPosition({ 0.0f, 0.0f, -10.0f });
     float aspect = float(renderer->GetViewportWidth()) / float(renderer->GetViewportHeight());
-    camera->SetPerspective(XM_PIDIV4, aspect, 0.1f, 1000.f);
+    camera->SetPerspective(XM_PIDIV4, aspect, 0.1f, 1000.0f);
 
-    // 1) 구 메쉬 생성
+    // 구 메시 생성
     sphereMesh = Mesh::CreateSphere(renderer, latitudeSegments, longitudeSegments);
-    if (!sphereMesh) {
+    if (!sphereMesh)
         return false;
-    }
-
     SetMesh(sphereMesh);
-
-    // 2) 머티리얼 상수 버퍼 생성 (256B aligned)
-    auto device = renderer->GetDevice();
-    CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
-    auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(256);
-
-    if (FAILED(device->CreateCommittedResource(
-        &uploadHeap,
-        D3D12_HEAP_FLAG_NONE,
-        &bufferDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&materialConstantBuffer))))
-    {
-        return false;
-    }
-
-    materialConstantBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedMaterialBuffer));
-    materialPBR->WriteToConstantBuffer(mappedMaterialBuffer);
-
-    // 3) 텍스처 리소스 상태 전환
-    auto directAlloc = renderer->GetDirectCommandAllocator();
-    auto directList = renderer->GetDirectCommandList();
-    auto directQueue = renderer->GetDirectQueue();
-
-    directAlloc->Reset();
-    directList->Reset(directAlloc, nullptr);
-
-    for (auto& texPtr : {
-        materialPBR->GetAlbedoTexture(),
-        materialPBR->GetNormalTexture(),
-        materialPBR->GetMetallicTexture(),
-        materialPBR->GetRoughnessTexture() })
-    {
-        if (!texPtr) {
-            continue;
-        }
-        auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            texPtr->GetResource(),
-            D3D12_RESOURCE_STATE_COMMON,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        directList->ResourceBarrier(1, &barrier);
-    }
-
-    directList->Close();
-    ID3D12CommandList* lists[] = { directList };
-    directQueue->ExecuteCommandLists(_countof(lists), lists);
-    renderer->WaitForDirectQueue();
 
     return true;
 }
 
-void SphereObject::Update(float deltaTime)
+void SphereObject::Update(
+    float     deltaTime,
+    Renderer* renderer,
+    UINT      objectIndex
+)
 {
     auto& input = InputManager::GetInstance();
     ImGuiIO& io = ImGui::GetIO();
-    const float sens = 0.002f;
+    const float sensitivity = 0.002f;
 
-    // 1) 마우스 드래그: 왼쪽=카메라, 오른쪽=오브젝트
     if (!io.WantCaptureMouse)
     {
         if (input.IsMouseButtonDown(MouseButton::Left))
         {
-            yawCam += input.GetMouseDeltaX() * sens;
-            pitchCam += input.GetMouseDeltaY() * sens;
+            yawCam += input.GetMouseDeltaX() * sensitivity;
+            pitchCam -= input.GetMouseDeltaY() * sensitivity;
         }
         else if (input.IsMouseButtonDown(MouseButton::Right))
         {
-            yawObj += input.GetMouseDeltaX() * sens;
-            pitchObj += input.GetMouseDeltaY() * sens;
+            yawObj += input.GetMouseDeltaX() * sensitivity;
+            pitchObj -= input.GetMouseDeltaY() * sensitivity;
         }
     }
 
-
-    // 2) 키 입력으로 카메라 이동 (카메라 회전 반영)
-    XMFLOAT3 pos = camera->GetPosition();
-    // 로컬 축 얻기
+    XMFLOAT3 cameraPos = camera->GetPosition();
+    XMVECTOR posVec = XMLoadFloat3(&cameraPos);
     XMVECTOR camQuat = camera->GetRotationQuat();
     XMVECTOR forward = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), camQuat);
     XMVECTOR right = XMVector3Rotate(XMVectorSet(1, 0, 0, 0), camQuat);
     XMVECTOR up = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), camQuat);
 
-    XMVECTOR posV = XMLoadFloat3(&pos);
-    if (input.IsKeyHeld('W')) posV += forward * (moveSpeed * deltaTime);
-    if (input.IsKeyHeld('S')) posV -= forward * (moveSpeed * deltaTime);
-    if (input.IsKeyHeld('A')) posV -= right * (moveSpeed * deltaTime);
-    if (input.IsKeyHeld('D')) posV += right * (moveSpeed * deltaTime);
-    if (input.IsKeyHeld('E')) posV -= up * (moveSpeed * deltaTime);
-    if (input.IsKeyHeld('Q')) posV += up * (moveSpeed * deltaTime);
-    XMStoreFloat3(&pos, posV);
-    camera->SetPosition(pos);
+    if (input.IsKeyHeld('W')) posVec += forward * (moveSpeed * deltaTime);
+    if (input.IsKeyHeld('S')) posVec -= forward * (moveSpeed * deltaTime);
+    if (input.IsKeyHeld('A')) posVec -= right * (moveSpeed * deltaTime);
+    if (input.IsKeyHeld('D')) posVec += right * (moveSpeed * deltaTime);
+    if (input.IsKeyHeld('E')) posVec -= up * (moveSpeed * deltaTime);
+    if (input.IsKeyHeld('Q')) posVec += up * (moveSpeed * deltaTime);
 
-    // 3) 카메라 회전 쿼터니언 설정·뷰 갱신
-    XMVECTOR newcamQuat = XMQuaternionRotationRollPitchYaw(pitchCam, yawCam, 0);
-    camera->SetRotationQuat(newcamQuat);
+    XMFLOAT3 newPos; XMStoreFloat3(&newPos, posVec);
+    camera->SetPosition(newPos);
+
+    camera->SetRotationQuat(XMQuaternionRotationRollPitchYaw(-pitchCam, yawCam, 0));
     camera->UpdateViewMatrix();
+    SetRotationQuat(XMQuaternionRotationRollPitchYaw(-pitchObj, yawObj, 0));
 
-    XMVECTOR objQuat = XMQuaternionRotationRollPitchYaw(pitchObj, yawObj, 0);
-    SetRotationQuat(objQuat);
-
-    // 4) 머티리얼·디버그 UI
-    if (ImGui::Begin("Sphere Material")) {
-        auto& p = materialPBR->parameters;
-        ImGui::ColorEdit3("Base Color", reinterpret_cast<float*>(&p.baseColor));
-        ImGui::SliderFloat("Metallic", &p.metallic, 0.0f, 1.0f);
-        ImGui::SliderFloat("Specular", &p.specular, 0.0f, 1.0f);
-        ImGui::SliderFloat("Roughness", &p.roughness, 0.0f, 1.0f);
-        ImGui::SliderFloat("Ambient Occlusion", &p.ambientOcclusion, 0.0f, 1.0f);
-        ImGui::ColorEdit3("Emissive Color", reinterpret_cast<float*>(&p.emissiveColor));
-        ImGui::SliderFloat("Emissive Intensity", &p.emissiveIntensity, 0.0f, 1.0f);
-        
+    if (ImGui::Begin("Sphere Material"))
+    {
+        auto& parameters = materialPBR->parameters;
+        ImGui::ColorEdit3("Base Color", reinterpret_cast<float*>(&parameters.baseColor));
+        ImGui::SliderFloat("Metallic", &parameters.metallic, 0.0f, 1.0f);
+        ImGui::SliderFloat("Specular", &parameters.specular, 0.0f, 1.0f);
+        ImGui::SliderFloat("Roughness", &parameters.roughness, 0.0f, 1.0f);
+        ImGui::SliderFloat("Ambient Occlusion", &parameters.ambientOcclusion, 0.0f, 1.0f);
+        ImGui::ColorEdit3("Emissive Color", reinterpret_cast<float*>(&parameters.emissiveColor));
+        ImGui::SliderFloat("Emissive Intensity", &parameters.emissiveIntensity, 0.0f, 5.0f);
     }
-
     ImGui::End();
     ImGui::Checkbox("Show Sphere Normal Debug", &showNormalDebug);
 
-    GameObject::Update(deltaTime);
-}
 
-void SphereObject::Render(Renderer* renderer)
-{
+    CB_MaterialPBR materialData{};
+    auto& parameters = materialPBR->parameters;
+    materialData.baseColor = parameters.baseColor;
+    materialData.metallic = parameters.metallic;
+    materialData.specular = parameters.specular;
+    materialData.roughness = parameters.roughness;
+    materialData.ambientOcclusion = parameters.ambientOcclusion;
+    materialData.emissiveColor = parameters.emissiveColor;
+    materialData.emissiveIntensity = parameters.emissiveIntensity;
+
+    FrameResource* frameResource = renderer->GetCurrentFrameResource();
+    assert(frameResource && frameResource->cbMaterialPbr && "FrameResource or cbMaterialPbr is null");
+    frameResource->cbMaterialPbr->CopyData(objectIndex, materialData);
 
     renderer->SetCamera(camera);
 
-    auto directCommandList = renderer->GetDirectCommandList();
+    GameObject::Update(deltaTime, renderer, objectIndex);
 
-    // descriptor heaps 바인딩
+}
+
+void SphereObject::Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex)
+{
+    // Descriptor Heaps 바인딩
     ID3D12DescriptorHeap* heaps[] = {
-        renderer->GetDescriptorHeapManager()->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
-        renderer->GetDescriptorHeapManager()->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+        renderer->GetDescriptorHeapManager()->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
+        renderer->GetDescriptorHeapManager()->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
     };
-    directCommandList->SetDescriptorHeaps(_countof(heaps), heaps);
+    commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
-    // MVP CBV (b0) 업데이트
-    {
-        CB_MVP mvp{};
-        XMStoreFloat4x4(&mvp.model, XMMatrixTranspose(worldMatrix));
-        XMStoreFloat4x4(&mvp.view, XMMatrixTranspose(renderer->GetCamera()->GetViewMatrix()));
-        XMStoreFloat4x4(&mvp.projection, XMMatrixTranspose(renderer->GetCamera()->GetProjectionMatrix()));
-        XMStoreFloat4x4(&mvp.modelInvTranspose, XMMatrixTranspose(XMMatrixInverse(nullptr, worldMatrix)));
-        memcpy(mappedMVPData, &mvp, sizeof(mvp));
-    }
+    FrameResource* frameResource = renderer->GetCurrentFrameResource();
 
+    // 디버그 노말 파이프라인
     if (showNormalDebug)
     {
-        // --- 노말 디버그용 파이프라인 ---
-        directCommandList->SetGraphicsRootSignature(renderer->GetRootSignatureManager()->Get(L"DebugNormalRS"));
 
-        // b0: MVP CBV
-        directCommandList->SetGraphicsRootConstantBufferView(0, constantMVPBuffer->GetGPUVirtualAddress());
+        commandList->SetGraphicsRootSignature(
+            renderer->GetRootSignatureManager()->Get(L"DebugNormalRS")
+        );
+        commandList->SetPipelineState(
+            renderer->GetPSOManager()->Get(L"DebugNormalPSO")
+        );
 
-        directCommandList->SetPipelineState(renderer->GetPSOManager()->Get(L"DebugNormalPSO"));
-        directCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+        commandList->SetGraphicsRootConstantBufferView(0, frameResource->cbMVP->GetGPUVirtualAddress(objectIndex));
+        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
     }
+
+    // PBR 렌더링
     else
     {
-        // --- 기존 PBR 렌더링 ---
-        directCommandList->SetGraphicsRootSignature(renderer->GetRootSignatureManager()->Get(L"PbrRS"));
-        
-        // b0: MVP CBV
-        directCommandList->SetGraphicsRootConstantBufferView(0, constantMVPBuffer->GetGPUVirtualAddress());
-        
-        // b1 = 조명 CB, b3 = 글로벌 CB,  b4 = ShadowMapViewProj
-        directCommandList->SetGraphicsRootConstantBufferView(1, renderer->GetLightingManager()->GetLightingCB()->GetGPUVirtualAddress());
-        directCommandList->SetGraphicsRootConstantBufferView(3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
-        directCommandList->SetGraphicsRootConstantBufferView(4, renderer->GetLightingManager()->GetShadowViewProjCB()->GetGPUVirtualAddress());
+        commandList->SetGraphicsRootSignature(
+            renderer->GetRootSignatureManager()->Get(L"PbrRS")
+        );
+        commandList->SetPipelineState(
+            renderer->GetPSOManager()->Get(L"PbrPSO")
+        );
 
+        
+        commandList->SetGraphicsRootConstantBufferView(0, frameResource->cbMVP->GetGPUVirtualAddress(objectIndex)); commandList->SetGraphicsRootConstantBufferView(1, frameResource->cbLighting->GetGPUVirtualAddress(0)); commandList->SetGraphicsRootConstantBufferView(3, frameResource->cbGlobal->GetGPUVirtualAddress(0)); commandList->SetGraphicsRootConstantBufferView(4, frameResource->cbShadowViewProj->GetGPUVirtualAddress(0));
 
-        // 알베도 SRV
-        if (auto albedoTex = materialPBR->GetAlbedoTexture())
-            directCommandList->SetGraphicsRootDescriptorTable(5, albedoTex->GetGpuHandle());
-        
-        // 환경맵 바인딩 (irradiance, prefiltered, BRDF LUT)
-        renderer->GetEnvironmentMaps().Bind(directCommandList, 6, 7, 8);
-        
-        // 샘플러 (s0)
-        directCommandList->SetGraphicsRootDescriptorTable(9, renderer->GetDescriptorHeapManager()->GetLinearWrapSamplerGpuHandle());
-        
-        // shadow map SRV 테이블 바인딩 (t7~t7+N-1) → root 10
-        // shadowMaps[i].srvHandle 에 연속으로 할당된 NUM_SHADOW_DSV_COUNT 개의 SRV가 있으므로,
-        // 첫 핸들만 넘기면 전체 테이블이 바인딩됨
-        const auto& shadowMaps = renderer->GetShadowMaps();
-        directCommandList->SetGraphicsRootDescriptorTable(10, shadowMaps[0].srvHandle.gpuHandle);
+        if (materialPBR->GetAlbedoTexture()) {
+            commandList->SetGraphicsRootDescriptorTable(
+                5, materialPBR->GetAlbedoTexture()->GetGpuHandle()
+            );
+        }
 
-        // 머티리얼 CBV (b2)
-        materialPBR->WriteToConstantBuffer(mappedMaterialBuffer);
-        directCommandList->SetGraphicsRootConstantBufferView(2, materialConstantBuffer->GetGPUVirtualAddress());
-        
-        // 삼각형 리스트로 그리기
-        directCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        directCommandList->SetPipelineState(renderer->GetPSOManager()->Get(L"PbrPSO"));
+        renderer->GetEnvironmentMaps().Bind(commandList, 6, 7, 8);
+        commandList->SetGraphicsRootDescriptorTable(9, renderer->GetDescriptorHeapManager()->GetLinearWrapSamplerGpuHandle());
+        commandList->SetGraphicsRootDescriptorTable(10, frameResource->shadowSrv[0].gpuHandle);
+
+        commandList->SetGraphicsRootConstantBufferView(2, frameResource->cbMaterialPbr->GetGPUVirtualAddress(objectIndex));
+        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 
-    // 메시 바인딩 & 드로우 (공통)
-    directCommandList->IASetVertexBuffers(0, 1, &sphereMesh->GetVertexBufferView());
-    directCommandList->IASetIndexBuffer(&sphereMesh->GetIndexBufferView());
-    directCommandList->DrawIndexedInstanced(sphereMesh->GetIndexCount(), 1, 0, 0, 0);
+    // IA 설정 및 드로우
+    commandList->IASetVertexBuffers(0, 1, &sphereMesh->GetVertexBufferView());
+    commandList->IASetIndexBuffer(&sphereMesh->GetIndexBufferView());
+    commandList->DrawIndexedInstanced(sphereMesh->GetIndexCount(), 1, 0, 0, 0);
 }

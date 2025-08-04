@@ -3,8 +3,11 @@
 #include "DescriptorHeapManager.h"
 #include "RootSignatureManager.h"
 #include "PipelineStateManager.h"
+#include "EnvironmentMaps.h"
+#include "FrameResource/FrameResource.h"
 #include <directx/d3dx12.h>
 #include <imgui.h>
+#include <cassert>
 
 using namespace DirectX;
 
@@ -13,136 +16,127 @@ BoxObject::BoxObject(std::shared_ptr<Material> material)
 {
 }
 
-BoxObject::~BoxObject()
-{
-    if (materialConstantBuffer && mappedMaterialBuffer) {
-        materialConstantBuffer->Unmap(0, nullptr);
-    }
-}
-
 bool BoxObject::Initialize(Renderer* renderer)
 {
-    if (!GameObject::Initialize(renderer)) {
+    if (!GameObject::Initialize(renderer))
+    {
         return false;
     }
 
-    // 1) 큐브 메쉬 생성
     cubeMesh = Mesh::CreateCube(renderer);
-    if (!cubeMesh) {
+    if (!cubeMesh)
+    {
         return false;
     }
     SetMesh(cubeMesh);
 
-    // 2) PBR 머티리얼용 상수 버퍼 생성 (256바이트 정렬, Upload heap)
-    auto device = renderer->GetDevice();
-    CD3DX12_HEAP_PROPERTIES uploadHeapProps(D3D12_HEAP_TYPE_UPLOAD);
-    auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(256);
-    HRESULT hr = device->CreateCommittedResource(
-        &uploadHeapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &bufferDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&materialConstantBuffer));
-    if (FAILED(hr)) {
-        return false;
-    }
-
-    materialConstantBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedMaterialBuffer));
-    materialPBR->WriteToConstantBuffer(mappedMaterialBuffer);
-
     return true;
 }
 
-void BoxObject::Update(float deltaTime)
+void BoxObject::Update(float deltaTime, Renderer* renderer, UINT objectIndex)
 {
     // ImGui로 PBR 파라미터 조절
     if (ImGui::Begin("Box Material (PBR)"))
     {
-        auto& params = materialPBR->parameters;
-        ImGui::ColorEdit3("Base Color", reinterpret_cast<float*>(&params.baseColor));
-        ImGui::SliderFloat("Metallic", &params.metallic, 0.0f, 1.0f);
-        ImGui::SliderFloat("Roughness", &params.roughness, 0.0f, 1.0f);
-        ImGui::SliderFloat("Ambient Occlusion", &params.ambientOcclusion, 0.0f, 1.0f);
-        ImGui::ColorEdit3("Emissive Color", reinterpret_cast<float*>(&params.emissiveColor));
-        ImGui::SliderFloat("Emissive Intensity", &params.emissiveIntensity, 0.0f, 5.0f);
-
+        auto& parameters = materialPBR->parameters;
+        ImGui::ColorEdit3("Base Color", reinterpret_cast<float*>(&parameters.baseColor));
+        ImGui::SliderFloat("Metallic", &parameters.metallic, 0.0f, 1.0f);
+        ImGui::SliderFloat("Roughness", &parameters.roughness, 0.0f, 1.0f);
+        ImGui::SliderFloat("Ambient Occlusion", &parameters.ambientOcclusion, 0.0f, 1.0f);
+        ImGui::ColorEdit3("Emissive Color", reinterpret_cast<float*>(&parameters.emissiveColor));
+        ImGui::SliderFloat("Emissive Intensity", &parameters.emissiveIntensity, 0.0f, 5.0f);
     }
     ImGui::End();
 
-    GameObject::Update(deltaTime);
+    // PBR 머티리얼 상수 버퍼 업로드
+    CB_MaterialPBR materialData{};
+    auto& params = materialPBR->parameters;
+    materialData.baseColor = params.baseColor;
+    materialData.metallic = params.metallic;
+    materialData.specular = params.specular;
+    materialData.roughness = params.roughness;
+    materialData.ambientOcclusion = params.ambientOcclusion;
+    materialData.emissiveColor = params.emissiveColor;
+    materialData.emissiveIntensity = params.emissiveIntensity;
+
+    FrameResource* frameResource = renderer->GetCurrentFrameResource();
+    assert(frameResource && frameResource->cbMaterialPbr && "FrameResource or cbMaterialPbr is null");
+    frameResource->cbMaterialPbr->CopyData(objectIndex, materialData);
+
+    GameObject::Update(deltaTime, renderer, objectIndex);
 }
 
-void BoxObject::Render(Renderer* renderer)
+void BoxObject::Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex)
 {
-
-    ID3D12GraphicsCommandList* graphicsCommandList = renderer->GetDirectCommandList();
-    auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
-
+    auto descriptorManager = renderer->GetDescriptorHeapManager();
     ID3D12DescriptorHeap* descriptorHeaps[] = {
-        descriptorHeapManager->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
-        descriptorHeapManager->GetHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+        descriptorManager->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
+        descriptorManager->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
     };
-    graphicsCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+    commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
+    // 루트 시그니처 및 파이프라인 상태 설정
+    commandList->SetGraphicsRootSignature(
+        renderer->GetRootSignatureManager()->Get(L"PbrRS")
+    );
+    commandList->SetPipelineState(
+        renderer->GetPSOManager()->Get(L"PbrPSO")
+    );
+
+    FrameResource* frameResource = renderer->GetCurrentFrameResource();
+
+    // b0: 모델-뷰-투영 상수 버퍼
+    commandList->SetGraphicsRootConstantBufferView(
+        0, frameResource->cbMVP->GetGPUVirtualAddress(objectIndex)
+    );
+
+    // b1: 라이팅 상수 버퍼
+    commandList->SetGraphicsRootConstantBufferView(
+        1, frameResource->cbLighting->GetGPUVirtualAddress(0)
+    );
+
+    // b2: 머티리얼 상수 버퍼
+    commandList->SetGraphicsRootConstantBufferView(
+        2, frameResource->cbMaterialPbr->GetGPUVirtualAddress(objectIndex)
+    );
+
+    // b3: 전역 상수 버퍼
+    commandList->SetGraphicsRootConstantBufferView(
+        3, frameResource->cbGlobal->GetGPUVirtualAddress(0)
+    );
+
+    // b4: 그림자 뷰·투영 상수 버퍼
+    commandList->SetGraphicsRootConstantBufferView(
+        4, frameResource->cbShadowViewProj->GetGPUVirtualAddress(0)
+    );
+
+    // 텍스처 및 샘플러 테이블 바인딩
+    // 텍스쳐가 유효할시에만 바인딩
+    if (materialPBR->GetAlbedoTexture()) {
+        commandList->SetGraphicsRootDescriptorTable(
+            5, materialPBR->GetAlbedoTexture()->GetGpuHandle()
+        );
+    }
 
 
-    CB_MVP mvpData{};
-    XMStoreFloat4x4(&mvpData.model, XMMatrixTranspose(worldMatrix));
-    XMStoreFloat4x4(&mvpData.view, XMMatrixTranspose(renderer->GetCamera()->GetViewMatrix()));
-    XMStoreFloat4x4(&mvpData.projection, XMMatrixTranspose(renderer->GetCamera()->GetProjectionMatrix()));
-    XMStoreFloat4x4(&mvpData.modelInvTranspose, XMMatrixTranspose(XMMatrixInverse(nullptr, worldMatrix)));
-    std::memcpy(mappedMVPData, &mvpData, sizeof(mvpData));
+    renderer->GetEnvironmentMaps().Bind(commandList, 6, 7, 8);
+    commandList->SetGraphicsRootDescriptorTable(
+        9, descriptorManager->GetLinearWrapSamplerGpuHandle()
+    );
 
+    // 그림자맵 SRV 테이블 바인딩 (t7~t7+N-1)
+    commandList->SetGraphicsRootDescriptorTable(
+        10, frameResource->shadowSrv[0].gpuHandle
+    );
 
-    auto* rootSignature = renderer->GetRootSignatureManager()->Get(L"PbrRS");
-    auto* pipelineState = renderer->GetPSOManager()->Get(L"PbrPSO");
-
-    graphicsCommandList->SetGraphicsRootSignature(rootSignature);
-    graphicsCommandList->SetPipelineState(pipelineState);
-
-    // b0: MVP
-    graphicsCommandList->SetGraphicsRootConstantBufferView(
-        0, constantMVPBuffer->GetGPUVirtualAddress());
-
-    // b1: Lighting, b3: Global, b4: ShadowViewProj
-    graphicsCommandList->SetGraphicsRootConstantBufferView(
-        1, renderer->GetLightingManager()->GetLightingCB()->GetGPUVirtualAddress());
-    graphicsCommandList->SetGraphicsRootConstantBufferView(
-        3, renderer->GetGlobalConstantBuffer()->GetGPUVirtualAddress());
-    graphicsCommandList->SetGraphicsRootConstantBufferView(
-        4, renderer->GetLightingManager()->GetShadowViewProjCB()->GetGPUVirtualAddress());
-
-    // PBR 머티리얼 텍스처 바인딩 (t5~)
-    if (auto albedoTex = materialPBR->GetAlbedoTexture())
-        graphicsCommandList->SetGraphicsRootDescriptorTable(5, albedoTex->GetGpuHandle());
-
-    // 환경맵 (irradiance t6, prefiltered t7, BRDF LUT t8)
-    renderer->GetEnvironmentMaps().Bind(
-        graphicsCommandList,
-        6,
-        7,
-        8);
-
-    // 샘플러 (s0)
-    graphicsCommandList->SetGraphicsRootDescriptorTable(
-        9, descriptorHeapManager->GetLinearWrapSamplerGpuHandle());
-
-    // 그림자 맵 SRV 테이블 (t10~)
-    auto const& shadowMaps = renderer->GetShadowMaps();
-    graphicsCommandList->SetGraphicsRootDescriptorTable(
-        10, shadowMaps[0].srvHandle.gpuHandle);
-
-    // b2: MaterialPBR 상수 버퍼
-    materialPBR->WriteToConstantBuffer(mappedMaterialBuffer);
-    graphicsCommandList->SetGraphicsRootConstantBufferView(
-        2, materialConstantBuffer->GetGPUVirtualAddress());
-
-    graphicsCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-
-    graphicsCommandList->IASetVertexBuffers(
-        0, 1, &cubeMesh->GetVertexBufferView());
-    graphicsCommandList->IASetIndexBuffer(&cubeMesh->GetIndexBufferView());
-    graphicsCommandList->DrawIndexedInstanced(
-        cubeMesh->GetIndexCount(), 1, 0, 0, 0);
+    // 입력 어셈블러 설정 및 드로우 호출
+    if (cubeMesh)
+    {
+        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        commandList->IASetVertexBuffers(0, 1, &cubeMesh->GetVertexBufferView());
+        commandList->IASetIndexBuffer(&cubeMesh->GetIndexBufferView());
+        commandList->DrawIndexedInstanced(
+            cubeMesh->GetIndexCount(), 1, 0, 0, 0
+        );
+    }
 }

@@ -7,35 +7,34 @@ void ForwardOpaquePass::Initialize(Renderer* renderer)
 {
 }
 
-void ForwardOpaquePass::Update(float deltaTime)
+void ForwardOpaquePass::Update(float deltaTime, Renderer* renderer)
 {
 }
 
-void ForwardOpaquePass::Render(Renderer* renderer)
+void ForwardOpaquePass::RenderSingleThreaded(Renderer* renderer)
 {
-    auto directCommandList = renderer->GetDirectCommandList();
+	FrameResource* frameResource = renderer->GetCurrentFrameResource();
+	ID3D12GraphicsCommandList* commandList = frameResource->commandList.Get();
+
+
 	auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
 	UINT backBufferIndex = renderer->GetBackBufferIndex();
 
 	// ShadowMap 리소스들 : DEPTH_WRITE → PIXEL_SHADER_RESOURCE
-	const auto& shadowMaps = renderer->GetShadowMaps();
+	const auto& shadowMaps = frameResource->shadowMaps;
 	for (const auto& shadowMap : shadowMaps)
 	{
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 			shadowMap.depthBuffer.Get(),
 			D3D12_RESOURCE_STATE_DEPTH_WRITE,
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		directCommandList->ResourceBarrier(1, &barrier);
+		commandList->ResourceBarrier(1, &barrier);
 	}
-	
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = 
-		descriptorHeapManager->GetRtvCpuHandle(static_cast<UINT>(Renderer::RtvIndex::SceneColor));
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = frameResource->sceneColorRtv.cpuHandle;
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = frameResource->depthStencilDsv.cpuHandle;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle =
-		descriptorHeapManager->GetDsvCpuHandle(static_cast<UINT>(Renderer::DsvIndex::DepthStencil));
-
-	directCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 	D3D12_VIEWPORT viewport = {
 		0.0f, 0.0f,
@@ -50,17 +49,22 @@ void ForwardOpaquePass::Render(Renderer* renderer)
 		static_cast<LONG>(renderer->GetViewportHeight())
 	};
 
-	directCommandList->RSSetViewports(1, &viewport);
-	directCommandList->RSSetScissorRects(1, &scissor);
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &scissor);
 
 	// RTV/DSV 클리어
 	const FLOAT clearColor[4] = { 0, 0, 0, 1 };
-	directCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-	directCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 
-	for (auto& object : renderer->GetOpaqueObjects()) {
-		object->Render(renderer);
+	const auto& opaqueObjects = renderer->GetOpaqueObjects();
+	for (UINT objectIndex = 0; objectIndex < opaqueObjects.size(); ++objectIndex)
+	{
+		opaqueObjects[objectIndex]->Render(
+			commandList,
+			renderer,
+			objectIndex);
 	}
 
 
@@ -71,7 +75,6 @@ void ForwardOpaquePass::Render(Renderer* renderer)
 			shadowMap.depthBuffer.Get(),
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			D3D12_RESOURCE_STATE_DEPTH_WRITE);
-		directCommandList->ResourceBarrier(1, &barrier);
+		commandList->ResourceBarrier(1, &barrier);
 	}
-	
 }

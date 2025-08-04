@@ -14,15 +14,12 @@ public:
         const MaterialPbrTextures& textures);
 
     bool Initialize(Renderer* renderer) override;
-    void Update(float deltaTime) override;
-    void Render(Renderer* renderer) override;
+    void Update(float deltaTime, Renderer* renderer, UINT objectIndex) override;
+    void Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex) override;
 
 private:
     std::weak_ptr<Mesh> flightMesh;
     std::shared_ptr<Material> materialPBR;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> materialConstantBuffer;
-    std::byte* mappedMaterialBuffer = nullptr;
 
     std::shared_ptr<Camera> camera;
     float yawCam = 0, pitchCam = 0;

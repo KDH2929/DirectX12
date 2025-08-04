@@ -13,39 +13,24 @@
 
 using namespace DirectX;
 
+class Renderer;
+
 class LightingManager
 {
 public:
-    LightingManager(ID3D12Device* device);
+    LightingManager() = default;
 
     void AddLight(std::shared_ptr<BaseLight> light);
     void ClearLights();
 
-    void Update(Camera* camera);
+    void Update(Renderer* renderer);
     void UpdateImGui();
-    void WriteLightingBuffer();
-    void WriteShadowViewProjBuffer(const std::vector<XMMATRIX>& shadowViewProj);
-
-    const CB_Lighting& GetLightingData() const;
     const std::vector<std::shared_ptr<BaseLight>>& GetLights() const;
 
-    ID3D12Resource* GetLightingCB() const;
-    ID3D12Resource* GetShadowViewProjCB() const;
-
 private:
-    void CreateConstantBuffer(ID3D12Device* device,
-        UINT64 size,
-        Microsoft::WRL::ComPtr<ID3D12Resource>& buffer,
-        UINT8*& mappedPtr);
+    void UploadLightingBuffer(Renderer* renderer);
+    void UploadShadowViewProjBuffer(Renderer* renderer);
 
     std::vector<std::shared_ptr<BaseLight>> lights;
-
-    // CB_Lighting data & buffer
-    CB_Lighting                         lightingData = {};
-    Microsoft::WRL::ComPtr<ID3D12Resource> lightingBuffer;
-    UINT8* lightingMapped = nullptr;
-
-    // CB_ShadowMapViewProj buffer
-    Microsoft::WRL::ComPtr<ID3D12Resource> shadowViewProjBuffer;
-    UINT8* shadowViewProjMapped = nullptr;
+    CB_Lighting lightingData = {};
 };

@@ -23,16 +23,11 @@ public:
     bool Create(const std::wstring& name,
         const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& desc);
 
-    // 생성된 루트 시그니처 반환
-    ID3D12RootSignature* Get(const std::wstring& name) const;
 
-    // 종료 시 캐시 및 device 해제
+    ID3D12RootSignature* Get(const std::wstring& name) const;
     void Cleanup();
 
 private:
     ID3D12Device* device; 
-    std::unordered_map<
-        std::wstring,
-        ComPtr<ID3D12RootSignature>
-    > signatureMap;          // 이름 -> RootSignature 캐시
+    std::unordered_map<std::wstring, ComPtr<ID3D12RootSignature>> signatureMap;
 };

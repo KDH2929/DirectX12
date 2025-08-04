@@ -9,66 +9,84 @@ void ShadowMapPass::Initialize(Renderer* renderer)
 {
 }
 
-void ShadowMapPass::Update(float deltaTime)
+void ShadowMapPass::Update(float deltaTime, Renderer* renderer)
 {
-}
+    auto& objects = renderer->GetOpaqueObjects();
+    auto& lights = renderer->GetLightingManager()->GetLights();
 
-void ShadowMapPass::Render(Renderer* renderer)
-{
-    auto commandList = renderer->GetDirectCommandList();
-    auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
-    auto& shadowMaps = renderer->GetShadowMaps();
-    auto lightingManager = renderer->GetLightingManager();
-
-
-
-    // 뷰포트/시저 설정
-    D3D12_VIEWPORT viewport = { 0.0f, 0.0f, (float)SHADOW_MAP_WIDTH, (float)SHADOW_MAP_HEIGHT, 0.0f, 1.0f };
-    D3D12_RECT scissor = { 0, 0, (LONG)SHADOW_MAP_WIDTH, (LONG)SHADOW_MAP_HEIGHT };
-    commandList->RSSetViewports(1, &viewport);
-    commandList->RSSetScissorRects(1, &scissor);
-
-    // CB_ShadowMapPass 같은 상수버퍼에 lightViewProj 전달하는 것은 GameObject에서 수행
-
-    
-    const auto& lights = lightingManager->GetLights();
-
-
+    UINT objectCount = static_cast<UINT>(objects.size());
     UINT shadowMapIndex = 0;
-
-    for (size_t i = 0; i < lights.size(); ++i)
+    
+    for (UINT lightIndex = 0; lightIndex < lights.size(); ++lightIndex)
     {
-        auto& light = lights[i];
+        auto& light = lights[lightIndex];
         if (!light->IsShadowCastingEnabled())
             continue;
 
-        const auto& viewProjMatrices = light->GetShadowViewProjMatrices();
-        size_t matrixCount = viewProjMatrices.size();
-
-        for (size_t faceIdx = 0; faceIdx < matrixCount; ++faceIdx)
+        auto viewProjectionMatrices = light->GetShadowViewProjMatrices();
+        for (UINT faceIndex = 0; faceIndex < viewProjectionMatrices.size(); ++faceIndex)
         {
-            const ShadowMap& shadowMap = shadowMaps[shadowMapIndex];
+            const XMMATRIX& lightViewProjection = viewProjectionMatrices[faceIndex];
+            for (UINT objectIndex = 0; objectIndex < objectCount; ++objectIndex)
+            {
+                objects[objectIndex]->UpdateShadowMap(
+                    renderer,
+                    objectIndex,
+                    shadowMapIndex,
+                    lightViewProjection
+                );
+            }
+            ++shadowMapIndex;
+        }
+    }
+}
 
-            // DSV 설정
-            commandList->OMSetRenderTargets(0, nullptr, FALSE, &shadowMap.dsvHandle.cpuHandle);
+void ShadowMapPass::RenderSingleThreaded(Renderer* renderer)
+{
+    auto* frameResource = renderer->GetCurrentFrameResource();
 
-            // ViewProj 행렬
-            XMMATRIX lightViewProj = viewProjMatrices[faceIdx];
+    auto commandList = frameResource->commandList.Get();
+    auto& objects = renderer->GetOpaqueObjects();
+    auto& lights = renderer->GetLightingManager()->GetLights();
+    const UINT objectCount = static_cast<UINT>(objects.size());
 
-            // 깊이 클리어
-            commandList->ClearDepthStencilView(
-                shadowMap.dsvHandle.cpuHandle,
-                D3D12_CLEAR_FLAG_DEPTH,
-                1.0f, 0,
-                0, nullptr
-            );
+    UINT shadowMapIndex = 0;
+    const float width = static_cast<float>(SHADOW_MAP_WIDTH);
+    const float height = static_cast<float>(SHADOW_MAP_HEIGHT);
 
-            // 드로우
-            for (auto& object : renderer->GetOpaqueObjects()) {
-                object->RenderShadowMapPass(renderer, lightViewProj, shadowMapIndex);
+
+    for (UINT lightIndex = 0; lightIndex < lights.size(); ++lightIndex)
+    {
+        auto& light = lights[lightIndex];
+        if (!light->IsShadowCastingEnabled())
+            continue;
+
+        auto viewProjMatrices = light->GetShadowViewProjMatrices();
+        for (UINT faceIndex = 0; faceIndex < viewProjMatrices.size(); ++faceIndex)
+        {
+            // viewport & scissor
+            D3D12_VIEWPORT     viewport = { 0.0f, 0.0f, width, height, 0.0f, 1.0f };
+            D3D12_RECT         scissorRect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
+            commandList->RSSetViewports(1, &viewport);
+            commandList->RSSetScissorRects(1, &scissorRect);
+
+            // render target & clear
+            auto& dsvHandle = frameResource->shadowDsv[shadowMapIndex].cpuHandle;
+            commandList->OMSetRenderTargets(0, nullptr, FALSE, &dsvHandle);
+            commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+            // draw each object
+            for (UINT objectIndex = 0; objectIndex < objectCount; ++objectIndex)
+            {
+                objects[objectIndex]->RenderShadowMap(
+                    commandList,
+                    renderer,
+                    objectIndex,
+                    shadowMapIndex
+                );
             }
 
-            shadowMapIndex++;
+            ++shadowMapIndex;
         }
     }
 }

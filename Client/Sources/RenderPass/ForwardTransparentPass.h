@@ -12,6 +12,6 @@ public:
     ~ForwardTransparentPass() override = default;
 
     void Initialize(Renderer* renderer) override;
-    void Update(float deltaTime) override;
-    void Render(Renderer* renderer) override;
+    void Update(float deltaTime, Renderer* renderer) override;
+    void RenderSingleThreaded(Renderer* renderer) override;
 };

@@ -15,18 +15,16 @@ class Renderer;
 class Skybox : public GameObject
 {
 public:
-    Skybox(std::shared_ptr<Texture> cubeMapTexture);
+    explicit Skybox(std::shared_ptr<Texture> cubeMapTexture);
     ~Skybox() override = default;
 
     bool Initialize(Renderer* renderer) override;
-    void Update(float deltaTime) override;
-    void Render(Renderer* renderer) override;
+    void Update(float deltaTime, Renderer* renderer, UINT objectIndex) override;
+    void Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex) override;
 
 private:
-    std::shared_ptr<Mesh>     cubeMesh;
-    std::shared_ptr<Texture>  cubeMapTexture;
-
+    std::shared_ptr<Mesh>    cubeMesh;
+    std::shared_ptr<Texture> cubeMapTexture;
     ComPtr<ID3D12RootSignature> rootSignature;
     ComPtr<ID3D12PipelineState> pipelineState;
 };
-

@@ -11,6 +11,7 @@
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx12.h>
 
+#include "D3DUtil.h"
 #include "GameObject.h"
 #include "ShaderManager.h"
 #include "PipelineStateManager.h"
@@ -19,10 +20,12 @@
 #include "TextureManager.h"
 #include "LightingManager.h"
 #include "RenderPass/RenderPass.h"
+#include "FrameResource/FrameResource.h"
 #include "Camera.h"
 #include "EnvironmentMaps.h"
 #include "ConstantBuffers.h"
 #include "ShadowMap.h"
+#include "ThreadPool.h"
 
 
 #pragma comment(lib, "d3d12.lib")
@@ -31,26 +34,6 @@
 
 using Microsoft::WRL::ComPtr;
 
-
-inline void ThrowIfFailed(HRESULT hr,
-    const char* expr = nullptr,
-    const char* file = __FILE__,
-    int         line = __LINE__)
-{
-    if (FAILED(hr))
-    {
-        auto msg = std::format(
-            "ERROR: {} failed at {}:{} (hr=0x{:08X})",
-            expr ? expr : "HRESULT",
-            file,
-            line,
-            static_cast<unsigned>(hr));
-        throw std::runtime_error(msg);
-    }
-}
-
-#define THROW_IF_FAILED(x) ThrowIfFailed( \
-    (x), #x, __FILE__, __LINE__)
 
 class Renderer
 {
@@ -74,11 +57,12 @@ public:
 
     void UpdateGlobalTime(float seconds);
 
+    bool IsMultithreadedRenderingEnabled() const;
+
+
     // Direct queue(그래픽스) 접근자
     ID3D12Device* GetDevice() const;
     ID3D12CommandQueue* GetDirectQueue() const;
-    ID3D12GraphicsCommandList* GetDirectCommandList() const;
-    ID3D12CommandAllocator* GetDirectCommandAllocator() const;
     void WaitForDirectQueue();
 
     // Copy queue(업로드 전용) 접근자
@@ -98,13 +82,24 @@ public:
     TextureManager* GetTextureManager() const;
     LightingManager* GetLightingManager() const;
 
+
+    // Multi Thread Commnad 처리
+    ThreadPool* GetThreadPool();
+    ID3D12CommandAllocator* GetThreadCommandAllocator(UINT index);
+    ID3D12GraphicsCommandList* GetThreadCommandList(UINT index);
+
+    void AddRecordedCommandList(ID3D12CommandList* commandList);
+    void ClearRecordedCommandLists();
+    const std::vector<ID3D12CommandList*>& GetRecordedCommandLists() const;
+
+
     // 카메라
     Camera* GetCamera() const;
     void SetCamera(std::shared_ptr<Camera> cam);
 
     EnvironmentMaps& GetEnvironmentMaps();
-    ID3D12Resource* GetGlobalConstantBuffer() const;
 
+    const std::vector<DescriptorHandle>& GetSwapChainRtvs() const;
 
     // Viewport
     int GetViewportWidth() const;
@@ -116,42 +111,27 @@ public:
     void ImGuiNewFrame();
     void ShutdownImGui();
 
-
     UINT GetBackBufferIndex() const;
-
-    D3D12_GPU_DESCRIPTOR_HANDLE GetSceneColorSrvHandle() const;
-    ID3D12Resource* GetSceneColorBuffer() const;
-
-    const std::array<ShadowMap, MAX_SHADOW_DSV_COUNT>& GetShadowMaps() const;
-
-
+    FrameResource* GetCurrentFrameResource();
 
 private:
     bool InitD3D(HWND hwnd, int w, int h);
-    void PopulateCommandList();
+
+    void RenderSingleThreaded();
+    void RecordCommandList_SingleThreaded();
+
+    void RenderMultiThreaded();
 
 
 public:
 
-    static const UINT BackBufferCount = 2;
+    static const UINT BackBufferCount = 3;
 
-    enum class RtvIndex : uint8_t {
-        SceneColor = 0,
-        GBufferAlbedo = 1,
-        GBufferNormal = 2,
-        GBufferMaterial = 3,
-        BackBuffer0 = 4,        // 반드시 마지막에 둘 것
-        RtvCount = BackBuffer0 + BackBufferCount
-    };
 
     // 섀도우맵은 라이팅개수만큼 필요하지만 현재구조에선 라이팅 개수는 3개로 고정하였음
     // 추후 경우에 따라 구조변경 필요할 수도 있음
     // Point Light 는 6면 큐브맵이 필요하여 ShadowMap 개수를 정하였음
-    enum class DsvIndex : uint8_t {
-        DepthStencil = 0,
-        ShadowMap0 = 1,
-        DsvCount = ShadowMap0 + MAX_SHADOW_DSV_COUNT
-    };
+
 
     // 디퍼드렌더링은 현재 미구현
     enum class GBufferSlot : uint8_t {
@@ -173,24 +153,27 @@ private:
     ComPtr<IDXGISwapChain3>         swapChain;
     UINT                                     backBufferIndex = 0;
 
-    // Direct queue & lists
+
+    // Back Buffer
+    ComPtr<ID3D12Resource>          backBuffers[BackBufferCount];
+    std::vector<DescriptorHandle> swapChainRtvs;
+
+    std::unique_ptr<ThreadPool> threadPool;
+
+    bool useMultithreadedRendering = false;
+
+    // Direct queue
     ComPtr<ID3D12CommandQueue>           directQueue;
-    ComPtr<ID3D12CommandAllocator>       directCommandAllocator;
-    ComPtr<ID3D12GraphicsCommandList>    directCommandList;
 
     // Copy queue & lists
     ComPtr<ID3D12CommandQueue>           copyQueue;
     ComPtr<ID3D12CommandAllocator>       copyCommandAllocator;
     ComPtr<ID3D12GraphicsCommandList>    copyCommandList;
 
-    // Render targets & depth
-    ComPtr<ID3D12Resource>          backBuffers[BackBufferCount];
-    ComPtr<ID3D12Resource>          GBuffer[UINT(GBufferSlot::Count)];
-    ComPtr<ID3D12Resource>          sceneColorBuffer;
-    ComPtr<ID3D12Resource>          depthStencilBuffer;
-
-    // Shadow Map
-    std::array<ShadowMap, MAX_SHADOW_DSV_COUNT> shadowMaps;
+    // Thread Pool 용 CommandList & Command Allocator
+    std::vector<ComPtr<ID3D12CommandAllocator>> threadCommandAllocators;
+    std::vector<ComPtr<ID3D12GraphicsCommandList>> threadCommandLists;
+    std::vector<ID3D12CommandList*> recordedCommandLists;
 
     // Direct-queue Fence
     ComPtr<ID3D12Fence>             directFence;
@@ -221,13 +204,6 @@ private:
     std::shared_ptr<Camera>       mainCamera;
 
 
-    // Global Constant buffer
-
-    CB_Global           globalData;
-    ComPtr<ID3D12Resource> globalConstantBuffer;
-    UINT8* mappedGlobalPtr = nullptr;           // GPU에 있는 Constant Buffer 리소스를 CPU에서 접근 가능한 메모리 주소로 맵핑된 포인터
-
-
     // 환경맵
     EnvironmentMaps environmentMaps;
 
@@ -242,7 +218,8 @@ private:
 
     std::array<std::unique_ptr<RenderPass>, PassIndex::Count> renderPasses;
 
-    // Off‑screen scene render target SRV handle
-    DescriptorHandle sceneColorSrvHandle;
+    std::vector<std::unique_ptr<FrameResource>> frameResources;
+    UINT currentFrameIndex = 0;
+    FrameResource* currentFrameResource = nullptr;
 
 };

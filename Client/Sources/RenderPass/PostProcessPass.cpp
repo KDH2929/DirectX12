@@ -17,40 +17,38 @@ void PostProcessPass::Initialize(Renderer* renderer)
 	postEffects.push_back(toneMapping);
 }
 
-void PostProcessPass::Update(float deltaTime)
+void PostProcessPass::Update(float deltaTime, Renderer* renderer)
 {
 	for (auto& postEffect : postEffects)
 	{
-		postEffect->Update(deltaTime);
+		postEffect->Update(deltaTime, renderer);
 	}
 }
 
-void PostProcessPass::Render(Renderer* renderer)
+void PostProcessPass::RenderSingleThreaded(Renderer* renderer)
 {
-	auto directCommandList = renderer->GetDirectCommandList();
+	FrameResource* frameResource = renderer->GetCurrentFrameResource();
+	ID3D12GraphicsCommandList* commandList = frameResource->commandList.Get();
+
 	auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
 	UINT backBufferIndex = renderer->GetBackBufferIndex();
 
-
-	auto sceneColorBuffer = renderer->GetSceneColorBuffer();
+	auto& swapChainRtvs = renderer->GetSwapChainRtvs();
 
 	// Resource Barrier 로 용도변경
 	{
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			sceneColorBuffer,
+			frameResource->sceneColorBuffer.Get(),
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-		directCommandList->ResourceBarrier(1, &barrier);
+		commandList->ResourceBarrier(1, &barrier);
 	}
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle =
-		descriptorHeapManager->GetRtvCpuHandle(static_cast<UINT>(Renderer::RtvIndex::BackBuffer0) + backBufferIndex);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = swapChainRtvs[backBufferIndex].cpuHandle;
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = frameResource->depthStencilDsv.cpuHandle;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle =
-		descriptorHeapManager->GetDsvCpuHandle(static_cast<UINT>(Renderer::DsvIndex::DepthStencil));
-
-	directCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 
 	for (auto& postEffect : postEffects)
@@ -62,11 +60,11 @@ void PostProcessPass::Render(Renderer* renderer)
 	// Resource Barrier 로 용도변경
 	{
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			sceneColorBuffer,
+			frameResource->sceneColorBuffer.Get(),
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-		directCommandList->ResourceBarrier(1, &barrier);
+		commandList->ResourceBarrier(1, &barrier);
 	}
 	
 }

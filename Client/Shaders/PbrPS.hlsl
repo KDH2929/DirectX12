@@ -27,6 +27,9 @@ float4 PSMain(VSOutput input) : SV_Target
     }
 
     float3 color = ComputePBRWithShadow(input.positionWorld, N, input.uv);
+    
+    // color = ComputeShadowMask(input.positionWorld);
+    
     return float4(color, 1);
 
 }

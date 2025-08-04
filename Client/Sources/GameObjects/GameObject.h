@@ -21,9 +21,11 @@ public:
     virtual ~GameObject();
 
     virtual bool Initialize(Renderer* renderer);
-    virtual void Update(float deltaTime);
-    virtual void Render(Renderer* renderer) = 0;
-    void RenderShadowMapPass(Renderer* renderer, const XMMATRIX& lightViewProj, int shadowMapIndex);
+    virtual void Update(float deltaTime, Renderer* renderer = nullptr, UINT objectIndex = 0);
+    virtual void Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex) = 0;
+
+    void UpdateShadowMap(Renderer* renderer, UINT objectIndex, UINT shadowMapIndex, const XMMATRIX& lightViewProj);
+    void RenderShadowMap(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex, UINT shadowMapIndex);
 
     void SetPosition(const XMFLOAT3& pos);
     void SetScale(const XMFLOAT3& scale);
@@ -40,10 +42,6 @@ public:
 protected:
     void UpdateWorldMatrix();
 
-    // D3D12 상수 버퍼
-    ComPtr<ID3D12Resource>       constantMVPBuffer;
-    UINT8* mappedMVPData = nullptr;
-
     // 변환 정보
     XMFLOAT3 position    = {0,0,0};
     XMFLOAT3 scale       = {1,1,1};
@@ -53,9 +51,4 @@ protected:
     bool transparent = false;
 
     std::shared_ptr<Mesh> mesh;     // 모든 GameObject는 1개의 메쉬를 갖는다고 가정
-
-
-    // ShadowMapPass ConstantBuffers
-    ComPtr<ID3D12Resource> shadowMapConstantBuffers[MAX_SHADOW_DSV_COUNT];
-    UINT8* mappedShadowMapPtrs[MAX_SHADOW_DSV_COUNT] = {};
 };

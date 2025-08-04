@@ -16,7 +16,7 @@ public:
     virtual ~OutlinePostEffect() = default;
 
     void Initialize(Renderer* renderer) override;
-    void Update(float deltaTime) override;
+    void Update(float deltaTime, Renderer* renderer) override;
     void Render(Renderer* renderer) override;
 
 private:
@@ -25,10 +25,6 @@ private:
     float thicknessValue = 1.0f;
     DirectX::XMFLOAT3 outlineColor{ 0.0f, 0.0f, 0.0f };
     float mixFactor = 1.0f;
-
-    // GPU 상수 버퍼
-    ComPtr<ID3D12Resource> outlineConstantBuffer;
-    CB_OutlineOptions* mappedOutlineOptions = nullptr;
 
     // 풀스크린 쿼드 메쉬
     std::shared_ptr<Mesh> quadMesh;

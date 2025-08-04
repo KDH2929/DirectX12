@@ -6,24 +6,10 @@ void ForwardTransparentPass::Initialize(Renderer* renderer)
 {
 }
 
-void ForwardTransparentPass::Update(float deltaTime)
+void ForwardTransparentPass::Update(float deltaTime, Renderer* renderer)
 {
 }
 
-void ForwardTransparentPass::Render(Renderer* renderer)
+void ForwardTransparentPass::RenderSingleThreaded(Renderer* renderer)
 {
-	auto directCommandList = renderer->GetDirectCommandList();
-	auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
-	UINT backBufferIndex = renderer->GetBackBufferIndex();
-
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle =
-		descriptorHeapManager->GetRtvCpuHandle(static_cast<UINT>(Renderer::RtvIndex::SceneColor));
-
-	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle =
-		descriptorHeapManager->GetDsvCpuHandle(static_cast<UINT>(Renderer::DsvIndex::DepthStencil));
-
-	directCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-
-	for (auto& object : renderer->GetTransparentObjects())
-		object->Render(renderer);
 }

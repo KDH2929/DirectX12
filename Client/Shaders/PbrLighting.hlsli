@@ -46,7 +46,7 @@ cbuffer CB_MVP : register(b0)
 };
 cbuffer CB_Lighting : register(b1)
 {
-    float3 cameraWorcurrentLight;
+    float3 cameraWorld;
     float _padL;
     Light lights[MAX_LIGHTS];
 };
@@ -203,10 +203,10 @@ float3 IBL_Specular(float3 F0, float3 N, float3 V, float roughness)
     return prefiltered * (F0 * brdfSample.x + brdfSample.y);
 }
 
-float3 ComputePBR(float3 worcurrentLightPos, float3 worcurrentLightNormal, float2 uv)
+float3 ComputePBR(float3 worldPos, float3 worldNormal, float2 uv)
 {
-    float3 N = normalize(worcurrentLightNormal);
-    float3 V = normalize(cameraWorcurrentLight - worcurrentLightPos);
+    float3 N = normalize(worldNormal);
+    float3 V = normalize(cameraWorld- worldPos);
     
     float3 albedo = SampleAlbedo(uv);
     float metal = SampleMetallic(uv);
@@ -232,7 +232,7 @@ float3 ComputePBR(float3 worcurrentLightPos, float3 worcurrentLightNormal, float
         }
         else
         {
-            float3 toLight = currentLight.Position - worcurrentLightPos;
+            float3 toLight = currentLight.Position - worldPos;
             float dist = length(toLight);
             L = toLight / dist;
 
@@ -265,7 +265,7 @@ float3 ComputePBR(float3 worcurrentLightPos, float3 worcurrentLightNormal, float
 
 
 // 3×3 PCF 샘플링
-float SampleShadowMap(int idx, float4 posLightSpace)
+float SampleShadowMapPCF(int idx, float4 posLightSpace)
 {
     float3 ndc = posLightSpace.xyz / posLightSpace.w;
     float2 uv = float2(ndc.x, -ndc.y) * 0.5f + 0.5f;      // y는 음수를 붙여서
@@ -289,7 +289,7 @@ float SampleShadowMap(int idx, float4 posLightSpace)
         [unroll]
         for (int x = -1; x <= 1; ++x)
         {
-            float bias = 0.001f;
+            float bias = 1.5f * INV_SHADOW_MAP_HEIGHT;
             float2 offset = float2(x * INV_SHADOW_MAP_WIDTH, y * INV_SHADOW_MAP_HEIGHT);
             sum += shadowDepthMap[idx].SampleCmp(shadowMapSampler, uv + offset, depth - bias);
         }
@@ -299,10 +299,60 @@ float SampleShadowMap(int idx, float4 posLightSpace)
 }
 
 
-float3 ComputePBRWithShadow(float3 worcurrentLightPos, float3 worcurrentLightNormal, float2 uv)
+float SampleShadowMapHard(int idx, float4 posLightSpace)
 {
-    float3 N = normalize(worcurrentLightNormal);
-    float3 V = normalize(cameraWorcurrentLight - worcurrentLightPos);
+    
+    float3 ndc = posLightSpace.xyz / posLightSpace.w;
+    float2 uv = float2(ndc.x, -ndc.y) * 0.5f + 0.5f; // y는 음수를 붙여서
+    float depth = ndc.z;
+
+    if (uv.x < 0.0f || uv.x > 1.0f || uv.y < 0.0f || uv.y > 1.0f)
+    {
+        return 1.0f;
+    }
+
+    // 절두체 검사 (DirectX NDC 기준)
+    if (abs(ndc.x) > 1.0f || abs(ndc.y) > 1.0f || ndc.z < 0.0f || ndc.z > 1.0f)
+    {
+        return 1.0f; // 절두체 밖 → 그림자 없음 처리
+    }
+    
+    
+    float bias = 1.5f * INV_SHADOW_MAP_HEIGHT;
+    return shadowDepthMap[idx].SampleCmp(shadowMapSampler, uv, depth - bias);
+}
+
+float3 SampleShadowMapDebug(int idx, float4 posLightSpace)
+{
+
+    float3 ndc = posLightSpace.xyz / posLightSpace.w;
+    float2 uv = float2(ndc.x, -ndc.y) * 0.5f + 0.5f;
+    float depth = ndc.z;
+    
+
+    if (uv.x < 0.0f || uv.x > 1.0f || uv.y < 0.0f || uv.y > 1.0f ||
+        abs(ndc.x) > 1.0f || abs(ndc.y) > 1.0f || depth < 0.0f || depth > 1.0f)
+    {
+        return float4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+    
+
+    float bias = 1.5f * INV_SHADOW_MAP_HEIGHT;
+    
+    // raw map depth (R 채널)
+    float mapDepth = shadowDepthMap[idx].Sample(linearClampSampler, uv).r;
+    float refDepth = depth - bias;
+    float cmpMask = (mapDepth <= refDepth) ? 0.0f : 1.0f;
+    
+    // 결과를 RGB로 한 번에 리턴하여 디버깅
+    return float3(mapDepth, refDepth, cmpMask);
+}
+
+
+float3 ComputePBRWithShadow(float3 worldPos, float3 worldNormal, float2 uv)
+{
+    float3 N = normalize(worldNormal);
+    float3 V = normalize(cameraWorld- worldPos);
     
     float3 albedo = SampleAlbedo(uv);
     float metal = SampleMetallic(uv);
@@ -344,7 +394,7 @@ float3 ComputePBRWithShadow(float3 worcurrentLightPos, float3 worcurrentLightNor
         }
         else
         {
-            float3 toLight = currentLight.Position - worcurrentLightPos;
+            float3 toLight = currentLight.Position - worldPos;
             float dist = length(toLight);
             L = toLight / dist;
 
@@ -372,11 +422,11 @@ float3 ComputePBRWithShadow(float3 worcurrentLightPos, float3 worcurrentLightNor
         
         float lightFactor = 0.0f; // 0 = 그림자,  1 = lit
 
-    [unroll]
+        [unroll]
         for (int f = 0; f < faceCount; ++f)
         {
-            float4 posLightSpace = mul(ShadowMapViewProj[shadowMapIdx + f], float4(worcurrentLightPos, 1));
-            lightFactor += SampleShadowMap(shadowMapIdx + f, posLightSpace);
+            float4 posLightSpace = mul(float4(worldPos, 1), ShadowMapViewProj[shadowMapIdx + f]);
+            lightFactor += SampleShadowMapPCF(shadowMapIdx + f, posLightSpace);
         }
         
         shadowMapIdx += faceCount;
@@ -397,4 +447,15 @@ float3 ComputePBRWithShadow(float3 worcurrentLightPos, float3 worcurrentLightNor
                    + IBL_Specular(F0, N, V, rough);
 
     return accumulatedLight + ambient;
+}
+
+
+// 디버깅용
+float3 ComputeShadowMask(float3 worldPos)
+{
+    float4 posLS = mul(float4(worldPos, 1), ShadowMapViewProj[0]);
+    
+    float3 mask = SampleShadowMapDebug(0, posLS);
+    
+    return mask;
 }

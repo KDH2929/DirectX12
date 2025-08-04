@@ -6,9 +6,14 @@
 #include "Lights/DirectionalLight.h"
 #include "Lights/PointLight.h"
 #include "Lights/SpotLight.h"
+#include "ThreadPool.h"
 #include <stdexcept>
 
-Renderer::Renderer() {}
+Renderer::Renderer()
+{
+    threadPool = std::make_unique<ThreadPool>(std::thread::hardware_concurrency());
+}
+
 
 Renderer::~Renderer() {
     Cleanup();
@@ -19,7 +24,6 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
         return false;
 
     // Managers
-
     rootSignatureManager = std::make_unique<RootSignatureManager>(device.Get());
     assert(rootSignatureManager && "rootSignatureManager nullptr!");
     if (!rootSignatureManager->InitializeDescs())
@@ -75,28 +79,16 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
     if (!textureManager->Initialize(this, descriptorHeapManager.get()))
         return false;
 
+
     // Setup camera
     mainCamera = std::make_shared<Camera>();
     mainCamera->SetPosition({ 0, 0, -30 });
     mainCamera->SetPerspective(XM_PIDIV4, float(width) / height, 0.1f, 1000.f);
 
-    // Global Constant Buffer (b3)
-    {
-        CD3DX12_HEAP_PROPERTIES props(D3D12_HEAP_TYPE_UPLOAD);
-        CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(256);
-        THROW_IF_FAILED(device->CreateCommittedResource(
-            &props, D3D12_HEAP_FLAG_NONE, &desc,
-            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-            IID_PPV_ARGS(&globalConstantBuffer)));
-        globalConstantBuffer->Map(0, nullptr,
-            reinterpret_cast<void**>(&mappedGlobalPtr));
-    }
-
-
 
     // LightingManager 초기화
     {
-        lightingManager = std::make_unique<LightingManager>(device.Get());
+        lightingManager = std::make_unique<LightingManager>();
 
         XMFLOAT3 cameraPosition = mainCamera->GetPosition();
         XMFLOAT3 cameraForward = mainCamera->GetForwardVector();
@@ -135,11 +127,26 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
         lightingManager->AddLight(directionalLight);
         lightingManager->AddLight(pointLight);
         lightingManager->AddLight(spotLight);
-
-        lightingManager->WriteLightingBuffer();
     }
-    descriptorHeapManager->CreateWrapSampler(device.Get());
-    descriptorHeapManager->CreateClampSampler(device.Get());
+
+    descriptorHeapManager->CreateLinearWrapSampler(device.Get());
+    descriptorHeapManager->CreateLinearClampSampler(device.Get());
+
+
+    frameResources.clear();
+    frameResources.reserve(BackBufferCount);
+    for (UINT i = 0; i < BackBufferCount; ++i) {
+        frameResources.emplace_back(std::make_unique<FrameResource>(
+            device.Get(),
+            descriptorHeapManager.get(),
+            static_cast<UINT>(/*GameObject 최대 수=*/1000),
+            GetViewportWidth(),
+            GetViewportHeight()
+        ));
+    }
+
+    currentFrameIndex = 0;
+    currentFrameResource = frameResources[currentFrameIndex].get();
 
 
     // 렌더패스 초기화
@@ -218,28 +225,62 @@ const std::vector<std::shared_ptr<GameObject>>& Renderer::GetAllGameObjects() co
 
 void Renderer::Update(float deltaTime) {
 
-    lightingManager->Update(mainCamera.get());
+    currentFrameIndex = (currentFrameIndex + 1) % BackBufferCount;
 
-    for (auto& object : gameObjects) {
-        object->Update(deltaTime);
+    currentFrameResource = frameResources[currentFrameIndex].get();
+
+    // currentFrmaeResource의 fence를 통해 currentFrameResource가 제출한 GPU작업이 끝났는지를 판단하고 대기한다.
+    UINT64 lastCompleted = directFence->GetCompletedValue();
+    if (currentFrameResource->fenceValue > lastCompleted) {
+        ThrowIfFailed(directFence->SetEventOnCompletion(
+            currentFrameResource->fenceValue,
+            directFenceEvent
+        ));
+        WaitForSingleObject(directFenceEvent, INFINITE);
+    }
+
+    lightingManager->Update(this);
+
+    for (UINT i = 0; i < gameObjects.size(); ++i) {
+        gameObjects[i]->Update(deltaTime, this, i);
     }
 
     for (auto& pass : renderPasses) {
-        pass->Update(deltaTime);
+        pass->Update(deltaTime, this);
     }
 }
 
 void Renderer::Render() {
-    PopulateCommandList();
 
-    ID3D12CommandList* lists[] = { directCommandList.Get() };
-    directQueue->ExecuteCommandLists(1, lists);
+    if (IsMultithreadedRenderingEnabled()) {
+        RenderMultiThreaded();
+    }
+    else {
+        RenderSingleThreaded();
+    }
+}
+
+void Renderer::RenderSingleThreaded()
+{
+    RecordCommandList_SingleThreaded();
+
+    FrameResource* currentFrameResource = frameResources[currentFrameIndex].get();
+    ID3D12CommandList* commandLists[] = { currentFrameResource->commandList.Get() };
+
+    directQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
     swapChain->Present(1, 0);
 
     backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
-    WaitForDirectQueue();
+    GetCurrentFrameResource()->fenceValue = directFenceValue;
+    directQueue->Signal(directFence.Get(), directFenceValue);
+    ++directFenceValue;
+}
+
+void Renderer::RenderMultiThreaded()
+{
+
 }
 
 ID3D12Device* Renderer::GetDevice() const {
@@ -248,14 +289,6 @@ ID3D12Device* Renderer::GetDevice() const {
 
 ID3D12CommandQueue* Renderer::GetDirectQueue() const {
     return directQueue.Get();
-}
-
-ID3D12GraphicsCommandList* Renderer::GetDirectCommandList() const {
-    return directCommandList.Get();
-}
-
-ID3D12CommandAllocator* Renderer::GetDirectCommandAllocator() const {
-    return directCommandAllocator.Get();
 }
 
 ID3D12CommandQueue* Renderer::GetCopyQueue() const {
@@ -318,6 +351,36 @@ LightingManager* Renderer::GetLightingManager() const
     return lightingManager.get();
 }
 
+ThreadPool* Renderer::GetThreadPool()
+{
+    return threadPool.get();
+}
+
+ID3D12CommandAllocator* Renderer::GetThreadCommandAllocator(UINT index)
+{   
+    return threadCommandAllocators[index].Get();
+}
+
+ID3D12GraphicsCommandList* Renderer::GetThreadCommandList(UINT index)
+{
+    return threadCommandLists[index].Get();
+}
+
+void Renderer::AddRecordedCommandList(ID3D12CommandList* commandList)
+{
+    recordedCommandLists.push_back(commandList);
+}
+
+void Renderer::ClearRecordedCommandLists()
+{
+    recordedCommandLists.clear();
+}
+
+const std::vector<ID3D12CommandList*>& Renderer::GetRecordedCommandLists() const
+{
+    return recordedCommandLists;
+}
+
 Camera* Renderer::GetCamera() const {
     return mainCamera.get();
 }
@@ -331,9 +394,9 @@ EnvironmentMaps& Renderer::GetEnvironmentMaps()
     return environmentMaps;
 }
 
-ID3D12Resource* Renderer::GetGlobalConstantBuffer() const
+const std::vector<DescriptorHandle>& Renderer::GetSwapChainRtvs() const
 {
-    return globalConstantBuffer.Get();
+    return swapChainRtvs;
 }
 
 int Renderer::GetViewportWidth() const {
@@ -354,7 +417,7 @@ bool Renderer::InitImGui(HWND hwnd)
     if (!ImGui_ImplWin32_Init(hwnd))
         return false;
 
-    descriptorHeapManager->InitializeImGuiHeaps(device.Get());
+    descriptorHeapManager->InitializeImGuiDescriptorHeaps(device.Get());
 
     // 2) DX12 초기화
     auto srvHeap = descriptorHeapManager->GetImGuiSrvHeap();
@@ -386,19 +449,9 @@ UINT Renderer::GetBackBufferIndex() const
     return backBufferIndex;
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE Renderer::GetSceneColorSrvHandle() const
+FrameResource* Renderer::GetCurrentFrameResource()
 {
-    return sceneColorSrvHandle.gpuHandle;
-}
-
-ID3D12Resource* Renderer::GetSceneColorBuffer() const
-{
-    return sceneColorBuffer.Get();
-}
-
-const std::array<ShadowMap, MAX_SHADOW_DSV_COUNT>& Renderer::GetShadowMaps() const
-{
-    return shadowMaps;
+    return currentFrameResource;
 }
 
 bool Renderer::InitD3D(HWND hwnd, int width, int height)
@@ -411,7 +464,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
     }
 #endif
 
-    // 1) 팩토리 및 어댑터 생성
+    // 팩토리 및 어댑터 생성
     ComPtr<IDXGIFactory4> factory;
     THROW_IF_FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
 
@@ -422,14 +475,13 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         THROW_IF_FAILED(warpAdapter.As(&adapter));
     }
 
-    // 2) 디바이스 생성
+    // 디바이스 생성
     THROW_IF_FAILED(D3D12CreateDevice(
         adapter.Get(),
         D3D_FEATURE_LEVEL_11_0,
         IID_PPV_ARGS(&device)));
 
-
-    // 3) Direct(그래픽스) 커맨드 큐 생성
+    // Direct 커맨드 큐 생성
     {
         D3D12_COMMAND_QUEUE_DESC desc = {};
         desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -437,7 +489,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         THROW_IF_FAILED(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&directQueue)));
     }
 
-    // 4) Copy(업로드) 커맨드 큐 생성
+    // Copy 커맨드 큐 생성
     {
         D3D12_COMMAND_QUEUE_DESC desc = {};
         desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
@@ -457,14 +509,13 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         IID_PPV_ARGS(&copyCommandList)));
     copyCommandList->Close();
 
-    // 6) Copy 큐용 펜스 & 이벤트
-    THROW_IF_FAILED(device->CreateFence(
-        0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&copyFence)));
+    // Copy 큐용 펜스 & 이벤트
+    THROW_IF_FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&copyFence)));
     copyFenceValue = 0;
     copyFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (!copyFenceEvent) return false;
 
-    // 7) 스왑체인 생성 (Flip Discard)
+    // 스왑체인 생성 (Flip Discard)
     {
         DXGI_SWAP_CHAIN_DESC1 scDesc = {};
         scDesc.BufferCount = BackBufferCount;
@@ -484,221 +535,66 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         backBufferIndex = swapChain->GetCurrentBackBufferIndex();
     }
 
-    // 8) Descriptor Heap 생성
-    // SceneColor 는 BackBuffer에도 저장되야하므로 RTV 메모리공간할당은 아래와 같이 수행한다.
+    // Descriptor Heap 생성
     descriptorHeapManager = std::make_unique<DescriptorHeapManager>();
     if (!descriptorHeapManager->Initialize(
         device.Get(),
-        10000,   // CBV_SRV_UAV
-        16,     // Sampler
-        static_cast<UINT>(RtvIndex::RtvCount),       // RTV
-        static_cast<UINT>(DsvIndex::DsvCount),       // DSV
-        BackBufferCount))    // Back Buffer 수
-        return false;
-
-
-    // 9) RTV 생성
-    // 추후에 여기에 GBuffer 도 처리하면 됨
-    // Off-screen SceneColor RTV 생성
+        /*CBV_SRV_UAV*/ 10000,
+        /*Sampler*/      128,
+        /*RTV*/          100,
+        /*DSV*/          300,
+        /*backBuffers*/  BackBufferCount))
     {
-        // Format 을 Float16으로 해야 HDR 이미지 처리가 가능
-        D3D12_RESOURCE_DESC texDesc = {};
-        texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        texDesc.Alignment = 0;
-        texDesc.Width = width;
-        texDesc.Height = height;
-        texDesc.DepthOrArraySize = 1;
-        texDesc.MipLevels = 1;
-        texDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-        texDesc.SampleDesc.Count = 1;
-        texDesc.SampleDesc.Quality = 0;
-        texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+        return false;
+    }
 
+    // Swap-Chain BackBuffer용 RTV 생성
+    swapChainRtvs.resize(BackBufferCount);
+    for (UINT i = 0; i < BackBufferCount; ++i) {
+        THROW_IF_FAILED(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
 
-        D3D12_CLEAR_VALUE clearValue = {};
-        clearValue.Format = texDesc.Format;
-        clearValue.Color[0] = 0.0f;
-        clearValue.Color[1] = 0.0f;
-        clearValue.Color[2] = 0.0f;
-        clearValue.Color[3] = 1.0f;
-
-        CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
-        THROW_IF_FAILED(device->CreateCommittedResource(
-            &heapProps,                           // 임시 대신 l-value 변수의 주소
-            D3D12_HEAP_FLAG_NONE,
-            &texDesc,
-            D3D12_RESOURCE_STATE_RENDER_TARGET,
-            &clearValue,
-            IID_PPV_ARGS(&sceneColorBuffer)));
-
-        // RTV 생성 (SceneColor slot)
+        // RTV 슬롯 할당 + 뷰 생성
+        swapChainRtvs[i] = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         descriptorHeapManager->CreateRenderTargetView(
             device.Get(),
-            sceneColorBuffer.Get(),
-            static_cast<UINT>(Renderer::RtvIndex::SceneColor));
-
-        // SRV 생성 (PostProcess에서 읽을 수 있도록)
-        sceneColorSrvHandle = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-        
-        device->CreateShaderResourceView(
-            sceneColorBuffer.Get(),   // SRV를 만들 리소스
-            nullptr,                  // nullptr 쓰면 리소스 포맷에 맞는 기본 디스크립터
-            sceneColorSrvHandle.cpuHandle            // CPU 디스크립터 핸들
-        );
-    }
-
-    // 10) Swap-Chain BackBuffer용 RTV 생성
-    for (UINT i = 0; i < BackBufferCount; ++i) {
-        UINT backBufferIndex_ = static_cast<UINT>(RtvIndex::BackBuffer0) + i;
-
-        THROW_IF_FAILED(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
-        descriptorHeapManager->CreateRenderTargetView(device.Get(),
             backBuffers[i].Get(),
-            backBufferIndex_);
-    }
-
-    // 11) Depth-Stencil 버퍼 및 DSV 생성
-    {
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-        D3D12_RESOURCE_DESC depthDesc = {};
-        depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        depthDesc.Width = width;
-        depthDesc.Height = height;
-        depthDesc.DepthOrArraySize = 1;
-        depthDesc.MipLevels = 1;
-        depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-        depthDesc.SampleDesc.Count = 1;
-        depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-
-        D3D12_CLEAR_VALUE clearValue = {};
-        clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-        clearValue.DepthStencil.Depth = 1.0f;
-        clearValue.DepthStencil.Stencil = 0;
-
-        THROW_IF_FAILED(device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &depthDesc,
-            D3D12_RESOURCE_STATE_DEPTH_WRITE,
-            &clearValue,
-            IID_PPV_ARGS(&depthStencilBuffer)));
-
-        descriptorHeapManager->CreateDepthStencilView(
-            device.Get(),
-            depthStencilBuffer.Get(),
-            nullptr,        // 디폴트값 사용
-            static_cast<UINT>(DsvIndex::DepthStencil));
+            swapChainRtvs[i].index);
     }
 
 
-    // 12) ShadowMap DSV 및 SRV 생성
-    for (int i = 0; i < MAX_SHADOW_DSV_COUNT; ++i)
-    {
-        // 리소스 생성
-        D3D12_RESOURCE_DESC shadowDesc = {};
-        shadowDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        shadowDesc.Width = SHADOW_MAP_WIDTH;
-        shadowDesc.Height = SHADOW_MAP_HEIGHT;
-        shadowDesc.DepthOrArraySize = 1;
-        shadowDesc.MipLevels = 1;
-        shadowDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;  // SRV 로도 사용하기 위함
-        shadowDesc.SampleDesc.Count = 1;
-        shadowDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-
-        D3D12_CLEAR_VALUE clearValue = {};
-        clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;  // DSV에서 사용할 포맷
-        clearValue.DepthStencil.Depth = 1.0f;
-        clearValue.DepthStencil.Stencil = 0;
-
-        CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
-        THROW_IF_FAILED(device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &shadowDesc,
-            D3D12_RESOURCE_STATE_DEPTH_WRITE,
-            &clearValue,
-            IID_PPV_ARGS(&shadowMaps[i].depthBuffer)
-        ));
-
-        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-        dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; // 또는 DXGI_FORMAT_D32_FLOAT, 용도에 따라
-        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-        dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-
-
-        // DSV 등록
-        descriptorHeapManager->CreateDepthStencilView(
-            device.Get(),
-            shadowMaps[i].depthBuffer.Get(),
-            &dsvDesc,
-            static_cast<UINT>(DsvIndex::ShadowMap0) + i);
-
-        shadowMaps[i].dsvHandle = descriptorHeapManager->GetDsvHandle(static_cast<UINT>(DsvIndex::ShadowMap0) + i);
-
-        // SRV 등록 (shader에서 샘플링 용도)
-        shadowMaps[i].srvHandle = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-        srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;  // 반드시 이 포맷 사용해야 SRV로 가능
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MipLevels = 1;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-        device->CreateShaderResourceView(
-            shadowMaps[i].depthBuffer.Get(),
-            &srvDesc,
-            shadowMaps[i].srvHandle.cpuHandle);
-    }
-
-
-    // 13) Direct 커맨드 할당자 & 리스트
-    THROW_IF_FAILED(device->CreateCommandAllocator(
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
-        IID_PPV_ARGS(&directCommandAllocator)));
-    THROW_IF_FAILED(device->CreateCommandList(
-        0,
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
-        directCommandAllocator.Get(),
-        nullptr,
-        IID_PPV_ARGS(&directCommandList)));
-    directCommandList->Close();
-
-    // 14) Direct 큐용 펜스 & 이벤트
-    THROW_IF_FAILED(device->CreateFence(
-        0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&directFence)));
+    // Direct 큐용 펜스 & 이벤트
+    THROW_IF_FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&directFence)));
     directFenceValue = 1;
     directFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (!directFenceEvent) return false;
 
-    // 15) Viewport & Scissor 설정
+    // Viewport & Scissor 설정
     viewport = { 0.0f, 0.0f, float(width), float(height), 0.0f, 1.0f };
     scissorRect = { 0, 0, width, height };
 
     return true;
 }
 
-void Renderer::PopulateCommandList()
+void Renderer::RecordCommandList_SingleThreaded()
 {
-    // Reset allocator & list
-    directCommandAllocator->Reset();
-    directCommandList->Reset(directCommandAllocator.Get(), nullptr);
+    FrameResource* currentFrameResource = frameResources[currentFrameIndex].get();
 
+    currentFrameResource->Reset();
+
+    ID3D12GraphicsCommandList* commandList = currentFrameResource->commandList.Get();
 
     // 백버퍼 Transition: PRESENT → RENDER_TARGET
-    CD3DX12_RESOURCE_BARRIER toRT =
+    CD3DX12_RESOURCE_BARRIER toRenderTarget =
         CD3DX12_RESOURCE_BARRIER::Transition(
             backBuffers[backBufferIndex].Get(),
             D3D12_RESOURCE_STATE_PRESENT,
             D3D12_RESOURCE_STATE_RENDER_TARGET);
-    directCommandList->ResourceBarrier(1, &toRT);
+    commandList->ResourceBarrier(1, &toRenderTarget);
 
 
     for (size_t i = 0; i < static_cast<size_t>(PassIndex::Count); ++i)
     {
-        renderPasses[i]->Render(this);
+        renderPasses[i]->RenderSingleThreaded(this);
     }
 
     // Imgui 드로우
@@ -707,8 +603,8 @@ void Renderer::PopulateCommandList()
             descriptorHeapManager->GetImGuiSrvHeap(),
             descriptorHeapManager->GetImGuiSamplerHeap()
         };
-        directCommandList->SetDescriptorHeaps(_countof(heaps), heaps);
-        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), GetDirectCommandList());
+        commandList->SetDescriptorHeaps(_countof(heaps), heaps);
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
     }
 
 
@@ -718,27 +614,43 @@ void Renderer::PopulateCommandList()
             backBuffers[backBufferIndex].Get(),
             D3D12_RESOURCE_STATE_RENDER_TARGET,
             D3D12_RESOURCE_STATE_PRESENT);
-    directCommandList->ResourceBarrier(1, &toPresent);
+    commandList->ResourceBarrier(1, &toPresent);
 
-
-    // 리스트 종료
-    directCommandList->Close();
+    // 커맨드 리스트 종료
+    commandList->Close();
 }
 
 void Renderer::WaitForDirectQueue() {
-    const UINT64 fenceToWait = directFenceValue;
-    directQueue->Signal(directFence.Get(), fenceToWait);
-    directFenceValue++;
 
+    const UINT64 fenceToWait = directFenceValue;
+
+    // Signal은 바로 수행되지는 않고, directQueue가 모든 작업을 마치면 Signal 을 수행시켜 
+    // directFence 값을 지정한 fenceToWait로 바꾼다.
+
+    directQueue->Signal(directFence.Get(), fenceToWait);
+
+    // 다음 번 Signal에서 중복 없이 새로운 펜스 값을 쓰기 위한 작업
+    directFenceValue++;     
+
+
+    // 만약 if문 수행전에 작업이 끝나면 Wait도 안하고 바로 프레임으로 넘어간다.
     if (directFence->GetCompletedValue() < fenceToWait) {
         directFence->SetEventOnCompletion(fenceToWait, directFenceEvent);
         WaitForSingleObject(directFenceEvent, INFINITE);
     }
-
-    backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 }
 
 void Renderer::UpdateGlobalTime(float seconds) {
-    globalData.time = seconds;
-    memcpy(mappedGlobalPtr, &globalData, sizeof(globalData));
+
+    CB_Global globalConstants{};
+    globalConstants.time = seconds;
+
+    FrameResource* currentFrame = GetCurrentFrameResource();
+    assert(currentFrame && currentFrame->cbGlobal && "FrameResource or cbGlobal is null");
+    currentFrame->cbGlobal->CopyData(0, globalConstants);
+}
+
+bool Renderer::IsMultithreadedRenderingEnabled() const
+{
+    return useMultithreadedRendering;
 }

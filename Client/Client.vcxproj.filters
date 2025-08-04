@@ -81,9 +81,6 @@
     <ClCompile Include="Sources\GameObjects\Flight.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\Material.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="Sources\GameObjects\Skybox.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -91,9 +88,6 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Sources\GameObjects\SphereObject.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Sources\RenderPass\GBufferPass.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Sources\RenderPass\PostProcessPass.cpp">
@@ -124,6 +118,12 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Sources\Lights\SpotLight.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\ThreadPool.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\FrameResource\FrameResource.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -215,9 +215,6 @@
     <ClInclude Include="Sources\RenderPass\RenderPass.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Sources\RenderPass\GBufferPass.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="Sources\RenderPass\PostProcessPass.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -264,6 +261,18 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Sources\RenderPass\ShadowMapPass.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\ThreadPool.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\FrameResource\UploadBuffer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\FrameResource\FrameResource.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\D3DUtil.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

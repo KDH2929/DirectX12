@@ -10,22 +10,17 @@
 
 class Renderer;
 
-class BoxObject final : public GameObject
+class BoxObject : public GameObject
 {
 public:
     explicit BoxObject(std::shared_ptr<Material> materialPBR = nullptr);
-    ~BoxObject() override;
+    ~BoxObject() override = default;
 
     bool Initialize(Renderer* renderer) override;
-    void Update(float deltaTime) override;
-    void Render(Renderer* renderer) override;
+    void Update(float deltaTime, Renderer* renderer, UINT objectIndex) override;
+    void Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex) override;
 
 private:
-    std::shared_ptr<Mesh>            cubeMesh;
-    std::shared_ptr<Material>        materialPBR;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> materialConstantBuffer;
-    std::byte* mappedMaterialBuffer = nullptr;
-
-    bool                              showNormalDebug = false;
+    std::shared_ptr<Mesh>     cubeMesh;
+    std::shared_ptr<Material> materialPBR;
 };
