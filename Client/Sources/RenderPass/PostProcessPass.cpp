@@ -100,6 +100,23 @@ void PostProcessPass::RecordParallelCommand(ID3D12GraphicsCommandList* commandLi
 	const FLOAT clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
+	// 뷰포트 설정
+	D3D12_VIEWPORT viewport{};
+	viewport.TopLeftX = 0;
+	viewport.TopLeftY = 0;
+	viewport.Width = static_cast<float>(renderer->GetViewportWidth());
+	viewport.Height = static_cast<float>(renderer->GetViewportHeight());
+	viewport.MinDepth = 0.0f;
+	viewport.MaxDepth = 1.0f;
+	commandList->RSSetViewports(1, &viewport);
+
+	// 시저(rect) 설정
+	D3D12_RECT scissorRect{ 0, 0,
+		static_cast<LONG>(renderer->GetViewportWidth()),
+		static_cast<LONG>(renderer->GetViewportHeight()) };
+	commandList->RSSetScissorRects(1, &scissorRect);
+
+
 	for (auto& postEffect : postEffects)
 	{
 		postEffect->Render(commandList, renderer);

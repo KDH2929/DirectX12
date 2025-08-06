@@ -436,6 +436,10 @@ float3 ComputePBRWithShadow(float3 worldPos, float3 worldNormal, float2 uv)
         
         float3 shadowColor = float3(0.0f, 0.0f, 0.0f);
         
+        // 감마 = 3.0 으로 조정
+        // 그림자 색상을 더 잘 보이게 하기 위함
+        lightFactor = pow(lightFactor, 2.0f);
+        
         // 빛 기여도에 따라 litColor와 shadowColor 사이를 보간
         float3 shadedContribution = lerp(shadowColor, lightContribute, lightFactor);
 
