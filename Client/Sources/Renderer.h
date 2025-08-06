@@ -5,6 +5,7 @@
 #include <wrl.h>
 #include <vector>
 #include <memory>
+#include <barrier>
 #include <string>
 #include <format>
 #include <imgui.h>
@@ -82,16 +83,7 @@ public:
     TextureManager* GetTextureManager() const;
     LightingManager* GetLightingManager() const;
 
-
-    // Multi Thread Commnad 처리
     ThreadPool* GetThreadPool();
-    ID3D12CommandAllocator* GetThreadCommandAllocator(UINT index);
-    ID3D12GraphicsCommandList* GetThreadCommandList(UINT index);
-
-    void AddRecordedCommandList(ID3D12CommandList* commandList);
-    void ClearRecordedCommandLists();
-    const std::vector<ID3D12CommandList*>& GetRecordedCommandLists() const;
-
 
     // 카메라
     Camera* GetCamera() const;
@@ -121,7 +113,7 @@ private:
     void RecordCommandList_SingleThreaded();
 
     void RenderMultiThreaded();
-
+    void WorkerThread(UINT threadIndex, FrameResource* frameResource, std::barrier<>& syncPoint);
 
 public:
 
@@ -160,7 +152,10 @@ private:
 
     std::unique_ptr<ThreadPool> threadPool;
 
-    bool useMultithreadedRendering = false;
+    // Worker 쓰레드 수
+    UINT numWorkerThreads;
+
+    bool useMultiThreadedRendering = false;
 
     // Direct queue
     ComPtr<ID3D12CommandQueue>           directQueue;
@@ -169,11 +164,6 @@ private:
     ComPtr<ID3D12CommandQueue>           copyQueue;
     ComPtr<ID3D12CommandAllocator>       copyCommandAllocator;
     ComPtr<ID3D12GraphicsCommandList>    copyCommandList;
-
-    // Thread Pool 용 CommandList & Command Allocator
-    std::vector<ComPtr<ID3D12CommandAllocator>> threadCommandAllocators;
-    std::vector<ComPtr<ID3D12GraphicsCommandList>> threadCommandLists;
-    std::vector<ID3D12CommandList*> recordedCommandLists;
 
     // Direct-queue Fence
     ComPtr<ID3D12Fence>             directFence;
@@ -207,19 +197,12 @@ private:
     // 환경맵
     EnvironmentMaps environmentMaps;
 
+    std::array<std::unique_ptr<RenderPass>, RenderPass::PassIndex::Count> renderPasses;
 
-    enum PassIndex : uint8_t {
-        ShadowMap = 0,
-        ForwardOpaque,
-        ForwardTransparent,
-        PostProcess,
-        Count
-    };
-
-    std::array<std::unique_ptr<RenderPass>, PassIndex::Count> renderPasses;
-
+    // FrameResource
     std::vector<std::unique_ptr<FrameResource>> frameResources;
     UINT currentFrameIndex = 0;
     FrameResource* currentFrameResource = nullptr;
+
 
 };

@@ -224,6 +224,7 @@
     <ClInclude Include="Sources\PipelineStateDesc.h" />
     <ClInclude Include="Sources\PipelineStateManager.h" />
     <ClInclude Include="Sources\Renderer.h" />
+    <ClInclude Include="Sources\RenderPass\RenderPassCommandBundle.h" />
     <ClInclude Include="Sources\RenderPass\ShadowMapPass.h" />
     <ClInclude Include="Sources\RootSignatureManager.h" />
     <ClInclude Include="Sources\ShaderCompileDesc.h" />

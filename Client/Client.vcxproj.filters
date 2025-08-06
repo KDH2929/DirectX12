@@ -275,6 +275,9 @@
     <ClInclude Include="Sources\D3DUtil.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Sources\RenderPass\RenderPassCommandBundle.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\TriangleVS.hlsl">

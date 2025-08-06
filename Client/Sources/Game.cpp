@@ -214,6 +214,7 @@ void Game::LoadModel()
 {
     ModelLoader loader;
 
+    
     std::string flightPath = "Assets/spitfirev6/spitfirev6.obj";
     flight1Mesh = loader.LoadMesh(&renderer, flightPath);
     if (!flight1Mesh) {
@@ -225,7 +226,6 @@ void Game::LoadModel()
     if (!bulletMesh) {
         MessageBox(hwnd, L"Failed to load bullet mesh!", L"Error", MB_OK);
     }
-
     
 }
 

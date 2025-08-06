@@ -33,11 +33,9 @@ void ToneMappingPostEffect::Update(float deltaTime, Renderer* renderer)
     frameResource->cbToneMapping->CopyData(0, toneMappingOptions);
 }
 
-void ToneMappingPostEffect::Render(Renderer* renderer)
+void ToneMappingPostEffect::Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer)
 {
     FrameResource* frameResource = renderer->GetCurrentFrameResource();
-    ID3D12GraphicsCommandList* commandList = frameResource->commandList.Get();
-
 
     auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
 

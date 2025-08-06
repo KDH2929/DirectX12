@@ -53,7 +53,7 @@ void PostProcessPass::RenderSingleThreaded(Renderer* renderer)
 
 	for (auto& postEffect : postEffects)
 	{
-		postEffect->Render(renderer);
+		postEffect->Render(commandList, renderer);
 	}
 
 
@@ -67,4 +67,56 @@ void PostProcessPass::RenderSingleThreaded(Renderer* renderer)
 		commandList->ResourceBarrier(1, &barrier);
 	}
 	
+}
+
+void PostProcessPass::RecordPreCommand(ID3D12GraphicsCommandList* commandList, Renderer* renderer)
+{
+	FrameResource* frameResource = renderer->GetCurrentFrameResource();
+
+	// Resource Barrier 로 용도변경
+	{
+		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			frameResource->sceneColorBuffer.Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		commandList->ResourceBarrier(1, &barrier);
+	}
+}
+
+void PostProcessPass::RecordParallelCommand(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT threadIndex)
+{
+	// 병렬처리 수행X
+
+	FrameResource* frameResource = renderer->GetCurrentFrameResource();
+
+	UINT backBufferIndex = renderer->GetBackBufferIndex();
+	auto& swapChainRtvs = renderer->GetSwapChainRtvs();
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = swapChainRtvs[backBufferIndex].cpuHandle;
+
+	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+	const FLOAT clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
+	for (auto& postEffect : postEffects)
+	{
+		postEffect->Render(commandList, renderer);
+	}
+}
+
+void PostProcessPass::RecordPostCommand(ID3D12GraphicsCommandList* commandList, Renderer* renderer)
+{
+	FrameResource* frameResource = renderer->GetCurrentFrameResource();
+
+	// Resource Barrier 로 용도변경
+	{
+		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			frameResource->sceneColorBuffer.Get(),
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+		commandList->ResourceBarrier(1, &barrier);
+	}
 }

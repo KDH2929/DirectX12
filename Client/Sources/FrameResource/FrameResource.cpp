@@ -8,19 +8,16 @@ FrameResource::FrameResource(
     DescriptorHeapManager* descriptorHeapManager,
     UINT objectCount,
     UINT frameWidth,
-    UINT frameHeight)
+    UINT frameHeight,
+    UINT numThreads,
+    bool enableMultiThreaded)
+    : numThreads(numThreads)
+    ,useMultiThreadedRendering(enableMultiThreaded)
+    ,syncPoint(numThreads+1)
 {
-    // 커맨드 할당자 & 리스트 생성
-    THROW_IF_FAILED(device->CreateCommandAllocator(
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
-        IID_PPV_ARGS(&commandAllocator)));
-    THROW_IF_FAILED(device->CreateCommandList(
-        0,
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
-        commandAllocator.Get(),
-        nullptr,
-        IID_PPV_ARGS(&commandList)));
-    commandList->Close();
+
+    InitializeCommandBundles(device, numThreads);
+    
 
     // 상수 버퍼들 초기화
     InitializeConstantBuffers(device, objectCount);
@@ -51,8 +48,8 @@ void FrameResource::InitializeConstantBuffers(
 void FrameResource::InitializeFrameBuffersAndViews(
     ID3D12Device* device,
     DescriptorHeapManager* descriptorHeapManager,
-    UINT                     frameWidth,
-    UINT                     frameHeight)
+    UINT frameWidth,
+    UINT frameHeight)
 {
 
     // 1) Off-screen SceneColor 버퍼 생성 + RTV/SRV 뷰
@@ -192,11 +189,77 @@ void FrameResource::InitializeFrameBuffersAndViews(
     }
 
     // 4) per-object SRV/CBV/UAV 풀 초기화
+    // 미사용
     objectSrvCbvUav.clear();
 }
 
-void FrameResource::Reset()
+void FrameResource::InitializeCommandBundles(ID3D12Device* device, UINT numThreads)
+{
+    // 단일 스레드용 커맨드 할당자 & 리스트 생성
+    THROW_IF_FAILED(device->CreateCommandAllocator(
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        IID_PPV_ARGS(&commandAllocator)));
+    THROW_IF_FAILED(device->CreateCommandList(
+        0,
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        commandAllocator.Get(),
+        nullptr,
+        IID_PPV_ARGS(&commandList)));
+    commandList->Close();
+
+    if (useMultiThreadedRendering) {
+        // PreFrame
+        THROW_IF_FAILED(device->CreateCommandAllocator(
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            IID_PPV_ARGS(&preFrameAllocator)));
+        THROW_IF_FAILED(device->CreateCommandList(
+            0,
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            preFrameAllocator.Get(),
+            nullptr,
+            IID_PPV_ARGS(&preFrameCommandList)));
+        preFrameCommandList->Close();
+
+        // PostFrame
+        THROW_IF_FAILED(device->CreateCommandAllocator(
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            IID_PPV_ARGS(&postFrameAllocator)));
+        THROW_IF_FAILED(device->CreateCommandList(
+            0,
+            D3D12_COMMAND_LIST_TYPE_DIRECT,
+            postFrameAllocator.Get(),
+            nullptr,
+            IID_PPV_ARGS(&postFrameCommandList)));
+        postFrameCommandList->Close();
+
+
+        // Pass Command Bundle
+        shadowPassCommandBundle.Initialize(device, D3D12_COMMAND_LIST_TYPE_DIRECT, numThreads);
+        opaquePassCommandBundle.Initialize(device, D3D12_COMMAND_LIST_TYPE_DIRECT, numThreads);
+        
+    }
+}
+
+void FrameResource::ResetCommandBundles()
 {
     commandAllocator->Reset();
     commandList->Reset(commandAllocator.Get(), nullptr);
+
+    if (useMultiThreadedRendering) {
+        // preRender
+        preFrameAllocator->Reset();
+        preFrameCommandList->Reset(preFrameAllocator.Get(), nullptr);
+
+        // postRender
+        postFrameAllocator->Reset();
+        postFrameCommandList->Reset(postFrameAllocator.Get(), nullptr);
+
+        shadowPassCommandBundle.ResetAll();
+        opaquePassCommandBundle.ResetAll();
+    }
+}
+
+void FrameResource::CloseCommandLists()
+{
+    commandList->Close();
 }

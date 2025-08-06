@@ -43,11 +43,10 @@ void OutlinePostEffect::Update(float deltaTime, Renderer* renderer)
 
 }
 
-void OutlinePostEffect::Render(Renderer* renderer)
+void OutlinePostEffect::Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer)
 {
     FrameResource* frameResource = renderer->GetCurrentFrameResource();
 
-    auto commandList = frameResource->commandList.Get();
     auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
 
     // CBV_SRV_UAV Èü ¹ÙÀÎµù (t0: scene SRV, b0: outline CBV)

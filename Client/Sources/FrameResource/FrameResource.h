@@ -4,35 +4,61 @@
 #include <d3d12.h>
 #include <array>
 #include <memory>
+#include <barrier>
+#include <atomic>
 #include <vector>
 #include "UploadBuffer.h"
 #include "ConstantBuffers.h"
 #include "DescriptorHeapManager.h"
 #include "ShadowMap.h"
+#include "RenderPass/RenderPass.h"
+#include "RenderPass/RenderPassCommandBundle.h"
 
 using Microsoft::WRL::ComPtr;
 
 static constexpr UINT MaxShadowMaps = MAX_SHADOW_DSV_COUNT;
 
-class FrameResource
-{
-public:
+    class FrameResource
+    {
+    public:
     FrameResource(
         ID3D12Device* device,
         DescriptorHeapManager* descriptorHeapManager,
         UINT objectCount,
         UINT frameWidth,
-        UINT frameHeight);
+        UINT frameHeight,
+        UINT numThreads,
+        bool enableMultiThreaded = false);
 
-    // 커맨드 할당자/리스트를 Reset
-    void Reset();
 
     // GPU 동기화용 펜스 값
     UINT64 fenceValue = 0;
 
-    // 커맨드 할당자 & 커맨드 리스트
+    // 멀티스레드용
+    UINT numThreads = 0;
+    bool useMultiThreadedRendering = false;
+
+    std::barrier<> syncPoint;   // Worker Thread 수 + Main Thread 1개
+
+
+    // 단일 스레드용 커맨드 할당자 & 커맨드 리스트
     ComPtr<ID3D12CommandAllocator>    commandAllocator;
     ComPtr<ID3D12GraphicsCommandList> commandList;
+
+
+    // 멀티 스레드용 커맨드 할당자 & 커맨드 리스트
+    ComPtr<ID3D12GraphicsCommandList> preFrameCommandList;
+    ComPtr<ID3D12GraphicsCommandList> postFrameCommandList;
+
+    ComPtr<ID3D12CommandAllocator> preFrameAllocator;
+    ComPtr<ID3D12CommandAllocator> postFrameAllocator;
+
+
+    // (N = WorkerThread 수)
+    // Shadow pass 용
+    RenderPassCommandBundle opaquePassCommandBundle;
+    RenderPassCommandBundle shadowPassCommandBundle;
+
 
     // 오브젝트당 사용하는 UploadBuffer<CB>
     std::unique_ptr<UploadBuffer<CB_MVP>>           cbMVP;         // objectCount
@@ -65,7 +91,7 @@ public:
     std::array<ShadowMap, MaxShadowMaps> shadowMaps;
 
 
-private:
+public:
     // 상수 버퍼 초기화
     void InitializeConstantBuffers(
         ID3D12Device* device,
@@ -78,4 +104,9 @@ private:
         UINT frameWidth,
         UINT frameHeight);
 
+
+    // 커맨드 할당자/리스트를 Reset
+    void ResetCommandBundles();
+    void CloseCommandLists();
+    void InitializeCommandBundles(ID3D12Device* device, UINT numThreads);
 };

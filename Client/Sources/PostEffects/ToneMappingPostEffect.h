@@ -18,7 +18,7 @@ public:
 
     void Initialize(Renderer* renderer) override;
     void Update(float deltaTime, Renderer* renderer) override;
-    void Render(Renderer* renderer) override;
+    void Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer) override;
 
 private:
     // ImGui에서 조절할 값들

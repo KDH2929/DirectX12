@@ -3,6 +3,7 @@
 #include "RenderPass/ForwardOpaquePass.h"
 #include "RenderPass/ForwardTransparentPass.h"
 #include "RenderPass/PostProcessPass.h"
+#include "RenderPass/RenderPassCommandBundle.h"
 #include "Lights/DirectionalLight.h"
 #include "Lights/PointLight.h"
 #include "Lights/SpotLight.h"
@@ -12,6 +13,12 @@
 Renderer::Renderer()
 {
     threadPool = std::make_unique<ThreadPool>(std::thread::hardware_concurrency());
+
+    // (내 노트북 기준)   numWorkerThreads = 8
+    numWorkerThreads = threadPool->GetThreadCount();
+
+    useMultiThreadedRendering = true;
+
 }
 
 
@@ -141,7 +148,9 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
             descriptorHeapManager.get(),
             static_cast<UINT>(/*GameObject 최대 수=*/1000),
             GetViewportWidth(),
-            GetViewportHeight()
+            GetViewportHeight(),
+            threadPool->GetThreadCount(),
+            IsMultithreadedRenderingEnabled()
         ));
     }
 
@@ -150,12 +159,12 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
 
 
     // 렌더패스 초기화
-    renderPasses[static_cast<size_t>(PassIndex::ShadowMap)] = std::make_unique<ShadowMapPass>();
-    renderPasses[static_cast<size_t>(PassIndex::ForwardOpaque)] = std::make_unique<ForwardOpaquePass>();
-    renderPasses[static_cast<size_t>(PassIndex::ForwardTransparent)] = std::make_unique<ForwardTransparentPass>();
-    renderPasses[static_cast<size_t>(PassIndex::PostProcess)] = std::make_unique<PostProcessPass>();
+    renderPasses[static_cast<size_t>(RenderPass::PassIndex::ShadowMap)] = std::make_unique<ShadowMapPass>();
+    renderPasses[static_cast<size_t>(RenderPass::PassIndex::ForwardOpaque)] = std::make_unique<ForwardOpaquePass>();
+    renderPasses[static_cast<size_t>(RenderPass::PassIndex::ForwardTransparent)] = std::make_unique<ForwardTransparentPass>();
+    renderPasses[static_cast<size_t>(RenderPass::PassIndex::PostProcess)] = std::make_unique<PostProcessPass>();
 
-    for (size_t i = 0; i < static_cast<size_t>(PassIndex::Count); ++i)
+    for (size_t i = 0; i < static_cast<size_t>(RenderPass::PassIndex::Count); ++i)
     {
         renderPasses[i]->Initialize(this);
     }
@@ -280,7 +289,209 @@ void Renderer::RenderSingleThreaded()
 
 void Renderer::RenderMultiThreaded()
 {
+    FrameResource* frameResource = frameResources[currentFrameIndex].get();
+    frameResource->ResetCommandBundles();
 
+    // Worker Thread + 메인 스레드
+    std::barrier<>& syncPoint = frameResource->syncPoint;
+
+    for (UINT i = 0; i < numWorkerThreads; ++i)
+    {
+        // 외부값은 기본적으로 value(값) 으로 캡처
+        // syncPoint 는 참조(&) 로 캡처
+
+        threadPool->Submit([=, &syncPoint]() {
+            WorkerThread(i, frameResource, syncPoint);
+            });
+    }
+
+    const size_t passCount = static_cast<size_t>(RenderPass::PassIndex::Count);
+
+    // Pre-Frame
+    ID3D12GraphicsCommandList* preFrameCommandList = frameResource->preFrameCommandList.Get();
+
+    // 백버퍼 Transition: PRESENT → RENDER_TARGET
+    CD3DX12_RESOURCE_BARRIER toRenderTarget =
+        CD3DX12_RESOURCE_BARRIER::Transition(
+            backBuffers[backBufferIndex].Get(),
+            D3D12_RESOURCE_STATE_PRESENT,
+            D3D12_RESOURCE_STATE_RENDER_TARGET);
+    preFrameCommandList->ResourceBarrier(1, &toRenderTarget);
+
+    // ShadowMap Pass
+    {
+        size_t passIndex = static_cast<size_t>(RenderPass::PassIndex::ShadowMap);
+
+        RenderPass* pass = renderPasses[passIndex].get();
+        auto& passCommandBundle = frameResource->shadowPassCommandBundle;
+
+        ID3D12GraphicsCommandList* passPreCommandList = passCommandBundle.preCommandList.Get();
+        ID3D12GraphicsCommandList* passPostCommandList = passCommandBundle.postCommandList.Get();
+
+        pass->RecordPreCommand(passPreCommandList, this);
+        pass->RecordPostCommand(passPostCommandList, this);
+
+        syncPoint.arrive_and_wait();
+
+        preFrameCommandList->Close();
+        passCommandBundle.CloseAll();
+
+        // ShadowMap Record 후 Command 제출
+        std::vector<ID3D12CommandList*> commandLists;
+        commandLists.push_back(preFrameCommandList);
+        commandLists.push_back(passPreCommandList);
+
+        for (auto& threadCommandList : passCommandBundle.threadCommandLists) {
+            commandLists.push_back(threadCommandList.Get());
+        }
+
+        commandLists.push_back(passPostCommandList);
+
+        directQueue->ExecuteCommandLists(static_cast<UINT>(commandLists.size()), commandLists.data());
+
+    }
+
+
+    // ForwardOpaque Pass
+    {
+        size_t passIndex = static_cast<size_t>(RenderPass::PassIndex::ForwardOpaque);
+
+        RenderPass* pass = renderPasses[passIndex].get();
+        auto& passCommandBundle = frameResource->opaquePassCommandBundle;
+
+        ID3D12GraphicsCommandList* passPreCommandList = passCommandBundle.preCommandList.Get();
+        ID3D12GraphicsCommandList* passPostCommandList = passCommandBundle.postCommandList.Get();
+
+        pass->RecordPreCommand(passPreCommandList, this);
+        pass->RecordPostCommand(passPostCommandList, this);
+    }
+
+    // ForwardTransparent Pass
+    {
+   
+    }
+
+
+    // postFrame Command
+    ID3D12GraphicsCommandList* postFrameCommandList = frameResource->postFrameCommandList.Get();
+
+    // PostProcess Pass
+    {
+        size_t passIndex = static_cast<size_t>(RenderPass::PassIndex::PostProcess);
+
+        RenderPass* pass = renderPasses[passIndex].get();
+
+        pass->RecordPreCommand(postFrameCommandList, this);
+        pass->RecordParallelCommand(postFrameCommandList, this, 0);
+        pass->RecordPostCommand(postFrameCommandList, this);
+
+    }
+
+    // Imgui 드로우
+    {
+        ID3D12DescriptorHeap* heaps[] = {
+            descriptorHeapManager->GetImGuiSrvHeap(),
+            descriptorHeapManager->GetImGuiSamplerHeap()
+        };
+        postFrameCommandList->SetDescriptorHeaps(_countof(heaps), heaps);
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), postFrameCommandList);
+    }
+
+
+    // RENDER_TARGET → PRESENT 전환
+    CD3DX12_RESOURCE_BARRIER toPresent =
+        CD3DX12_RESOURCE_BARRIER::Transition(
+            backBuffers[backBufferIndex].Get(),
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_PRESENT);
+    postFrameCommandList->ResourceBarrier(1, &toPresent);
+
+
+    syncPoint.arrive_and_wait();
+
+
+    // 최종 Execute
+    {
+        std::vector<ID3D12CommandList*> commandLists;
+
+        // Opaque Record 제출
+        {
+            size_t opaquePassIndex = static_cast<size_t>(RenderPass::PassIndex::ForwardOpaque);
+
+            RenderPass* opaquePass = renderPasses[opaquePassIndex].get();
+            auto& opaquePassCommandBundle = frameResource->opaquePassCommandBundle;
+
+            opaquePassCommandBundle.CloseAll();
+
+            commandLists.push_back(opaquePassCommandBundle.preCommandList.Get());
+
+            for (auto& threadCommandList : opaquePassCommandBundle.threadCommandLists) {
+                commandLists.push_back(threadCommandList.Get());
+            }
+            
+            commandLists.push_back(opaquePassCommandBundle.postCommandList.Get());
+        }
+
+        
+        // postFrameCommnadList 제출
+
+        postFrameCommandList->Close();
+        frameResource->CloseCommandLists();
+
+        commandLists.push_back(postFrameCommandList);
+
+        directQueue->ExecuteCommandLists(static_cast<UINT>(commandLists.size()), commandLists.data());
+
+    }
+
+    swapChain->Present(1, 0);
+
+    backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+
+    GetCurrentFrameResource()->fenceValue = directFenceValue;
+    directQueue->Signal(directFence.Get(), directFenceValue);
+    ++directFenceValue;
+
+}
+
+void Renderer::WorkerThread(UINT threadIndex, FrameResource* frameResource, std::barrier<>& syncPoint)
+{
+    const size_t passCount = static_cast<size_t>(RenderPass::PassIndex::Count);
+
+    // ShadowMap-Pass
+    {
+        size_t passIndex = static_cast<size_t>(RenderPass::PassIndex::ShadowMap);
+
+        RenderPass* pass = renderPasses[passIndex].get();
+        auto& passCommandBundle = frameResource->shadowPassCommandBundle;
+
+        // 병렬처리 시작
+        ID3D12GraphicsCommandList* commandList = nullptr;
+
+        commandList = passCommandBundle.threadCommandLists[threadIndex].Get();
+
+        pass->RecordParallelCommand(commandList, this, threadIndex);
+        
+        syncPoint.arrive_and_wait();
+    }
+
+
+    // ForwardOpaque-Pass
+    {
+        size_t passIndex = static_cast<size_t>(RenderPass::PassIndex::ForwardOpaque);
+
+        RenderPass* pass = renderPasses[passIndex].get();
+        auto& passCommandBundle = frameResource->opaquePassCommandBundle;
+
+        // 병렬처리 시작
+        ID3D12GraphicsCommandList* commandList = nullptr;
+
+        commandList = passCommandBundle.threadCommandLists[threadIndex].Get();
+
+        pass->RecordParallelCommand(commandList, this, threadIndex);
+
+        syncPoint.arrive_and_wait();
+    }
 }
 
 ID3D12Device* Renderer::GetDevice() const {
@@ -354,31 +565,6 @@ LightingManager* Renderer::GetLightingManager() const
 ThreadPool* Renderer::GetThreadPool()
 {
     return threadPool.get();
-}
-
-ID3D12CommandAllocator* Renderer::GetThreadCommandAllocator(UINT index)
-{   
-    return threadCommandAllocators[index].Get();
-}
-
-ID3D12GraphicsCommandList* Renderer::GetThreadCommandList(UINT index)
-{
-    return threadCommandLists[index].Get();
-}
-
-void Renderer::AddRecordedCommandList(ID3D12CommandList* commandList)
-{
-    recordedCommandLists.push_back(commandList);
-}
-
-void Renderer::ClearRecordedCommandLists()
-{
-    recordedCommandLists.clear();
-}
-
-const std::vector<ID3D12CommandList*>& Renderer::GetRecordedCommandLists() const
-{
-    return recordedCommandLists;
 }
 
 Camera* Renderer::GetCamera() const {
@@ -577,9 +763,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
 
 void Renderer::RecordCommandList_SingleThreaded()
 {
-    FrameResource* currentFrameResource = frameResources[currentFrameIndex].get();
-
-    currentFrameResource->Reset();
+    currentFrameResource->ResetCommandBundles();
 
     ID3D12GraphicsCommandList* commandList = currentFrameResource->commandList.Get();
 
@@ -592,7 +776,7 @@ void Renderer::RecordCommandList_SingleThreaded()
     commandList->ResourceBarrier(1, &toRenderTarget);
 
 
-    for (size_t i = 0; i < static_cast<size_t>(PassIndex::Count); ++i)
+    for (size_t i = 0; i < static_cast<size_t>(RenderPass::PassIndex::Count); ++i)
     {
         renderPasses[i]->RenderSingleThreaded(this);
     }
@@ -617,7 +801,7 @@ void Renderer::RecordCommandList_SingleThreaded()
     commandList->ResourceBarrier(1, &toPresent);
 
     // 커맨드 리스트 종료
-    commandList->Close();
+    currentFrameResource->CloseCommandLists();
 }
 
 void Renderer::WaitForDirectQueue() {
@@ -645,12 +829,12 @@ void Renderer::UpdateGlobalTime(float seconds) {
     CB_Global globalConstants{};
     globalConstants.time = seconds;
 
-    FrameResource* currentFrame = GetCurrentFrameResource();
-    assert(currentFrame && currentFrame->cbGlobal && "FrameResource or cbGlobal is null");
-    currentFrame->cbGlobal->CopyData(0, globalConstants);
+    FrameResource* currentFrameResource = GetCurrentFrameResource();
+    assert(currentFrameResource && currentFrameResource->cbGlobal && "FrameResource or cbGlobal is null");
+    currentFrameResource->cbGlobal->CopyData(0, globalConstants);
 }
 
 bool Renderer::IsMultithreadedRenderingEnabled() const
 {
-    return useMultithreadedRendering;
+    return useMultiThreadedRendering;
 }
