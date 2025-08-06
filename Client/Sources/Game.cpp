@@ -162,18 +162,19 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
     auto boxMaterial = std::make_shared<Material>();
     boxMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
     boxMaterial->parameters.ambientOcclusion = 1.0f;
+    boxMaterial->parameters.metallic = 0.1f;
     
     auto boxObject = std::make_shared<BoxObject>(boxMaterial);
     if (!boxObject->Initialize(&renderer)) {
         throw std::runtime_error("Failed to initialize BoxObject");
     }
     boxObject->SetPosition(XMFLOAT3{ 0.0f, -2.0f, 0.0f });
-    boxObject->SetScale(XMFLOAT3{ 50.0f,  0.5f, 50.0f });
+    boxObject->SetScale(XMFLOAT3{ 1000.0f,  0.5f, 1000.0f });
     renderer.AddGameObject(boxObject);
     
 
     // Flight 객체 생성
-    
+    /*
     flightMaterial = std::make_shared<Material>();
     flightMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
     flightMaterial->parameters.ambientOcclusion = 1.0f;
@@ -184,12 +185,14 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
         throw std::runtime_error("Failed to initialize Flight object");
 
     renderer.AddGameObject(flightObject);
-    
+    */
 
+    /*
     auto sphereMaterial = std::make_shared<Material>();
     sphereMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
     sphereMaterial->parameters.ambientOcclusion = 1.0f;
 
+   
     auto sphereObject = std::make_shared<SphereObject>(sphereMaterial, 32, 32);
     if (!sphereObject->Initialize(&renderer))
         throw std::runtime_error("Failed to initialize SphereObject");
@@ -197,6 +200,40 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
     sphereObject->SetPosition(XMFLOAT3(3.0f, 0.0f, 0.0f));
 
     renderer.AddGameObject(sphereObject);
+    */
+
+    // 성능 테스트를 위한 구 529개 대량배치
+    {
+        auto sphereMaterial = std::make_shared<Material>();
+        sphereMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
+        sphereMaterial->parameters.ambientOcclusion = 1.0f;
+
+        const int   gridCount = 23;      // 23×23 = 529칸
+        const float spacing = 2.0f;    // 각 구 좌표 사이 간격
+        const float baseY = 0.5f;    // 박스 위에 떠 있도록 Y 위치
+        const int maxCount = 529;
+
+        int created = 0;
+        for (int z = 0; z < gridCount && created < maxCount; ++z)
+        {
+            for (int x = 0; x < gridCount && created < maxCount; ++x)
+            {
+                // SphereObject 인스턴스
+                auto sphereObj = std::make_shared<SphereObject>(sphereMaterial, 32, 32);
+                if (!sphereObj->Initialize(&renderer))
+                    throw std::runtime_error("Failed to initialize SphereObject");
+
+                float offset = (gridCount - 1) * spacing * 0.5f;
+                float posX = x * spacing - offset;
+                float posZ = z * spacing - offset;
+
+                sphereObj->SetPosition(XMFLOAT3(posX, baseY, posZ));
+                renderer.AddGameObject(sphereObj);
+
+                ++created;
+            }
+        }
+    }
     
     auto skybox = std::make_shared<Skybox>(skyboxTexture);
     if (!skybox->Initialize(&renderer)) {
@@ -250,7 +287,7 @@ void Game::LoadTexture()
     bulletTexture = renderer.GetTextureManager()->LoadTexture(
         L"Assets/Bullet/Textures/bullet_DefaultMaterial_BaseColor.png");
     if (!bulletTexture) MessageBox(hwnd, L"Failed to load bullet texture!", L"Error", MB_OK);
-
+    
 
     skyboxTexture = renderer.GetTextureManager()->LoadCubeMap(L"Assets/HDRI/SkyboxSpecularHDR.dds");
     if (!skyboxTexture)
@@ -330,10 +367,6 @@ int Game::Run() {
 
 
 void Game::Cleanup() {
-
-    renderer.ShutdownImGui();
-    renderer.Cleanup();
-
     physicsManager.Cleanup();
     network.Stop();
 }

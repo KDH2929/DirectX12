@@ -17,7 +17,7 @@ Renderer::Renderer()
     // (내 노트북 기준)   numWorkerThreads = 8
     numWorkerThreads = threadPool->GetThreadCount();
 
-    useMultiThreadedRendering = true;
+    useMultiThreadedRendering = false;
 
 }
 
@@ -175,10 +175,15 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
 
 void Renderer::Cleanup() {
     WaitForDirectQueue();
+
+    ShutdownImGui();
+
     if (directFenceEvent != nullptr && directFenceEvent != INVALID_HANDLE_VALUE) {
         CloseHandle(directFenceEvent);
         directFenceEvent = nullptr;
     }
+
+
 }
 
 void Renderer::AddGameObject(std::shared_ptr<GameObject> object) {
@@ -331,6 +336,7 @@ void Renderer::RenderMultiThreaded()
         pass->RecordPreCommand(passPreCommandList, this);
         pass->RecordPostCommand(passPostCommandList, this);
 
+        // Command Execute 전 동기화
         syncPoint.arrive_and_wait();
 
         preFrameCommandList->Close();
@@ -407,6 +413,7 @@ void Renderer::RenderMultiThreaded()
     postFrameCommandList->ResourceBarrier(1, &toPresent);
 
 
+    // Command Execute 전 동기화
     syncPoint.arrive_and_wait();
 
 
