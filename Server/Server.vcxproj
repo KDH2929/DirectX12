@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -19,30 +19,48 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ClientManager.cpp" />
-    <ClCompile Include="ClientSession.cpp" />
-    <ClCompile Include="GameRoom.cpp" />
-    <ClCompile Include="GameServer.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="MessageDispatcher.cpp" />
-    <ClCompile Include="MessageHandler.cpp" />
-    <ClCompile Include="packet.pb.cc" />
-    <ClCompile Include="PacketParser.cpp" />
-    <ClCompile Include="RoomManager.cpp" />
+    <ClCompile Include="Sources\ClientManager.cpp" />
+    <ClCompile Include="Sources\ClientSession.cpp" />
+    <ClCompile Include="Sources\DB\AccountDao.cpp" />
+    <ClCompile Include="Sources\DB\DatabaseConnectionPool.cpp" />
+    <ClCompile Include="Sources\DB\DbExecutor.cpp" />
+    <ClCompile Include="Sources\GameRoom.cpp" />
+    <ClCompile Include="Sources\GameServer.cpp" />
+    <ClCompile Include="Sources\Message\game_message.pb.cc" />
+    <ClCompile Include="Sources\IOCP\IocpServer.cpp" />
+    <ClCompile Include="Sources\main.cpp" />
+    <ClCompile Include="Sources\Message\MessageDispatcher.cpp" />
+    <ClCompile Include="Sources\Message\MessageHandler.cpp" />
+    <ClCompile Include="Sources\Message\MessageSerializer.cpp" />
+    <ClCompile Include="Sources\RoomManager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ClientManager.h" />
-    <ClInclude Include="ClientSession.h" />
-    <ClInclude Include="GameRoom.h" />
-    <ClInclude Include="GameServer.h" />
-    <ClInclude Include="MessageDispatcher.h" />
-    <ClInclude Include="MessageHandler.h" />
-    <ClInclude Include="packet.pb.h" />
-    <ClInclude Include="PacketParser.h" />
-    <ClInclude Include="RoomManager.h" />
+    <ClInclude Include="Sources\ClientManager.h" />
+    <ClInclude Include="Sources\ClientSession.h" />
+    <ClInclude Include="Sources\Config.h" />
+    <ClInclude Include="Sources\DB\AccountDao.h" />
+    <ClInclude Include="Sources\DB\DatabaseConfig.h" />
+    <ClInclude Include="Sources\DB\DatabaseConnectionPool.h" />
+    <ClInclude Include="Sources\DB\DbExecutor.h" />
+    <ClInclude Include="Sources\GameSystems\DamageSystem.h" />
+    <ClInclude Include="Sources\GameSystems\FlightSystem.h" />
+    <ClInclude Include="Sources\Entities\Plane.h" />
+    <ClInclude Include="Sources\GameRoom.h" />
+    <ClInclude Include="Sources\GameServer.h" />
+    <ClInclude Include="Sources\GameSystems\GameSystem.h" />
+    <ClInclude Include="Sources\GameSystems\RespawnSystem.h" />
+    <ClInclude Include="Sources\GameSystems\SystemPipeline.h" />
+    <ClInclude Include="Sources\GameSystems\WeaponSystem.h" />
+    <ClInclude Include="Sources\Message\game_message.pb.h" />
+    <ClInclude Include="Sources\IOCP\IocpIoContext.h" />
+    <ClInclude Include="Sources\IOCP\IocpServer.h" />
+    <ClInclude Include="Sources\Message\MessageDispatcher.h" />
+    <ClInclude Include="Sources\Message\MessageHandler.h" />
+    <ClInclude Include="Sources\Message\MessageSerializer.h" />
+    <ClInclude Include="Sources\RoomManager.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packet.proto" />
+    <None Include="Sources\Message\game_message.proto" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -96,6 +114,12 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(ProjectDir)Sources;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(ProjectDir)Sources;$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -130,10 +154,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>D:\KDHStudy\HongLab_Graphics\vcpkg\installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>D:\KDHStudy\HongLab_Graphics\vcpkg\installed\x64-windows\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mysqlcppconn.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -144,12 +172,16 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>D:\KDHStudy\HongLab_Graphics\vcpkg\installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>D:\KDHStudy\HongLab_Graphics\vcpkg\installed\x64-windows\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>mysqlcppconn.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
