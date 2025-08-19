@@ -4,6 +4,7 @@ package game;
 // ===== Common =====
 message Vector3 { float x = 1; float y = 2; float z = 3; }
 
+// HTTP Statue ¸ð¹æ
 enum StatusCode {
   option allow_alias = true;
   SUCCESS = 0;
