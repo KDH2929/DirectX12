@@ -1,0 +1,149 @@
+syntax = "proto3";
+package game;
+
+// ===== Common =====
+message Vector3 { float x = 1; float y = 2; float z = 3; }
+
+enum StatusCode {
+  option allow_alias = true;
+  SUCCESS = 0;
+  BAD_REQUEST = 400;
+  UNAUTHORIZED = 401;
+  FORBIDDEN = 403;
+  NOT_FOUND = 404;
+  INTERNAL_SERVER_ERROR = 500;
+  BAD_GATEWAY = 502;
+  SERVICE_UNAVAILABLE = 503;
+  GATEWAY_TIMEOUT = 504;
+  TIMEOUT = 504; // alias
+}
+
+message Result {
+  StatusCode status_code = 1;
+  string message = 2;
+}
+
+message Header {
+  uint32 player_id = 1;
+  uint64 sequence = 2;                     // server->client message sequence
+  uint64 server_time_ms = 3;
+  uint64 last_applied_input_sequence = 4;  // server acknowledges latest applied client input
+}
+
+// ===== Auth / Lobby =====
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+message LoginResponse {
+  Result result = 1;
+  uint32 player_id = 2;
+  string session_token = 3;
+}
+
+message JoinRoomRequest { uint32 room_id = 1; }
+message JoinRoomResponse {
+  Result result = 1;
+  uint32 room_id = 2;
+  repeated PlayerInfo player_list = 3;
+}
+
+// ===== Chat =====
+message ChatSend { string message = 1; }
+message ChatEvent {
+  uint32 player_id = 1;
+  string nickname = 2;
+  string message = 3;
+  uint64 server_time_ms = 4;
+}
+
+// ===== Game Domain =====
+message MoveInput {
+  uint64 input_sequence = 1;
+
+  // Local movement axes (-1..+1)
+  float move_forward = 2;
+  float move_right   = 3;
+  float move_up      = 4;
+
+  // Camera input (-1..+1), server scales to rad/s
+  float yaw_delta    = 5;
+  float pitch_delta  = 6;
+
+  Vector3 client_position = 7;   // optional
+}
+
+message MoveEvent {
+  uint32 player_id = 1;
+  Vector3 position = 2;
+  Vector3 velocity = 3;
+  float yaw_radians = 4;
+  float pitch_radians = 5;
+  uint64 server_time_ms = 6;
+}
+
+message FireInput {
+  uint64 input_sequence = 1;
+  uint32 weapon_id = 2;
+  bool   trigger_pressed = 3;
+}
+
+message FireEvent {
+  uint32 player_id = 1;
+  uint32 bullet_id = 2;
+  Vector3 origin = 3;      // computed by server
+  Vector3 direction = 4;   // computed by server
+  uint64 server_time_ms = 5;
+}
+
+message HitEvent {
+  uint32 attacker_id = 1;
+  uint32 target_id = 2;
+  uint32 bullet_id = 3;
+  uint32 damage = 4;
+  uint32 target_hp = 5;
+  uint64 server_time_ms = 6;
+}
+
+message PlayerInfo {
+  uint32 player_id = 1;
+  string nickname = 2;
+  Vector3 position = 3;
+  uint32 hp = 4;
+  float yaw_radians = 5;
+  float pitch_radians = 6;
+}
+
+message AllPlayerList { repeated PlayerInfo players = 1; }
+
+message PlayerStateUpdate {
+  repeated PlayerInfo players_updated = 1;
+  repeated uint32 players_removed = 2;
+}
+
+// ===== Envelope =====
+message GameMessage {
+  Header header = 1;
+  oneof payload {
+    // Auth / Lobby
+    LoginRequest  login_request  = 10;
+    LoginResponse login_response = 11;
+    JoinRoomRequest  join_room_request  = 12;
+    JoinRoomResponse join_room_response = 13;
+
+    // Chat
+    ChatSend  chat_send = 20;
+    ChatEvent chat_event = 21;
+
+    // Game
+    MoveInput move_input = 30;
+    MoveEvent move_event = 31;
+    FireInput fire_input = 32;
+    FireEvent fire_event = 33;
+    HitEvent  hit_event  = 34;
+
+    // State
+    AllPlayerList all_player_list = 40;
+    PlayerStateUpdate player_state_update = 41;
+  }
+}
