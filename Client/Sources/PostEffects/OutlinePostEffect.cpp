@@ -10,7 +10,7 @@ using namespace DirectX;
 
 void OutlinePostEffect::Initialize(Renderer* renderer)
 {
-    // Ç®½ºÅ©¸° Äõµå »ý¼º
+    // í’€ìŠ¤í¬ë¦° ì¿¼ë“œ ìƒì„±
     quadMesh = Mesh::CreateQuad(renderer);
     if (!quadMesh)
         throw std::runtime_error("Failed to create quad mesh for OutlinePostEffect");
@@ -49,25 +49,25 @@ void OutlinePostEffect::Render(ID3D12GraphicsCommandList* commandList, Renderer*
 
     auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
 
-    // CBV_SRV_UAV Èü ¹ÙÀÎµù (t0: scene SRV, b0: outline CBV)
+    // CBV_SRV_UAV íž™ ë°”ì¸ë”© (t0: scene SRV, b0: outline CBV)
     ID3D12DescriptorHeap* heaps[] = {
         descriptorHeapManager->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
     };
     commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
-    // ·çÆ® ½Ã±×´ÏÃ³ & PSO ¹ÙÀÎµù
+    // ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜ & PSO ë°”ì¸ë”©
     commandList->SetGraphicsRootSignature(
        renderer->GetRootSignatureManager()->Get(L"PostProcessRS"));
     commandList->SetPipelineState(
         renderer->GetPSOManager()->Get(L"OutlinePostEffectPSO"));
 
-    // »ó¼ö ¹öÆÛ (b0) ¹ÙÀÎµù
+    // ìƒìˆ˜ ë²„í¼ (b0) ë°”ì¸ë”©
     commandList->SetGraphicsRootConstantBufferView(0, frameResource->cbOutline->GetGPUVirtualAddress(0));
 
-    // SRV Å×ÀÌºí (t0) ¹ÙÀÎµù
+    // SRV í…Œì´ë¸” (t0) ë°”ì¸ë”©
     commandList->SetGraphicsRootDescriptorTable(1, frameResource->sceneColorSrv.gpuHandle);
 
-    // Ç®½ºÅ©¸° Äõµå Draw
+    // í’€ìŠ¤í¬ë¦° ì¿¼ë“œ Draw
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     commandList->IASetVertexBuffers(0, 1, &quadMesh->GetVertexBufferView());
     commandList->IASetIndexBuffer(&quadMesh->GetIndexBufferView());

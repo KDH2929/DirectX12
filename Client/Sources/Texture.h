@@ -7,17 +7,17 @@
 class Renderer;
 
 
-// GPU-ÅØ½ºÃ³ + SRV ÇÚµé º¸À¯
+// GPU-í…ìŠ¤ì²˜ + SRV í•¸ë“¤ ë³´ìœ 
 
 class Texture
 {
 public:
     Texture() = default;
 
-    // 2D ÅØ½ºÃ³ ·Îµå
+    // 2D í…ìŠ¤ì²˜ ë¡œë“œ
     bool LoadFromFile(Renderer* renderer, const std::wstring& filePath, bool generateMips = false);
 
-    // Å¥ºê¸Ê ÅØ½ºÃ³ ·Îµå  (HDR, LDR µÑ ´Ù Ã³¸® °¡´É)
+    // íë¸Œë§µ í…ìŠ¤ì²˜ ë¡œë“œ  (HDR, LDR ë‘˜ ë‹¤ ì²˜ë¦¬ ê°€ëŠ¥)
     bool LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePath, bool generateMips = false);
 
     ID3D12Resource* GetResource()       const;
@@ -26,17 +26,17 @@ public:
     UINT   GetDescriptorIndex()const;
     const std::wstring& GetName()           const;
 
-    // ÇÚµé ¼³Á¤ (TextureManager °¡ SRV¸¦ ¸¸µé°í È£Ãâ)
+    // í•¸ë“¤ ì„¤ì • (TextureManager ê°€ SRVë¥¼ ë§Œë“¤ê³  í˜¸ì¶œ)
     void SetDescriptorHandles(D3D12_CPU_DESCRIPTOR_HANDLE cpu,
         D3D12_GPU_DESCRIPTOR_HANDLE gpu,
         UINT index);
 
 
 private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> texture;      // ½ÇÁ¦ GPU ¸®¼Ò½º
-    std::wstring  name;                                  // ÆÄÀÏ °æ·Î(Ä³½Ã Å°)
+    Microsoft::WRL::ComPtr<ID3D12Resource> texture;      // ì‹¤ì œ GPU ë¦¬ì†ŒìŠ¤
+    std::wstring  name;                                  // íŒŒì¼ ê²½ë¡œ(ìºì‹œ í‚¤)
 
-    // SRV À§Ä¡
+    // SRV ìœ„ì¹˜
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{ 0 };
     D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{ 0 };
     UINT descriptorIndex{ UINT(-1) };

@@ -11,7 +11,7 @@ struct RenderPassCommandBundle
     ComPtr<ID3D12CommandAllocator>        preAllocator;
     ComPtr<ID3D12GraphicsCommandList>     preCommandList;
 
-    // ¸ÖÆ¼½º·¹µå (N = WorkerThread ¼ö)
+    // ë©€í‹°ìŠ¤ë ˆë“œ (N = WorkerThread ìˆ˜)
     std::vector<ComPtr<ID3D12CommandAllocator>>    threadAllocators;
     std::vector<ComPtr<ID3D12GraphicsCommandList>> threadCommandLists;
 

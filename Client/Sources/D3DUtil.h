@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <windows.h>
 
-// HRESULT °Ë»ç ¹× ¿¹¿Ü ´øÁö±â
+// HRESULT ê²€ì‚¬ ë° ì˜ˆì™¸ ë˜ì§€ê¸°
 inline void ThrowIfFailed(
     HRESULT hr,
     const char* expr = nullptr,

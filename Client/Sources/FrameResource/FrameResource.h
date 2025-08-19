@@ -31,22 +31,22 @@ public:
         bool enableMultiThreaded = false);
 
 
-    // GPU µ¿±âÈ­¿ë Ææ½º °ª
+    // GPU ë™ê¸°í™”ìš© íœìŠ¤ ê°’
     UINT64 fenceValue = 0;
 
-    // ¸ÖÆ¼½º·¹µå¿ë
+    // ë©€í‹°ìŠ¤ë ˆë“œìš©
     UINT numThreads = 0;
     bool useMultiThreadedRendering = false;
 
-    std::barrier<> syncPoint;   // Worker Thread ¼ö + Main Thread 1°³
+    std::barrier<> syncPoint;   // Worker Thread ìˆ˜ + Main Thread 1ê°œ
 
 
-    // ´ÜÀÏ ½º·¹µå¿ë Ä¿¸Çµå ÇÒ´çÀÚ & Ä¿¸Çµå ¸®½ºÆ®
+    // ë‹¨ì¼ ìŠ¤ë ˆë“œìš© ì»¤ë§¨ë“œ í• ë‹¹ì & ì»¤ë§¨ë“œ ë¦¬ìŠ¤íŠ¸
     ComPtr<ID3D12CommandAllocator>    commandAllocator;
     ComPtr<ID3D12GraphicsCommandList> commandList;
 
 
-    // ¸ÖÆ¼ ½º·¹µå¿ë Ä¿¸Çµå ÇÒ´çÀÚ & Ä¿¸Çµå ¸®½ºÆ®
+    // ë©€í‹° ìŠ¤ë ˆë“œìš© ì»¤ë§¨ë“œ í• ë‹¹ì & ì»¤ë§¨ë“œ ë¦¬ìŠ¤íŠ¸
     ComPtr<ID3D12GraphicsCommandList> preFrameCommandList;
     ComPtr<ID3D12GraphicsCommandList> postFrameCommandList;
 
@@ -54,18 +54,18 @@ public:
     ComPtr<ID3D12CommandAllocator> postFrameAllocator;
 
 
-    // (N = WorkerThread ¼ö)
-    // Shadow pass ¿ë
+    // (N = WorkerThread ìˆ˜)
+    // Shadow pass ìš©
     RenderPassCommandBundle opaquePassCommandBundle;
     RenderPassCommandBundle shadowPassCommandBundle;
 
 
-    // ¿ÀºêÁ§Æ®´ç »ç¿ëÇÏ´Â UploadBuffer<CB>
+    // ì˜¤ë¸Œì íŠ¸ë‹¹ ì‚¬ìš©í•˜ëŠ” UploadBuffer<CB>
     std::unique_ptr<UploadBuffer<CB_MVP>>           cbMVP;         // objectCount
     std::unique_ptr<UploadBuffer<CB_MaterialPBR>>   cbMaterialPbr; // objectCount
-    std::unique_ptr<UploadBuffer<CB_ShadowMapPass>> cbShadowPass;  // objectCount ¡¿ MaxShadowMaps
+    std::unique_ptr<UploadBuffer<CB_ShadowMapPass>> cbShadowPass;  // objectCount Ã— MaxShadowMaps
 
-    // ´ÜÀÏ ½½·Ô¸¸ ÇÊ¿äÇÑ UploadBuffer<CB>
+    // ë‹¨ì¼ ìŠ¬ë¡¯ë§Œ í•„ìš”í•œ UploadBuffer<CB>
     std::unique_ptr<UploadBuffer<CB_Lighting>>        cbLighting;       // 1
     std::unique_ptr<UploadBuffer<CB_Global>>          cbGlobal;         // 1
     std::unique_ptr<UploadBuffer<CB_OutlineOptions>>  cbOutline;        // 1
@@ -73,31 +73,31 @@ public:
     std::unique_ptr<UploadBuffer<CB_ShadowMapViewProj>> cbShadowViewProj; // 1
 
 
-    // ·»´õ Å¸°Ù & ºä ÇÚµé
-    DescriptorHandle sceneColorRtv;    // Off-screen ÄÃ·¯ RTV
-    DescriptorHandle sceneColorSrv;    // Off-screen ÄÃ·¯ SRV
+    // ë Œë” íƒ€ê²Ÿ & ë·° í•¸ë“¤
+    DescriptorHandle sceneColorRtv;    // Off-screen ì»¬ëŸ¬ RTV
+    DescriptorHandle sceneColorSrv;    // Off-screen ì»¬ëŸ¬ SRV
     DescriptorHandle depthStencilDsv;  // Depth-Stencil DSV
 
-    // ShadowMap¿ë ºä ÇÚµé
+    // ShadowMapìš© ë·° í•¸ë“¤
     std::array<DescriptorHandle, MaxShadowMaps> shadowDsv;
     std::array<DescriptorHandle, MaxShadowMaps> shadowSrv;
 
-    // per-object SRV/CBV/UAV Ç® (µ¿Àû ÇÊ¿ä ½Ã)
+    // per-object SRV/CBV/UAV í’€ (ë™ì  í•„ìš” ì‹œ)
     std::vector<DescriptorHandle> objectSrvCbvUav;
 
-    // ½ÇÁ¦ GPU ¸®¼Ò½º
+    // ì‹¤ì œ GPU ë¦¬ì†ŒìŠ¤
     ComPtr<ID3D12Resource> sceneColorBuffer;
     ComPtr<ID3D12Resource> depthStencilBuffer;
     std::array<ShadowMap, MaxShadowMaps> shadowMaps;
 
 
 public:
-    // »ó¼ö ¹öÆÛ ÃÊ±âÈ­
+    // ìƒìˆ˜ ë²„í¼ ì´ˆê¸°í™”
     void InitializeConstantBuffers(
         ID3D12Device* device,
         UINT objectCount);
 
-    // ÇÁ·¹ÀÓ ´ÜÀ§ Off-screen/Depth/Shadow ¸®¼Ò½º + ºä »ı¼º
+    // í”„ë ˆì„ ë‹¨ìœ„ Off-screen/Depth/Shadow ë¦¬ì†ŒìŠ¤ + ë·° ìƒì„±
     void InitializeFrameBuffersAndViews(
         ID3D12Device* device,
         DescriptorHeapManager* descriptorHeapManager,
@@ -105,7 +105,7 @@ public:
         UINT frameHeight);
 
 
-    // Ä¿¸Çµå ÇÒ´çÀÚ/¸®½ºÆ®¸¦ Reset
+    // ì»¤ë§¨ë“œ í• ë‹¹ì/ë¦¬ìŠ¤íŠ¸ë¥¼ Reset
     void ResetCommandBundles();
     void CloseCommandLists();
     void InitializeCommandBundles(ID3D12Device* device, UINT numThreads);

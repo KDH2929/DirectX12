@@ -114,10 +114,10 @@ void LightingManager::UploadShadowViewProjBuffer(Renderer* renderer)
 
     CB_ShadowMapViewProj shadowData = {};
 
-    // ÀüÃ¼ ½½·Ô ÀÎµ¦½º
+    // ì „ì²´ ìŠ¬ë¡¯ ì¸ë±ìŠ¤
     UINT slot = 0;
 
-    // °¢ ¶óÀÌÆ®º°·Î shadowViewProjMatrices¸¦ ²¨³»¼­ Ã¤¿ö³Ö´Â´Ù.
+    // ê° ë¼ì´íŠ¸ë³„ë¡œ shadowViewProjMatricesë¥¼ êº¼ë‚´ì„œ ì±„ì›Œë„£ëŠ”ë‹¤.
     for (auto& lightPtr : lights)
     {
         if (!lightPtr->IsShadowCastingEnabled())
@@ -126,7 +126,7 @@ void LightingManager::UploadShadowViewProjBuffer(Renderer* renderer)
         const auto& matrices = lightPtr->GetShadowViewProjMatrices();
         for (size_t j = 0; j < matrices.size() && slot < MaxShadowMaps; ++j)
         {
-            // Çà·ÄÀüÄ¡
+            // í–‰ë ¬ì „ì¹˜
             XMStoreFloat4x4(&shadowData.ShadowMapViewProj[slot], XMMatrixTranspose(matrices[j]));
             ++slot;
         }

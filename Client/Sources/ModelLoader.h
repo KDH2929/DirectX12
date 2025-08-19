@@ -18,7 +18,7 @@ public:
     struct Vertex {
         DirectX::XMFLOAT3 position;
         DirectX::XMFLOAT3 normal;
-        DirectX::XMFLOAT2 texCoords;  // UV ÅØ½ºÃÄ ÁÂÇ¥
+        DirectX::XMFLOAT2 texCoords;  // UV í…ìŠ¤ì³ ì¢Œí‘œ
         DirectX::XMFLOAT3 tangent;
     };
 

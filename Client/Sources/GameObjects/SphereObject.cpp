@@ -24,13 +24,13 @@ bool SphereObject::Initialize(Renderer* renderer)
     if (!GameObject::Initialize(renderer))
         return false;
 
-    // Ä«¸Ş¶ó »ı¼º ¹× ¼³Á¤
+    // ì¹´ë©”ë¼ ìƒì„± ë° ì„¤ì •
     camera = std::make_shared<Camera>();
     camera->SetPosition({ 0.0f, 0.0f, -10.0f });
     float aspect = float(renderer->GetViewportWidth()) / float(renderer->GetViewportHeight());
     camera->SetPerspective(XM_PIDIV4, aspect, 0.1f, 1000.0f);
 
-    // ±¸ ¸Ş½Ã »ı¼º
+    // êµ¬ ë©”ì‹œ ìƒì„±
     sphereMesh = Mesh::CreateSphere(renderer, latitudeSegments, longitudeSegments);
     if (!sphereMesh)
         return false;
@@ -121,7 +121,7 @@ void SphereObject::Update(
 
 void SphereObject::Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex)
 {
-    // Descriptor Heaps ¹ÙÀÎµù
+    // Descriptor Heaps ë°”ì¸ë”©
     ID3D12DescriptorHeap* heaps[] = {
         renderer->GetDescriptorHeapManager()->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
         renderer->GetDescriptorHeapManager()->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
@@ -130,7 +130,7 @@ void SphereObject::Render(ID3D12GraphicsCommandList* commandList, Renderer* rend
 
     FrameResource* frameResource = renderer->GetCurrentFrameResource();
 
-    // µğ¹ö±× ³ë¸» ÆÄÀÌÇÁ¶óÀÎ
+    // ë””ë²„ê·¸ ë…¸ë§ íŒŒì´í”„ë¼ì¸
     if (showNormalDebug)
     {
 
@@ -145,7 +145,7 @@ void SphereObject::Render(ID3D12GraphicsCommandList* commandList, Renderer* rend
         commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
     }
 
-    // PBR ·»´õ¸µ
+    // PBR ë Œë”ë§
     else
     {
         commandList->SetGraphicsRootSignature(
@@ -172,7 +172,7 @@ void SphereObject::Render(ID3D12GraphicsCommandList* commandList, Renderer* rend
         commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 
-    // IA ¼³Á¤ ¹× µå·Î¿ì
+    // IA ì„¤ì • ë° ë“œë¡œìš°
     commandList->IASetVertexBuffers(0, 1, &sphereMesh->GetVertexBufferView());
     commandList->IASetIndexBuffer(&sphereMesh->GetIndexBufferView());
     commandList->DrawIndexedInstanced(sphereMesh->GetIndexCount(), 1, 0, 0, 0);

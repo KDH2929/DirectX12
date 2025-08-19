@@ -9,31 +9,31 @@
 
 class ClientManager {
 public:
-    // Å¬¶óÀÌ¾ğÆ® Ãß°¡ ¹× ¼Ó¼º ¼³Á¤
+    // í´ë¼ì´ì–¸íŠ¸ ì¶”ê°€ ë° ì†ì„± ì„¤ì •
     void AddClient(SOCKET socketHandle, int playerId = -1, const std::string& nickname = "");
 
-    // ¼ÒÄÏ ±âÁØ Á¦°Å
+    // ì†Œì¼“ ê¸°ì¤€ ì œê±°
     void RemoveClient(SOCKET socketHandle);
 
-    // Á¶È¸ (°³º° ¼¼¼Ç)
+    // ì¡°íšŒ (ê°œë³„ ì„¸ì…˜)
     std::shared_ptr<ClientSession> GetClientBySocket(SOCKET socketHandle) const;
     std::shared_ptr<ClientSession> GetClientByPlayerId(int playerId);
 
-    // ¸ñ·Ï Á¶È¸ (º¹»çº» ¹İÈ¯)
-    // ¸ğµç Å¬¶óÀÌ¾ğÆ® ¸ñ·Ï ¹İÈ¯
+    // ëª©ë¡ ì¡°íšŒ (ë³µì‚¬ë³¸ ë°˜í™˜)
+    // ëª¨ë“  í´ë¼ì´ì–¸íŠ¸ ëª©ë¡ ë°˜í™˜
     std::vector<std::shared_ptr<ClientSession>> GetAllClientList() const;
-    // Æ¯Á¤ ¹æ Å¬¶óÀÌ¾ğÆ® ¸ñ·Ï ¹İÈ¯
+    // íŠ¹ì • ë°© í´ë¼ì´ì–¸íŠ¸ ëª©ë¡ ë°˜í™˜
     std::vector<std::shared_ptr<ClientSession>> GetClientsInRoomList(int roomId) const;
 
 private:
     mutable std::mutex managerMutex;
 
-    // ±âº» ÀúÀå¼Ò: ¼ÒÄÏ ¡æ ¼¼¼Ç
+    // ê¸°ë³¸ ì €ì¥ì†Œ: ì†Œì¼“ â†’ ì„¸ì…˜
     std::unordered_map<SOCKET, std::shared_ptr<ClientSession>> sessionsBySocket;
 
-    // º¸Á¶ ÀÎµ¦½º: playerId ¡æ ¼¼¼Ç(weak, ¼ö¸íÀº ±âº» ÀúÀå¼Ò°¡ °ü¸®)
+    // ë³´ì¡° ì¸ë±ìŠ¤: playerId â†’ ì„¸ì…˜(weak, ìˆ˜ëª…ì€ ê¸°ë³¸ ì €ì¥ì†Œê°€ ê´€ë¦¬)
     std::unordered_map<int, std::weak_ptr<ClientSession>> sessionsByPlayerId;
 
-    // ÇïÆÛ: º¸Á¶ ÀÎµ¦½º¿¡¼­ ¸¸·áµÈ Ç×¸ñ Á¤¸®
+    // í—¬í¼: ë³´ì¡° ì¸ë±ìŠ¤ì—ì„œ ë§Œë£Œëœ í•­ëª© ì •ë¦¬
     void PruneExpiredPlayerIndexLocked();
 };

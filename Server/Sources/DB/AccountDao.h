@@ -2,27 +2,27 @@
 #include <string>
 #include <cstdint>
 
-// ÀÇÁ¸¼º ÃÖ¼ÒÈ­¸¦ À§ÇØ Àü¹æ ¼±¾ğ¸¸ »ç¿ë
+// ì˜ì¡´ì„± ìµœì†Œí™”ë¥¼ ìœ„í•´ ì „ë°© ì„ ì–¸ë§Œ ì‚¬ìš©
 struct MYSQL;
 
-// Query ÁØºñ(prepare) ¡æ ÆÄ¶ó¹ÌÅÍ ¹ÙÀÎµù(bind) ¡æ ½ÇÇà(execute)
-// out ¸Å°³º¯¼ö¿¡ ÇØ´çÇÏ´Â °á°ú¸¦ DB·ÎºÎÅÍ ¾ò´Â´Ù.
+// Query ì¤€ë¹„(prepare) â†’ íŒŒë¼ë¯¸í„° ë°”ì¸ë”©(bind) â†’ ì‹¤í–‰(execute)
+// out ë§¤ê°œë³€ìˆ˜ì— í•´ë‹¹í•˜ëŠ” ê²°ê³¼ë¥¼ DBë¡œë¶€í„° ì–»ëŠ”ë‹¤.
 
 class AccountDao {
 public:
     explicit AccountDao(MYSQL* connection) : connection(connection) {}
 
-    // usernameÀÌ Á¸ÀçÇÏ¸é true, outAccountId / outPasswordHash Ã¤¿ò
+    // usernameì´ ì¡´ì¬í•˜ë©´ true, outAccountId / outPasswordHash ì±„ì›€
     bool FindByUsername(const std::string& username,
         long long& outAccountId,
         std::string& outPasswordHash);
 
-    // °èÁ¤ »ı¼º, »ı¼ºµÈ id¸¦ outAccountId·Î ¹İÈ¯
+    // ê³„ì • ìƒì„±, ìƒì„±ëœ idë¥¼ outAccountIdë¡œ ë°˜í™˜
     bool CreateAccount(const std::string& username,
         const std::string& passwordHash,
         long long& outAccountId);
 
-    // ¸¶Áö¸· ·Î±×ÀÎ ½Ã°¢ °»½Å
+    // ë§ˆì§€ë§‰ ë¡œê·¸ì¸ ì‹œê° ê°±ì‹ 
     bool UpdateLastLogin(long long accountId);
 
 private:

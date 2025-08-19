@@ -25,26 +25,26 @@ public:
     SOCKET GetSocket() const { return socketHandle; }
     void Close();
 
-    // ¼ö½Å °æ·Î
+    // ìˆ˜ì‹  ê²½ë¡œ
     void AppendToReceiveBuffer(const char* dataPointer, size_t sizeBytes);
-    // ´©Àû ¹öÆÛ¿¡¼­ °¡´ÉÇÑ ¸ğµç ¸Ş½ÃÁö¸¦ ²¨³»¾î µğ½ºÆĞÄ¡
-    // NeedMoreData¸é true, Ä¡¸í ¿À·ù ½Ã false(»óÀ§¿¡¼­ Close)
+    // ëˆ„ì  ë²„í¼ì—ì„œ ê°€ëŠ¥í•œ ëª¨ë“  ë©”ì‹œì§€ë¥¼ êº¼ë‚´ì–´ ë””ìŠ¤íŒ¨ì¹˜
+    // NeedMoreDataë©´ true, ì¹˜ëª… ì˜¤ë¥˜ ì‹œ false(ìƒìœ„ì—ì„œ Close)
     bool TryExtractAndDispatchAllMessages(MessageDispatcher& dispatcher);
 
-    // ¼Û½Å °æ·Î
+    // ì†¡ì‹  ê²½ë¡œ
     void EnqueueSend(const std::string& bytes);
-    void TrySendNext();  // IOCP send ¿Ï·á Äİ¹é¿¡¼­ ÀçÈ£Ãâ
+    void TrySendNext();  // IOCP send ì™„ë£Œ ì½œë°±ì—ì„œ ì¬í˜¸ì¶œ
 
-    // GameMessage Àü¼Û À¯Æ¿
+    // GameMessage ì „ì†¡ ìœ í‹¸
     void SendGameMessage(const game::GameMessage& message);
 
-    // ·Î±×ÀÎ ÀÀ´ä Àü¼Û (Result.status_code ±â¹İ)
+    // ë¡œê·¸ì¸ ì‘ë‹µ ì „ì†¡ (Result.status_code ê¸°ë°˜)
     void SendLoginResponse(game::StatusCode statusCode,
         const std::string& statusMessage,
         std::uint32_t playerId,
         const std::string& sessionToken);
 
-    // ¼¼¼Ç »óÅÂ(ÇÊ¿ä ÃÖ¼Ò)
+    // ì„¸ì…˜ ìƒíƒœ(í•„ìš” ìµœì†Œ)
     int playerId{ 0 };
     int roomId{ 0 };
     std::string nickname;
@@ -62,10 +62,10 @@ private:
     SOCKET socketHandle{ INVALID_SOCKET };
     std::atomic<bool> closed{ false };
 
-    // ´©Àû ¼ö½Å ¹öÆÛ
+    // ëˆ„ì  ìˆ˜ì‹  ë²„í¼
     std::string receiveBuffer;
 
-    // ¼Û½Å Á÷·ÄÈ­ Å¥
+    // ì†¡ì‹  ì§ë ¬í™” í
     std::mutex sendQueueMutex;
     std::deque<std::string> sendQueue;
     std::atomic<bool> sendingInProgress{ false };

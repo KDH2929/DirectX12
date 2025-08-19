@@ -2,10 +2,10 @@
 #include <string>
 
 struct DatabaseConfig {
-    std::string host = "127.0.0.1";   // Á¢¼Ó È£½ºÆ®
-    int         port = 3306;          // Æ÷Æ®
-    std::string user = "appuser";     // ¾Û Àü¿ë °èÁ¤
+    std::string host = "127.0.0.1";   // ì ‘ì† í˜¸ìŠ¤íŠ¸
+    int         port = 3306;          // í¬íŠ¸
+    std::string user = "appuser";     // ì•± ì „ìš© ê³„ì •
     std::string password = "appsecret";
     std::string database = "appdb";
-    int poolSize = 4;                 // ¹Ì¸® ¿­¾îµÑ ¿¬°á ¼ö
+    int poolSize = 4;                 // ë¯¸ë¦¬ ì—´ì–´ë‘˜ ì—°ê²° ìˆ˜
 };

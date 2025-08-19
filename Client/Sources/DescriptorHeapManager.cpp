@@ -34,7 +34,7 @@ bool DescriptorHeapManager::InitializeImGuiDescriptorHeaps(
     UINT imguiSrvCount,
     UINT imguiSamplerCount)
 {
-    // 1) SRV/CBV/UAV Èü »ı¼º
+    // 1) SRV/CBV/UAV í™ ìƒì„±
     {
         D3D12_DESCRIPTOR_HEAP_DESC descSrv{};
         descSrv.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -46,7 +46,7 @@ bool DescriptorHeapManager::InitializeImGuiDescriptorHeaps(
             return false;
     }
 
-    // 2) Sampler Èü »ı¼º
+    // 2) Sampler í™ ìƒì„±
     {
         D3D12_DESCRIPTOR_HEAP_DESC descSampler{};
         descSampler.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;

@@ -13,9 +13,9 @@ public:
     virtual bool Initialize() { return true; }
     virtual void Shutdown() {}
 
-    // °íÁ¤ ½ºÅÜ(½Ã¹Ä/ÀüÅõ/ÀÌµ¿/¹°¸® µî)
+    // ê³ ì • ìŠ¤í…(ì‹œë®¬/ì „íˆ¬/ì´ë™/ë¬¼ë¦¬ ë“±)
     virtual void FixedUpdate(double fixedDeltaSeconds, GameRoom& room) = 0;
 
-    // °¡º¯ ½ºÅÜ(·Î±×, ºñ½Ã¹Ä ÀÛ¾÷ µî)
+    // ê°€ë³€ ìŠ¤í…(ë¡œê·¸, ë¹„ì‹œë®¬ ì‘ì—… ë“±)
     virtual void Update(double deltaSeconds, GameRoom& room) {}
 };

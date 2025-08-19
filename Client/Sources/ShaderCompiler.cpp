@@ -7,11 +7,11 @@ bool ShaderCompiler::Compile(
     ComPtr<ID3DBlob>& outBlob,
     ComPtr<ID3DBlob>& outError)
 {
-    // ¸ÅÅ©·Î ¹è¿­ + ³Î Á¾·á
+    // ë§¤í¬ë¡œ ë°°ì—´ + ë„ ì¢…ë£Œ
     std::vector<D3D_SHADER_MACRO> macros = desc.defines;
     macros.push_back({ nullptr, nullptr });
 
-    // ½ÇÁ¦ ÄÄÆÄÀÏ È£Ãâ
+    // ì‹¤ì œ ì»´íŒŒì¼ í˜¸ì¶œ
     HRESULT hr = D3DCompileFromFile(
         desc.path.c_str(),
         macros.data(),

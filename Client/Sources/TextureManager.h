@@ -14,7 +14,7 @@ public:
 
     bool Initialize(Renderer* renderer_, DescriptorHeapManager* descriptorHeapManager_);
 
-    // ÅØ½ºÃÄ ·Îµå ¹× Ä³½Ã
+    // í…ìŠ¤ì³ ë¡œë“œ ë° ìºì‹œ
     std::shared_ptr<Texture> LoadTexture(const std::wstring& filePath, bool generateMips = false);
     std::shared_ptr<Texture> LoadCubeMap(const std::wstring& filePath, bool generateMips = false);
     void Clear();

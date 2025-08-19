@@ -33,7 +33,7 @@ void SpotLight::Update(Camera* camera)
     float aspect = 1.0f;
     float nearZ = 0.1f;
 
-    // °¨¼è °è¼ö·ÎºÎÅÍ ¼¨µµ¿ì farZ °è»ê (¿¹: 1% threshold)
+    // ê°ì‡  ê³„ìˆ˜ë¡œë¶€í„° ì„€ë„ìš° farZ ê³„ì‚° (ì˜ˆ: 1% threshold)
     float C = lightData.constant;
     float L = lightData.linear;
     float Q = lightData.quadratic;
@@ -46,11 +46,11 @@ void SpotLight::Update(Camera* camera)
 
 float SpotLight::ComputeShadowFarZ(float constant, float linear, float quadratic, float threshold)
 {
-    // 1/(C + L¡¤d + Q¡¤d©÷) = threshold  ¢¡  C + L¡¤d + Q¡¤d©÷ = 1/threshold
+    // 1/(C + LÂ·d + QÂ·dÂ²) = threshold  â‡’  C + LÂ·d + QÂ·dÂ² = 1/threshold
     float target = 1.0f / threshold - constant;
-    // Q¡¤d©÷ + L¡¤d - target = 0
+    // QÂ·dÂ² + LÂ·d - target = 0
     float discr = linear * linear + 4.0f * quadratic * target;
     if (discr < 0) discr = 0;
-    // ¾çÀÇ ÇØ¸¸ ÃëÇÔ
+    // ì–‘ì˜ í•´ë§Œ ì·¨í•¨
     return (-linear + sqrtf(discr)) / (2.0f * quadratic);
 }

@@ -20,7 +20,7 @@ void ForwardOpaquePass::RenderSingleThreaded(Renderer* renderer)
 	auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
 	UINT backBufferIndex = renderer->GetBackBufferIndex();
 
-	// ShadowMap ¸®¼Ò½ºµé : DEPTH_WRITE ¡æ PIXEL_SHADER_RESOURCE
+	// ShadowMap ë¦¬ì†ŒìŠ¤ë“¤ : DEPTH_WRITE â†’ PIXEL_SHADER_RESOURCE
 	const auto& shadowMaps = frameResource->shadowMaps;
 	for (const auto& shadowMap : shadowMaps)
 	{
@@ -52,7 +52,7 @@ void ForwardOpaquePass::RenderSingleThreaded(Renderer* renderer)
 	commandList->RSSetViewports(1, &viewport);
 	commandList->RSSetScissorRects(1, &scissor);
 
-	// RTV/DSV Å¬¸®¾î
+	// RTV/DSV í´ë¦¬ì–´
 	const FLOAT clearColor[4] = { 0, 0, 0, 1 };
 	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -68,7 +68,7 @@ void ForwardOpaquePass::RenderSingleThreaded(Renderer* renderer)
 	}
 
 
-	// ShadowMap ¸®¼Ò½ºµé : PIXEL_SHADER_RESOURCE ¡æ DEPTH_WRITE
+	// ShadowMap ë¦¬ì†ŒìŠ¤ë“¤ : PIXEL_SHADER_RESOURCE â†’ DEPTH_WRITE
 	for (const auto& shadowMap : shadowMaps)
 	{
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -86,7 +86,7 @@ void ForwardOpaquePass::RecordPreCommand(ID3D12GraphicsCommandList* commandList,
 	auto descriptorHeapManager = renderer->GetDescriptorHeapManager();
 	UINT backBufferIndex = renderer->GetBackBufferIndex();
 
-	// ShadowMap ¸®¼Ò½ºµé : DEPTH_WRITE ¡æ PIXEL_SHADER_RESOURCE
+	// ShadowMap ë¦¬ì†ŒìŠ¤ë“¤ : DEPTH_WRITE â†’ PIXEL_SHADER_RESOURCE
 	const auto& shadowMaps = frameResource->shadowMaps;
 	for (const auto& shadowMap : shadowMaps)
 	{
@@ -102,7 +102,7 @@ void ForwardOpaquePass::RecordPreCommand(ID3D12GraphicsCommandList* commandList,
 
 	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
-	// RTV/DSV Å¬¸®¾î
+	// RTV/DSV í´ë¦¬ì–´
 	const FLOAT clearColor[4] = { 0, 0, 0, 1 };
 	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -154,7 +154,7 @@ void ForwardOpaquePass::RecordPostCommand(ID3D12GraphicsCommandList* commandList
 
 	const auto& shadowMaps = frameResource->shadowMaps;
 
-	// ShadowMap ¸®¼Ò½ºµé : PIXEL_SHADER_RESOURCE ¡æ DEPTH_WRITE
+	// ShadowMap ë¦¬ì†ŒìŠ¤ë“¤ : PIXEL_SHADER_RESOURCE â†’ DEPTH_WRITE
 	for (const auto& shadowMap : shadowMaps)
 	{
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(

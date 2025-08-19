@@ -16,22 +16,22 @@ GameServer::~GameServer() { Stop(); }
 bool GameServer::Start(unsigned short bindPort) {
     if (runningFlag.load(std::memory_order_acquire)) return true;
 
-    // ¸Ş½ÃÁö ÇÚµé·¯ »ı¼º(ÀÇÁ¸¼º: GameServer*)
+    // ë©”ì‹œì§€ í•¸ë“¤ëŸ¬ ìƒì„±(ì˜ì¡´ì„±: GameServer*)
     messageHandler = std::make_unique<MessageHandler>(this);
 
-    // µğ½ºÆĞÃ³¿¡ ÇÚµé·¯ µî·Ï
+    // ë””ìŠ¤íŒ¨ì²˜ì— í•¸ë“¤ëŸ¬ ë“±ë¡
     RegisterMessageHandlers();
 
-    // IOCP ¼­¹ö »ı¼º/ÃÊ±âÈ­
+    // IOCP ì„œë²„ ìƒì„±/ì´ˆê¸°í™”
     iocpServer = std::make_unique<IocpServer>(messageDispatcher);
     const char* bindAddress = "0.0.0.0";
-    const int workerThreadCount = 0; // 0ÀÌ¸é CPU*2 ±âº»
+    const int workerThreadCount = 0; // 0ì´ë©´ CPU*2 ê¸°ë³¸
     if (!iocpServer->Initialize(bindAddress, bindPort, workerThreadCount)) {
         std::cerr << "[GameServer] IOCP initialization failed.\n";
         return false;
     }
 
-    // °ÔÀÓ ½Ã½ºÅÛ ±¸¼º ¹× µî·Ï
+    // ê²Œì„ ì‹œìŠ¤í…œ êµ¬ì„± ë° ë“±ë¡
     flightSystem = std::make_unique<FlightSystem>();
     weaponSystem = std::make_unique<WeaponSystem>();
     damageSystem = std::make_unique<DamageSystem>();
@@ -42,13 +42,13 @@ bool GameServer::Start(unsigned short bindPort) {
     systemPipeline.RegisterSystem(damageSystem.get());
     systemPipeline.RegisterSystem(respawnSystem.get());
 
-    // ½Ã½ºÅÛ ÃÊ±âÈ­
+    // ì‹œìŠ¤í…œ ì´ˆê¸°í™”
     if (!flightSystem->Initialize())  return false;
     if (!weaponSystem->Initialize())  return false;
     if (!damageSystem->Initialize())  return false;
     if (!respawnSystem->Initialize()) return false;
 
-    // °ÔÀÓ ·çÇÁ ½ÃÀÛ
+    // ê²Œì„ ë£¨í”„ ì‹œì‘
     runningFlag.store(true, std::memory_order_release);
     gameLoopThread = std::thread(&GameServer::GameLoop, this);
 
@@ -70,7 +70,7 @@ void GameServer::Stop() {
         gameLoopThread.join();
     }
 
-    // ½Ã½ºÅÛ Á¾·á(°³º° Shutdown È£Ãâ)
+    // ì‹œìŠ¤í…œ ì¢…ë£Œ(ê°œë³„ Shutdown í˜¸ì¶œ)
     if (respawnSystem) respawnSystem->Shutdown();
     if (damageSystem)  damageSystem->Shutdown();
     if (weaponSystem)  weaponSystem->Shutdown();
@@ -146,11 +146,11 @@ void GameServer::GameLoop() {
 
         int steps = 0;
         while (accumulator >= fixedStep && steps < maxStepsPerFrame) {
-            // ¹æ ¸ñ·Ï ½º³À¼¦À¸·Î ¼øÈ¸
+            // ë°© ëª©ë¡ ìŠ¤ëƒ…ìƒ·ìœ¼ë¡œ ìˆœíšŒ
             auto rooms = roomManager.GetAllRoomList();
             for (auto* room : rooms) {
                 if (!room) continue;
-                // °íÁ¤ ½ºÅÜ ½ÇÇà(ÆÄÀÌÇÁ¶óÀÎÀÌ systems ¼ø¼­´ë·Î FixedUpdate È£Ãâ)
+                // ê³ ì • ìŠ¤í… ì‹¤í–‰(íŒŒì´í”„ë¼ì¸ì´ systems ìˆœì„œëŒ€ë¡œ FixedUpdate í˜¸ì¶œ)
                 systemPipeline.FixedUpdate(*room);
             }
 
@@ -158,6 +158,6 @@ void GameServer::GameLoop() {
             ++steps;
         }
 
-        std::this_thread::sleep_for(milliseconds(1)); // °úÁ¡À¯ ¹æÁö
+        std::this_thread::sleep_for(milliseconds(1)); // ê³¼ì ìœ  ë°©ì§€
     }
 }

@@ -13,11 +13,11 @@ bool RootSignatureManager::InitializeDescs()
 {
     signatureMap.clear();
 
-    // 1) TriangleRS »ı¼º
+    // 1) TriangleRS ìƒì„±
     {
         D3D12_ROOT_PARAMETER params[1] = {};
 
-        // b0: ¸ğµ¨-ºä-ÇÁ·ÎÁ§¼Ç CBV (VS Àü¿ë)
+        // b0: ëª¨ë¸-ë·°-í”„ë¡œì ì…˜ CBV (VS ì „ìš©)
         params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         params[0].Descriptor.ShaderRegister = 0;
         params[0].Descriptor.RegisterSpace = 0;
@@ -34,10 +34,10 @@ bool RootSignatureManager::InitializeDescs()
     }
 
 
-    // 2) Æş Á¶¸í¿ë PhongRS »ı¼º
+    // 2) í ì¡°ëª…ìš© PhongRS ìƒì„±
     {
         // b0~b3: CBVs for MVP, Lighting, Material, Global
-        D3D12_ROOT_PARAMETER params[6] = {};          //-- ÃÊ±âÈ­
+        D3D12_ROOT_PARAMETER params[6] = {};          //-- ì´ˆê¸°í™”
         for (int i = 0; i < 4; ++i) {
             params[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
             params[i].Descriptor.ShaderRegister = i;      // b0, b1, b2, b3
@@ -47,15 +47,15 @@ bool RootSignatureManager::InitializeDescs()
                     : D3D12_SHADER_VISIBILITY_PIXEL);
         }
 
-        // t0, t1 -- ¾Ëº£µµ + ³ë¸Ö  ¡æ ÇÑ Å×ÀÌºí¿¡ 2 °³ SRV
+        // t0, t1 -- ì•Œë² ë„ + ë…¸ë©€  â†’ í•œ í…Œì´ë¸”ì— 2 ê°œ SRV
         D3D12_DESCRIPTOR_RANGE srvRange = {};
         srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srvRange.NumDescriptors = 2;        // 1  ¡æ  2
+        srvRange.NumDescriptors = 2;        // 1  â†’  2
         srvRange.BaseShaderRegister = 0;      // t0
         srvRange.RegisterSpace = 0;
         srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-        // s0  (»ùÇÃ·¯ Å×ÀÌºíÀº ±×´ë·Î)
+        // s0  (ìƒ˜í”ŒëŸ¬ í…Œì´ë¸”ì€ ê·¸ëŒ€ë¡œ)
         D3D12_DESCRIPTOR_RANGE sampRange = {};
         sampRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         sampRange.NumDescriptors = 1;
@@ -85,7 +85,7 @@ bool RootSignatureManager::InitializeDescs()
         Create(L"PhongRS", desc);
     }
 
-    // 3) PBR¿ë ·çÆ® ½Ã±×´ÏÃ³ PbrRS »ı¼º
+    // 3) PBRìš© ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜ PbrRS ìƒì„±
     {
         // b0~b4: CBV (b0=MVP, b1=Lighting, b2=Material, b3=Global, b4=ShadowViewProj)
         D3D12_ROOT_PARAMETER params[11] = {};
@@ -99,7 +99,7 @@ bool RootSignatureManager::InitializeDescs()
                 : D3D12_SHADER_VISIBILITY_PIXEL;
         }
 
-        // Material(4) Descriptor Table ¡æ root 5
+        // Material(4) Descriptor Table â†’ root 5
         D3D12_DESCRIPTOR_RANGE matRange{};
         matRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         matRange.NumDescriptors = 4;   // t0~t3
@@ -112,7 +112,7 @@ bool RootSignatureManager::InitializeDescs()
         params[5].DescriptorTable.pDescriptorRanges = &matRange;
         params[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // IrradianceCube ¡æ root 6 (t4)
+        // IrradianceCube â†’ root 6 (t4)
         D3D12_DESCRIPTOR_RANGE irrRange = matRange;
         irrRange.NumDescriptors = 1;
         irrRange.BaseShaderRegister = 4;  // t4
@@ -122,7 +122,7 @@ bool RootSignatureManager::InitializeDescs()
         params[6].DescriptorTable.pDescriptorRanges = &irrRange;
         params[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // PrefilteredCube ¡æ root 7 (t5)
+        // PrefilteredCube â†’ root 7 (t5)
         D3D12_DESCRIPTOR_RANGE prefRange = matRange;
         prefRange.NumDescriptors = 1;
         prefRange.BaseShaderRegister = 5;  // t5
@@ -132,7 +132,7 @@ bool RootSignatureManager::InitializeDescs()
         params[7].DescriptorTable.pDescriptorRanges = &prefRange;
         params[7].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // BRDF LUT ¡æ root 8 (t6)
+        // BRDF LUT â†’ root 8 (t6)
         D3D12_DESCRIPTOR_RANGE lutRange = matRange;
         lutRange.NumDescriptors = 1;
         lutRange.BaseShaderRegister = 6;  // t6
@@ -144,11 +144,11 @@ bool RootSignatureManager::InitializeDescs()
 
        
 
-        // Sampler Å×ÀÌºí ¡æ root 9 (s0~s1)
+        // Sampler í…Œì´ë¸” â†’ root 9 (s0~s1)
         D3D12_DESCRIPTOR_RANGE sampRange{};
         sampRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         sampRange.NumDescriptors = 2;      // s0, s1
-        sampRange.BaseShaderRegister = 0;     // s0 ½ÃÀÛ
+        sampRange.BaseShaderRegister = 0;     // s0 ì‹œì‘
         sampRange.RegisterSpace = 0;
         sampRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
@@ -157,7 +157,7 @@ bool RootSignatureManager::InitializeDescs()
         params[9].DescriptorTable.pDescriptorRanges = &sampRange;
         params[9].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // ShadowMap ¡æ root 10
+        // ShadowMap â†’ root 10
         D3D12_DESCRIPTOR_RANGE shadowRange{};
         shadowRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         shadowRange.NumDescriptors = MAX_SHADOW_DSV_COUNT;       // t7 ~ t7+N-1
@@ -186,7 +186,7 @@ bool RootSignatureManager::InitializeDescs()
         shadowMapSamplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
         
 
-        // ·çÆ® ½Ã±×´ÏÃ³ Desc »ı¼º
+        // ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜ Desc ìƒì„±
         D3D12_ROOT_SIGNATURE_DESC desc{};
         desc.NumParameters = _countof(params);
         desc.pParameters = params;
@@ -194,17 +194,17 @@ bool RootSignatureManager::InitializeDescs()
         desc.pStaticSamplers = &shadowMapSamplerDesc;
         desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-        // 8) »ı¼º È£Ãâ
+        // 8) ìƒì„± í˜¸ì¶œ
         if (!Create(L"PbrRS", desc))
             throw std::runtime_error("RootSignatureManager::Create(\"PbrRS\") failed");
     }
 
 
-    // 4) Skybox(Å¥ºê¸Ê)¿ë ·çÆ® ½Ã±×´ÏÃ³
+    // 4) Skybox(íë¸Œë§µ)ìš© ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜
     {
         // b0 : CB_MVP (world-view-proj)
-        // t0 : Å¥ºê¸Ê SRV
-        // s0 : »ùÇÃ·¯
+        // t0 : íë¸Œë§µ SRV
+        // s0 : ìƒ˜í”ŒëŸ¬
         D3D12_ROOT_PARAMETER params[3] = {};
 
         // CBV b0
@@ -213,10 +213,10 @@ bool RootSignatureManager::InitializeDescs()
         params[0].Descriptor.RegisterSpace = 0;
         params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
-        // SRV Å×ÀÌºí t0
+        // SRV í…Œì´ë¸” t0
         D3D12_DESCRIPTOR_RANGE srvRange = {};
         srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srvRange.NumDescriptors = 1;   // Å¥ºê¸Ê ÇÑ °³
+        srvRange.NumDescriptors = 1;   // íë¸Œë§µ í•œ ê°œ
         srvRange.BaseShaderRegister = 0;   // t0
         srvRange.RegisterSpace = 0;
         srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -226,7 +226,7 @@ bool RootSignatureManager::InitializeDescs()
         params[1].DescriptorTable.pDescriptorRanges = &srvRange;
         params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // »ùÇÃ·¯ Å×ÀÌºí s0
+        // ìƒ˜í”ŒëŸ¬ í…Œì´ë¸” s0
         D3D12_DESCRIPTOR_RANGE samplerRange = {};
         samplerRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
         samplerRange.NumDescriptors = 1;
@@ -239,7 +239,7 @@ bool RootSignatureManager::InitializeDescs()
         params[2].DescriptorTable.pDescriptorRanges = &samplerRange;
         params[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // ·çÆ® ½Ã±×´ÏÃ³ ¼³¸í
+        // ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜ ì„¤ëª…
         D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
         rsDesc.NumParameters = _countof(params);
         rsDesc.pParameters = params;
@@ -247,7 +247,7 @@ bool RootSignatureManager::InitializeDescs()
         rsDesc.pStaticSamplers = nullptr;
         rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-        // »ı¼º È£Ãâ ("SkyboxRS"·Î ½Äº°)
+        // ìƒì„± í˜¸ì¶œ ("SkyboxRS"ë¡œ ì‹ë³„)
         if (!Create(L"SkyboxRS", rsDesc))
             throw std::runtime_error("RootSignatureManager::Create(\"SkyboxRS\") failed");
     }
@@ -255,14 +255,14 @@ bool RootSignatureManager::InitializeDescs()
 
     // DebugNormal RS
     {
-        // 1) ÆÄ¶ó¹ÌÅÍ ¹è¿­: CBV b0 ÇÏ³ª
+        // 1) íŒŒë¼ë¯¸í„° ë°°ì—´: CBV b0 í•˜ë‚˜
         D3D12_ROOT_PARAMETER debugParams[1] = {};
         debugParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         debugParams[0].Descriptor.ShaderRegister = 0; // b0
         debugParams[0].Descriptor.RegisterSpace = 0;
-        debugParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL; // VS/GS/PS ÀüºÎ »ç¿ë
+        debugParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL; // VS/GS/PS ì „ë¶€ ì‚¬ìš©
 
-        // 2) ·çÆ® ½Ã±×´ÏÃ³ Desc
+        // 2) ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜ Desc
         D3D12_ROOT_SIGNATURE_DESC debugRSDesc = {};
         debugRSDesc.NumParameters = 1;
         debugRSDesc.pParameters = debugParams;
@@ -271,25 +271,25 @@ bool RootSignatureManager::InitializeDescs()
         debugRSDesc.Flags =
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-        // 3) »ı¼º
+        // 3) ìƒì„±
         Create(L"DebugNormalRS", debugRSDesc);
     }
 
 
     // PostProcess RS
     {
-        //  b0 : ÆÄ¶ó¹ÌÅÍ CBV ( PostProcess ¿É¼Çµé )
-        //  t0 : ÀÔ·Â ÅØ½ºÃ³ (SceneColor, ¶Ç´Â º°µµ SRV ½½·Ô)
-        //  s0 : Á¤Àû»ùÇÃ·¯ (linear clamp)
+        //  b0 : íŒŒë¼ë¯¸í„° CBV ( PostProcess ì˜µì…˜ë“¤ )
+        //  t0 : ì…ë ¥ í…ìŠ¤ì²˜ (SceneColor, ë˜ëŠ” ë³„ë„ SRV ìŠ¬ë¡¯)
+        //  s0 : ì •ì ìƒ˜í”ŒëŸ¬ (linear clamp)
         D3D12_ROOT_PARAMETER postParams[2] = {};
 
-        // b0 ¡æ CBV
+        // b0 â†’ CBV
         postParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         postParams[0].Descriptor.ShaderRegister = 0;      // b0
         postParams[0].Descriptor.RegisterSpace = 0;
         postParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // t0 ¡æ SRV Å×ÀÌºí
+        // t0 â†’ SRV í…Œì´ë¸”
         D3D12_DESCRIPTOR_RANGE descTable = {};
         descTable.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
         descTable.NumDescriptors = 1;
@@ -318,12 +318,12 @@ bool RootSignatureManager::InitializeDescs()
         postDesc.pStaticSamplers = &postSampler;
         postDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-        // »ı¼º
+        // ìƒì„±
         Create(L"PostProcessRS", postDesc);
     }
 
     
-    // ShadowMapPass RS :  ±íÀÌ°ª¸¸ ±â·ÏÇÔ
+    // ShadowMapPass RS :  ê¹Šì´ê°’ë§Œ ê¸°ë¡í•¨
     {
         // b0 : CBV (world, lightViewProj)
         D3D12_ROOT_PARAMETER shadowParams[1] = {};
@@ -345,22 +345,22 @@ bool RootSignatureManager::InitializeDescs()
 
 
 
-    // CloudVolume ·»´õ¸µ¿ë ·çÆ® ½Ã±×´ÏÃ³
+    // CloudVolume ë Œë”ë§ìš© ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜
     {
         // b1 : CB_CloudParameters
-        // t2 : (¼±ÅÃ) 3D ³ëÀÌÁî º¼·ı ÅØ½ºÃ³ SRV
+        // t2 : (ì„ íƒ) 3D ë…¸ì´ì¦ˆ ë³¼ë¥¨ í…ìŠ¤ì²˜ SRV
         D3D12_ROOT_PARAMETER params[2] = {};
 
-        // CBV b1 ¡æ CloudParameters
+        // CBV b1 â†’ CloudParameters
         params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         params[0].Descriptor.ShaderRegister = 1;    // b1
         params[0].Descriptor.RegisterSpace = 0;
         params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-        // SRV Å×ÀÌºí t2 ¡æ Noise Texture
+        // SRV í…Œì´ë¸” t2 â†’ Noise Texture
         D3D12_DESCRIPTOR_RANGE srvRange = {};
         srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srvRange.NumDescriptors = 1;    // t2 ÇÏ³ª
+        srvRange.NumDescriptors = 1;    // t2 í•˜ë‚˜
         srvRange.BaseShaderRegister = 2;    // t2
         srvRange.RegisterSpace = 0;
         srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -407,7 +407,7 @@ bool RootSignatureManager::Create(
     const D3D12_ROOT_SIGNATURE_DESC& desc)
 {
     if (signatureMap.count(name))
-        return true;  // ÀÌ¹Ì »ı¼ºµÊ
+        return true;  // ì´ë¯¸ ìƒì„±ë¨
 
     ComPtr<ID3DBlob> blob;
     ComPtr<ID3DBlob> error;
@@ -445,7 +445,7 @@ bool RootSignatureManager::Create(const std::wstring& name,
     if (signatureMap.contains(name))
         return true;
 
-    // 1) ÇÏµå¿ş¾î°¡ v1.1 (bindless) ·çÆ® ½Ã±×´ÏÃ³¸¦ Áö¿øÇÏ´ÂÁö È®ÀÎ
+    // 1) í•˜ë“œì›¨ì–´ê°€ v1.1 (bindless) ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜ë¥¼ ì§€ì›í•˜ëŠ”ì§€ í™•ì¸
     D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData{ D3D_ROOT_SIGNATURE_VERSION_1_1 };
     bool supportV11 = SUCCEEDED(device->CheckFeatureSupport(
         D3D12_FEATURE_ROOT_SIGNATURE,
@@ -453,13 +453,13 @@ bool RootSignatureManager::Create(const std::wstring& name,
         sizeof(featureData)))
         && featureData.HighestVersion >= D3D_ROOT_SIGNATURE_VERSION_1_1;
 
-    // 2) desc º¹»ç ÈÄ, Áö¿ø ¾È ÇÏ¸é Á÷Á¢ ÀÎµ¦½Ì ÇÃ·¡±× Á¦°Å
+    // 2) desc ë³µì‚¬ í›„, ì§€ì› ì•ˆ í•˜ë©´ ì§ì ‘ ì¸ë±ì‹± í”Œë˜ê·¸ ì œê±°
     D3D12_VERSIONED_ROOT_SIGNATURE_DESC desc = descIn;
     if (!supportV11) {
         OutputDebugStringA("Bindless not supported; stripping direct-index flags\n");
-        // v1.0 °æ·Î·Î °­Á¦ Æú¹é
+        // v1.0 ê²½ë¡œë¡œ ê°•ì œ í´ë°±
         desc.Version = D3D_ROOT_SIGNATURE_VERSION_1_0;
-        // Desc_1_0´Â ÆÄ¶ó¹ÌÅÍ¡¤flags¸¸ »ç¿ë; Á÷Á¢ ÀÎµ¦½Ì ÇÃ·¡±× Á¦°Å
+        // Desc_1_0ëŠ” íŒŒë¼ë¯¸í„°Â·flagsë§Œ ì‚¬ìš©; ì§ì ‘ ì¸ë±ì‹± í”Œë˜ê·¸ ì œê±°
         desc.Desc_1_0.Flags &= ~(D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED
             | D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED);
     }
@@ -472,8 +472,8 @@ bool RootSignatureManager::Create(const std::wstring& name,
         return false;
     }
 
-    // 4) CreateRootSignature È£Ãâ
-    //    v1.1 Áö¿ø ½Ã ID3D12Device1, ¾Æ´Ï¸é ID3D12Device
+    // 4) CreateRootSignature í˜¸ì¶œ
+    //    v1.1 ì§€ì› ì‹œ ID3D12Device1, ì•„ë‹ˆë©´ ID3D12Device
     ComPtr<ID3D12RootSignature> signature;
     if (supportV11) {
         ComPtr<ID3D12Device1> device1;

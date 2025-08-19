@@ -10,19 +10,19 @@
 using Microsoft::WRL::ComPtr;
 
 /*
-ÇöÀç ImGui ¿Í Sampler °ü·Ã Heap ÀÇ CPU/GPU HandleÀº °ü¸®ÇÏÁö¸¸ 
-CBV_SRV_UAV ¿Í RTV, DSV ÀÇ Handle Àº °ü¸®´Â ¾ÈÇÏ°í ÀÖ´Ù.   
-Handle °ü¸®´Â ¿ÜºÎ¿¡¼­ ÇÏµµ·Ï ÇÏ´Â °Íµµ ±¦ÂúÀ» °Å °°´Ù.
+í˜„ì¬ ImGui ì™€ Sampler ê´€ë ¨ Heap ì˜ CPU/GPU Handleì€ ê´€ë¦¬í•˜ì§€ë§Œ 
+CBV_SRV_UAV ì™€ RTV, DSV ì˜ Handle ì€ ê´€ë¦¬ëŠ” ì•ˆí•˜ê³  ìˆë‹¤.   
+Handle ê´€ë¦¬ëŠ” ì™¸ë¶€ì—ì„œ í•˜ë„ë¡ í•˜ëŠ” ê²ƒë„ ê´œì°®ì„ ê±° ê°™ë‹¤.
 
-SRV HandleÀº ÇöÀç °¢ÀÚÀÇ TextureµéÀÌ °¡Áö°í ÀÖ°í,   TextureManager°¡ °ü¸®ÇÑ´Ù.
+SRV Handleì€ í˜„ì¬ ê°ìì˜ Textureë“¤ì´ ê°€ì§€ê³  ìˆê³ ,   TextureManagerê°€ ê´€ë¦¬í•œë‹¤.
 
-CBV HandleÀº ÇöÀç »ç¿ëÇÏÁö´Â ¾Ê´Âµ¥, »ó¼ö¹öÆÛ¸¦ Descriptor Table¿¡ ¹ÙÀÎµùÇÏ¿© »ç¿ëÇÏÁö ¾Ê°í
-Root Constant Buffer View ¿¡ ÀúÀåÇØ¼­ »ç¿ëÇÏ±â ¶§¹®ÀÌ´Ù.
+CBV Handleì€ í˜„ì¬ ì‚¬ìš©í•˜ì§€ëŠ” ì•ŠëŠ”ë°, ìƒìˆ˜ë²„í¼ë¥¼ Descriptor Tableì— ë°”ì¸ë”©í•˜ì—¬ ì‚¬ìš©í•˜ì§€ ì•Šê³ 
+Root Constant Buffer View ì— ì €ì¥í•´ì„œ ì‚¬ìš©í•˜ê¸° ë•Œë¬¸ì´ë‹¤.
 ex) SetGraphicsRootConstantBufferView (Root CBV)  
 
-¸¸¾à DescriptorHeap À» ÇÒ´çÇÏ¿© »ó¼ö¹öÆÛ¸¦ ¾´´Ù¸é ÇöÀç·Î½á´Â °¢ GameObjectµéÀÌ Handle À» °ü¸®ÇÏµµ·Ï ÇÒ »ı°¢ÀÌ´Ù.
+ë§Œì•½ DescriptorHeap ì„ í• ë‹¹í•˜ì—¬ ìƒìˆ˜ë²„í¼ë¥¼ ì“´ë‹¤ë©´ í˜„ì¬ë¡œì¨ëŠ” ê° GameObjectë“¤ì´ Handle ì„ ê´€ë¦¬í•˜ë„ë¡ í•  ìƒê°ì´ë‹¤.
 
-SamplerÀÇ °æ¿ì ÃßÈÄ Sampler Manager ¸¦ µÎ¾î ¿©±â¼­ °ü¸®ÇÏµµ·Ï ÇÏ´Â °Ô ÁÁÀ» °Å °°´Ù.
+Samplerì˜ ê²½ìš° ì¶”í›„ Sampler Manager ë¥¼ ë‘ì–´ ì—¬ê¸°ì„œ ê´€ë¦¬í•˜ë„ë¡ í•˜ëŠ” ê²Œ ì¢‹ì„ ê±° ê°™ë‹¤.
 
 */
 
@@ -51,7 +51,7 @@ public:
     DescriptorHandle Allocate(D3D12_DESCRIPTOR_HEAP_TYPE type, UINT count = 1);
 
     ID3D12DescriptorHeap* GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
-    UINT GetDescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE type) const;      // ÇÏ³ªÀÇ µğ½ºÅ©¸³ÅÍ ½½·ÔÀÌ Â÷ÁöÇÏ´Â ¹ÙÀÌÆ® Å©±â ¸®ÅÏ
+    UINT GetDescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE type) const;      // í•˜ë‚˜ì˜ ë””ìŠ¤í¬ë¦½í„° ìŠ¬ë¡¯ì´ ì°¨ì§€í•˜ëŠ” ë°”ì´íŠ¸ í¬ê¸° ë¦¬í„´
 
     ID3D12DescriptorHeap* GetImGuiSrvHeap() const { return imguiSrvHeap.Get(); }
     ID3D12DescriptorHeap* GetImGuiSamplerHeap() const { return imguiSamplerHeap.Get(); }
@@ -62,11 +62,11 @@ public:
     D3D12_GPU_DESCRIPTOR_HANDLE GetLinearWrapSamplerGpuHandle() const { return linearWrapSamplerHandle; }
     D3D12_GPU_DESCRIPTOR_HANDLE GetLinearClampSamplerGpuHandle() const { return linearClampSamplerHandle; }
 
-    // RTV/DSV ºä »ı¼º
+    // RTV/DSV ë·° ìƒì„±
     bool CreateRenderTargetView(ID3D12Device* device, ID3D12Resource* resource, UINT heapIndex);    
     bool CreateDepthStencilView(ID3D12Device* device, ID3D12Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* desc, UINT heapIndex);
 
-    // RTV/DSV CPU ÇÚµé Á¶È¸
+    // RTV/DSV CPU í•¸ë“¤ ì¡°íšŒ
     D3D12_CPU_DESCRIPTOR_HANDLE GetRtvCpuHandle(UINT heapIndex) const;
     D3D12_CPU_DESCRIPTOR_HANDLE GetDsvCpuHandle(UINT heapIndex) const;
 
@@ -76,13 +76,13 @@ public:
 private:
     struct DescriptorHeapInfo
     {
-        ComPtr<ID3D12DescriptorHeap> descriptorHeap;    // ½ÇÁ¦ ID3D12DescriptorHeap °´Ã¼
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuStart;           // ÈüÀÇ Ã¹ ¹øÂ° CPU ÇÚµé
-        D3D12_GPU_DESCRIPTOR_HANDLE gpuStart;           // ÈüÀÇ Ã¹ ¹øÂ° GPU ÇÚµé
-        UINT descriptorSize = 0;                     // ÇÑ ½½·Ô´ç ¹ÙÀÌÆ® ¿ÀÇÁ¼Â(= GetDescriptorHandleIncrementSize)
+        ComPtr<ID3D12DescriptorHeap> descriptorHeap;    // ì‹¤ì œ ID3D12DescriptorHeap ê°ì²´
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuStart;           // í™ì˜ ì²« ë²ˆì§¸ CPU í•¸ë“¤
+        D3D12_GPU_DESCRIPTOR_HANDLE gpuStart;           // í™ì˜ ì²« ë²ˆì§¸ GPU í•¸ë“¤
+        UINT descriptorSize = 0;                     // í•œ ìŠ¬ë¡¯ë‹¹ ë°”ì´íŠ¸ ì˜¤í”„ì…‹(= GetDescriptorHandleIncrementSize)
         UINT maxDescriptors = 0;                     // NumDescriptors
-        UINT nextFreeIndex = 0;                     // Allocate() ½Ã »ç¿ëÇÒ ´ÙÀ½ ÀÎµ¦½º
-        bool isShaderVisible = false;                 // SHADER_VISIBLE ÇÃ·¡±× »ç¿ë ¿©ºÎ
+        UINT nextFreeIndex = 0;                     // Allocate() ì‹œ ì‚¬ìš©í•  ë‹¤ìŒ ì¸ë±ìŠ¤
+        bool isShaderVisible = false;                 // SHADER_VISIBLE í”Œë˜ê·¸ ì‚¬ìš© ì—¬ë¶€
     };
 
     // index 0: CBV_SRV_UAV, 1: Sampler, 2: RTV, 3: DSV

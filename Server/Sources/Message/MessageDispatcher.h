@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include "game_message.pb.h"  // game::GameMessage
 
-// Àü¹æ ¼±¾ğ
+// ì „ë°© ì„ ì–¸
 class ClientSession;
 
 class MessageDispatcher {
@@ -16,13 +16,13 @@ public:
     MessageDispatcher(const MessageDispatcher&) = delete;
     MessageDispatcher& operator=(const MessageDispatcher&) = delete;
 
-    // ÇÚµé·¯ µî·Ï: ¸Ş½ÃÁö Å¸ÀÔ¿¡ µû¶ó ÇÔ¼ö µî·Ï
+    // í•¸ë“¤ëŸ¬ ë“±ë¡: ë©”ì‹œì§€ íƒ€ì…ì— ë”°ë¼ í•¨ìˆ˜ ë“±ë¡
     void RegisterHandler(int payloadCase, std::function<void(std::shared_ptr<ClientSession>, const game::GameMessage&)> handlerFunction);
 
-    // µğ½ºÆĞÄ¡: µî·ÏµÈ ÇÚµé·¯¸¦ È£Ãâ
+    // ë””ìŠ¤íŒ¨ì¹˜: ë“±ë¡ëœ í•¸ë“¤ëŸ¬ë¥¼ í˜¸ì¶œ
     void Dispatch(std::shared_ptr<ClientSession> session, const game::GameMessage& message) const;
 
 private:
-    // payloadCase¿¡ µû¸¥ ÇÚµé·¯ ÇÔ¼ö ¸Ê
+    // payloadCaseì— ë”°ë¥¸ í•¸ë“¤ëŸ¬ í•¨ìˆ˜ ë§µ
     std::unordered_map<int, std::function<void(std::shared_ptr<ClientSession>, const game::GameMessage&)>> handlerMap;
 };

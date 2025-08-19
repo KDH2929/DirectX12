@@ -26,14 +26,14 @@ void Camera::SetRotationQuat(const XMVECTOR& quat) {
 
     XMMATRIX R = XMMatrixRotationQuaternion(rotationQuat);
 
-    // 2) ¸ÅÆ®¸¯½º ¿ø¼Ò ²¨³»±â
-    //    R.r[2] ´Â forward º¤ÅÍ (m20, m21, m22)
+    // 2) ë§¤íŠ¸ë¦­ìŠ¤ ì›ì†Œ êº¼ë‚´ê¸°
+    //    R.r[2] ëŠ” forward ë²¡í„° (m20, m21, m22)
     float m20 = XMVectorGetX(R.r[2]);
     float m21 = XMVectorGetY(R.r[2]);
     float m22 = XMVectorGetZ(R.r[2]);
-    float m10 = XMVectorGetX(R.r[1]); // up.y´Â R.r[1].m128_f32[1]
+    float m10 = XMVectorGetX(R.r[1]); // up.yëŠ” R.r[1].m128_f32[1]
 
-    // 3) Euler °¢ °è»ê (Left-Handed, Y-up ±âÁØ)
+    // 3) Euler ê° ê³„ì‚° (Left-Handed, Y-up ê¸°ì¤€)
     float pitch = asinf(-m21);
     float yaw = atan2f(m20, m22);
     float roll = atan2f(m10, XMVectorGetY(R.r[1]));
@@ -64,7 +64,7 @@ void Camera::SetPerspective(float fovY, float aspectRatio, float nearZ, float fa
 void Camera::UpdateViewMatrix() {
     XMVECTOR eye = XMLoadFloat3(&position);
 
-    // È¸Àü ÄõÅÍ´Ï¾ğ ¡æ ¹æÇâ º¤ÅÍ
+    // íšŒì „ ì¿¼í„°ë‹ˆì–¸ â†’ ë°©í–¥ ë²¡í„°
     XMVECTOR forward = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), rotationQuat);
     XMVECTOR up = XMVector3Rotate(XMVectorSet(0, 1, 0, 0), rotationQuat);
     XMVECTOR target = eye + forward;

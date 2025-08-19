@@ -15,7 +15,7 @@ public:
     DatabaseConnectionPool(const DatabaseConnectionPool&) = delete;
     DatabaseConnectionPool& operator=(const DatabaseConnectionPool&) = delete;
 
-    // ¶óÀÌºê·¯¸® ÃÊ±âÈ­(ÇÁ·Î¼¼½º´ç 1È¸) + Ä¿³Ø¼Ç N°³ ¼±ÇÒ´ç
+    // ë¼ì´ë¸ŒëŸ¬ë¦¬ ì´ˆê¸°í™”(í”„ë¡œì„¸ìŠ¤ë‹¹ 1íšŒ) + ì»¤ë„¥ì…˜ Nê°œ ì„ í• ë‹¹
     bool Initialize(const std::string& host,
         unsigned int port,
         const std::string& user,
@@ -23,7 +23,7 @@ public:
         const std::string& database,
         unsigned int connectionCount);
 
-    // »ç¿ëÀÌ ³¡³ª¸é ¼Ò¸êÀÚ¿¡¼­ ÀÚµ¿À¸·Î ¹İÈ¯µÇ´Â RAII °¡µå
+    // ì‚¬ìš©ì´ ëë‚˜ë©´ ì†Œë©¸ìì—ì„œ ìë™ìœ¼ë¡œ ë°˜í™˜ë˜ëŠ” RAII ê°€ë“œ
     class ConnectionGuard {
     public:
         ConnectionGuard(DatabaseConnectionPool* owner, MYSQL* connection)
@@ -53,7 +53,7 @@ public:
         MYSQL* connection;
     };
 
-    // Ä¿³Ø¼Ç 1°³ ´ë¿©(ºí·ÎÅ·)
+    // ì»¤ë„¥ì…˜ 1ê°œ ëŒ€ì—¬(ë¸”ë¡œí‚¹)
     ConnectionGuard Acquire();
 
 private:
@@ -70,7 +70,7 @@ private:
     std::condition_variable poolCondition;
     std::queue<MYSQL*> availableConnections;
 
-    // Àç»ı¼º¿¡ ÇÊ¿äÇÑ Á¢¼Ó Á¤º¸
+    // ì¬ìƒì„±ì— í•„ìš”í•œ ì ‘ì† ì •ë³´
     std::string host;
     unsigned int port = 0;
     std::string user;

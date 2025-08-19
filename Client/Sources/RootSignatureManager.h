@@ -10,7 +10,7 @@ using namespace Microsoft::WRL;
 class RootSignatureManager {
 public:
 
-    // explicit Å°¿öµå´Â C ±â¹İÀÇ ÃÊ±âÈ­ ¹æÁö (Çüº¯È¯À» ¹æÁöÇÔ)
+    // explicit í‚¤ì›Œë“œëŠ” C ê¸°ë°˜ì˜ ì´ˆê¸°í™” ë°©ì§€ (í˜•ë³€í™˜ì„ ë°©ì§€í•¨)
     explicit RootSignatureManager(ID3D12Device* device_);
 
     bool InitializeDescs();

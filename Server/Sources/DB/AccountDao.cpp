@@ -19,7 +19,7 @@ bool AccountDao::FindByUsername(const std::string& username,
         return false;
     }
 
-    // ÀÔ·Â ÆÄ¶ó¹ÌÅÍ ¹ÙÀÎµù (¹®ÀÚ¿­ ±æÀÌ º¯¼ö´Â ½ÇÇà ¿Ï·á±îÁö »ıÁ¸ÇØ¾ß ÇÔ)
+    // ì…ë ¥ íŒŒë¼ë¯¸í„° ë°”ì¸ë”© (ë¬¸ìì—´ ê¸¸ì´ ë³€ìˆ˜ëŠ” ì‹¤í–‰ ì™„ë£Œê¹Œì§€ ìƒì¡´í•´ì•¼ í•¨)
     std::vector<char> usernameBuffer(username.begin(), username.end());
     unsigned long usernameLength =
         static_cast<unsigned long>(usernameBuffer.size());
@@ -41,9 +41,9 @@ bool AccountDao::FindByUsername(const std::string& username,
         return false;
     }
 
-    // °á°ú ¹ÙÀÎµù
+    // ê²°ê³¼ ë°”ì¸ë”©
     long long accountId = 0;
-    char passwordBuffer[128] = { 0 }; // bcrypt 60ÀÚ ±âÁØ ¿©À¯
+    char passwordBuffer[128] = { 0 }; // bcrypt 60ì ê¸°ì¤€ ì—¬ìœ 
     unsigned long passwordLength = 0;
 
     MYSQL_BIND resultBindings[2]{};
@@ -64,16 +64,16 @@ bool AccountDao::FindByUsername(const std::string& username,
 
     bool found = false;
     int fetchCode = mysql_stmt_fetch(statement);
-    if (fetchCode == 0) { // ¼º°øÀûÀ¸·Î 1Çà °¡Á®¿È
+    if (fetchCode == 0) { // ì„±ê³µì ìœ¼ë¡œ 1í–‰ ê°€ì ¸ì˜´
         found = true;
         outAccountId = accountId;
         outPasswordHash.assign(passwordBuffer, passwordLength);
     }
     else if (fetchCode == 1) {
-        // ¿¡·¯
+        // ì—ëŸ¬
         mysql_stmt_close(statement);
         return false;
-    } // MYSQL_NO_DATA(=100)Àº found=false ±×´ë·Î
+    } // MYSQL_NO_DATA(=100)ì€ found=false ê·¸ëŒ€ë¡œ
 
     mysql_stmt_close(statement);
     return found;
@@ -96,7 +96,7 @@ bool AccountDao::CreateAccount(const std::string& username,
         return false;
     }
 
-    // ÀÔ·Â ÆÄ¶ó¹ÌÅÍ 2°³ (¹®ÀÚ¿­ ±æÀÌ º¯¼ö´Â Áö¿ª º¯¼ö·Î À¯Áö)
+    // ì…ë ¥ íŒŒë¼ë¯¸í„° 2ê°œ (ë¬¸ìì—´ ê¸¸ì´ ë³€ìˆ˜ëŠ” ì§€ì—­ ë³€ìˆ˜ë¡œ ìœ ì§€)
     std::vector<char> usernameBuffer(username.begin(), username.end());
     unsigned long usernameLength =
         static_cast<unsigned long>(usernameBuffer.size());

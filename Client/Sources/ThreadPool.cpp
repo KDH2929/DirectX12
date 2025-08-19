@@ -9,11 +9,11 @@ ThreadPool::ThreadPool(size_t numThreads_)
 }
 
 ThreadPool::~ThreadPool() {
-    // Pool Á¾·á ÇÃ·¡±× ¼³Á¤ ¹× ¸ğµç worker ±ú¿ì±â
+    // Pool ì¢…ë£Œ í”Œë˜ê·¸ ì„¤ì • ë° ëª¨ë“  worker ê¹¨ìš°ê¸°
     shutdownFlag = true;
     taskAvailableCondition.notify_all();
 
-    // °¢ ½º·¹µå°¡ ¾ÈÀüÈ÷ Á¾·áµÉ ¶§±îÁö ±â´Ù¸²
+    // ê° ìŠ¤ë ˆë“œê°€ ì•ˆì „íˆ ì¢…ë£Œë  ë•Œê¹Œì§€ ê¸°ë‹¤ë¦¼
     for (auto& worker : workers) {
         if (worker.joinable())
             worker.join();
@@ -23,15 +23,15 @@ ThreadPool::~ThreadPool() {
 void ThreadPool::Submit(std::function<void()> task) {
     {
         std::lock_guard<std::mutex> lock(taskQueueMutex);
-        taskQueue.push(std::move(task));   // move·Î º¹»ç ºñ¿ë Àı°¨ (º¹»ç »ı¼ºÀÚ ´ë½Å ÀÌµ¿»ı¼ºÀÚ È£Ãâ)
-        ++pendingTaskCount;                // ´ë±â ÁßÀÎ ÀÛ¾÷ ¼ö Áõ°¡
+        taskQueue.push(std::move(task));   // moveë¡œ ë³µì‚¬ ë¹„ìš© ì ˆê° (ë³µì‚¬ ìƒì„±ì ëŒ€ì‹  ì´ë™ìƒì„±ì í˜¸ì¶œ)
+        ++pendingTaskCount;                // ëŒ€ê¸° ì¤‘ì¸ ì‘ì—… ìˆ˜ ì¦ê°€
     }
-    taskAvailableCondition.notify_one();   // ÀÛ¾÷ °¡´É signal
+    taskAvailableCondition.notify_one();   // ì‘ì—… ê°€ëŠ¥ signal
 }
 
 void ThreadPool::Wait() {
     std::unique_lock<std::mutex> lock(completionMutex);
-    // ¸ğµç ÀÛ¾÷(pendingTaskCount == 0) ÀÌ ³¡³¯ ¶§±îÁö ´ë±â
+    // ëª¨ë“  ì‘ì—…(pendingTaskCount == 0) ì´ ëë‚  ë•Œê¹Œì§€ ëŒ€ê¸°
     allTasksDoneCondition.wait(lock, [this]() {
         return pendingTaskCount.load() == 0;
         });
@@ -48,25 +48,25 @@ void ThreadPool::WorkerLoop() {
 
         {
             std::unique_lock<std::mutex> lock(taskQueueMutex);
-            // ÀÛ¾÷ÀÌ ¾ø°Å³ª, Á¾·á ÇÃ·¡±×°¡ ¼³Á¤µÉ ¶§±îÁö ´ë±â
+            // ì‘ì—…ì´ ì—†ê±°ë‚˜, ì¢…ë£Œ í”Œë˜ê·¸ê°€ ì„¤ì •ë  ë•Œê¹Œì§€ ëŒ€ê¸°
             taskAvailableCondition.wait(lock, [this]() {
                 return shutdownFlag || !taskQueue.empty();
                 });
 
-            // Á¾·á ÇÃ·¡±× && ³²Àº ÀÛ¾÷ÀÌ ¾øÀ¸¸é ·çÇÁ Á¾·á
+            // ì¢…ë£Œ í”Œë˜ê·¸ && ë‚¨ì€ ì‘ì—…ì´ ì—†ìœ¼ë©´ ë£¨í”„ ì¢…ë£Œ
             if (shutdownFlag && taskQueue.empty())
                 return;
 
-            // Task ²¨³»¿À±â
+            // Task êº¼ë‚´ì˜¤ê¸°
             task = std::move(taskQueue.front());
             taskQueue.pop();
         }
 
-        // ½ÇÁ¦ Task ¼öÇà
+        // ì‹¤ì œ Task ìˆ˜í–‰
         task();
 
-        // ÇöÀç¼öÇàÁßÀÎ ÀÛ¾÷ ¼ö °¨¼Ò
-        // °³¼ö°¡ 0ÀÌ µÇ¸é Wait() ÁßÀÎ ¸ŞÀÎ½º·¹µå ±ú¿ì±â
+        // í˜„ì¬ìˆ˜í–‰ì¤‘ì¸ ì‘ì—… ìˆ˜ ê°ì†Œ
+        // ê°œìˆ˜ê°€ 0ì´ ë˜ë©´ Wait() ì¤‘ì¸ ë©”ì¸ìŠ¤ë ˆë“œ ê¹¨ìš°ê¸°
         if (--pendingTaskCount == 0) {
             std::lock_guard<std::mutex> lock(completionMutex);
             allTasksDoneCondition.notify_one();

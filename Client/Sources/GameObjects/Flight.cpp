@@ -33,7 +33,7 @@ bool Flight::Initialize(Renderer* renderer)
 
     ID3D12Device* device = renderer->GetDevice();
 
-    // ÅØ½ºÃ³ ¸®¼Ò½º »óÅÂ ÀüÈ¯
+    // í…ìŠ¤ì²˜ ë¦¬ì†ŒìŠ¤ ìƒíƒœ ì „í™˜
     FrameResource* frameResource = renderer->GetCurrentFrameResource();
     assert(frameResource && "CurrentFrameResource is null");
 
@@ -76,18 +76,18 @@ void Flight::Update(float deltaTime, Renderer* renderer, UINT objectIndex)
     ImGuiIO& io = ImGui::GetIO();
     const float sens = 0.002f;
 
-    // 1) ¸¶¿ì½º µå·¡±×: ¿ÞÂÊ=Ä«¸Þ¶ó, ¿À¸¥ÂÊ=¿ÀºêÁ§Æ®
+    // 1) ë§ˆìš°ìŠ¤ ë“œëž˜ê·¸: ì™¼ìª½=ì¹´ë©”ë¼, ì˜¤ë¥¸ìª½=ì˜¤ë¸Œì íŠ¸
     if (!io.WantCaptureMouse)
     {
         if (input.IsMouseButtonDown(MouseButton::Left))
         {
             /*
-            // Ä«¸Þ¶ó yaw/pitch
+            // ì¹´ë©”ë¼ yaw/pitch
             yawCam += input.GetMouseDeltaX() * sens;
             pitchCam += -input.GetMouseDeltaY() * sens;
             pitchCam = std::clamp(pitchCam, -XM_PIDIV2 + 0.01f, XM_PIDIV2 - 0.01f);
 
-            // Ä«¸Þ¶ó ÄõÅÍ´Ï¾ð °»½Å & ºä ¸ÅÆ®¸¯½º
+            // ì¹´ë©”ë¼ ì¿¼í„°ë‹ˆì–¸ ê°±ì‹  & ë·° ë§¤íŠ¸ë¦­ìŠ¤
             XMVECTOR camQuat = XMQuaternionRotationRollPitchYaw(
                 -pitchCam, yawCam, 0.0f);
             camera->SetRotationQuat(camQuat);
@@ -96,17 +96,17 @@ void Flight::Update(float deltaTime, Renderer* renderer, UINT objectIndex)
         }
     }
 
-    // 2) Å° ÀÔ·ÂÀ¸·Î Ä«¸Þ¶ó ÀÌµ¿ (Ä«¸Þ¶ó È¸Àü ¹Ý¿µ)
+    // 2) í‚¤ ìž…ë ¥ìœ¼ë¡œ ì¹´ë©”ë¼ ì´ë™ (ì¹´ë©”ë¼ íšŒì „ ë°˜ì˜)
     {
-        // ·ÎÄÃ Ãà º¤ÅÍ °è»ê
+        // ë¡œì»¬ ì¶• ë²¡í„° ê³„ì‚°
         XMVECTOR camQuat = camera->GetRotationQuat();
         XMVECTOR forward = XMVector3Rotate(
             XMVectorSet(0, 0, 1, 0), camQuat);
         XMVECTOR right = XMVector3Rotate(
             XMVectorSet(1, 0, 0, 0), camQuat);
-        XMVECTOR upWorld = XMVectorSet(0, 1, 0, 0); // ¿ùµå ¾÷ °íÁ¤
+        XMVECTOR upWorld = XMVectorSet(0, 1, 0, 0); // ì›”ë“œ ì—… ê³ ì •
 
-        // À§Ä¡ °¡Á®¿Í¼­ ÀÌµ¿
+        // ìœ„ì¹˜ ê°€ì ¸ì™€ì„œ ì´ë™
         /*
         XMFLOAT3 pos = camera->GetPosition();
         XMVECTOR posV = XMLoadFloat3(&pos);
@@ -167,20 +167,20 @@ void Flight::Update(float deltaTime, Renderer* renderer, UINT objectIndex)
 
 void Flight::Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex)
 {
-    // Descriptor Heaps ¹ÙÀÎµù (CBV_SRV_UAV + SAMPLER)
+    // Descriptor Heaps ë°”ì¸ë”© (CBV_SRV_UAV + SAMPLER)
     ID3D12DescriptorHeap* descriptorHeaps[] = {
         renderer->GetDescriptorHeapManager()->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
         renderer->GetDescriptorHeapManager()->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
     };
     commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-    // PBR  RS & PSO ¹ÙÀÎµù
+    // PBR  RS & PSO ë°”ì¸ë”©
     ID3D12RootSignature* pbrRootSignature = renderer->GetRootSignatureManager()->Get(L"PbrRS");
     ID3D12PipelineState* pbrPso = renderer->GetPSOManager()->Get(L"PbrPSO");
     commandList->SetGraphicsRootSignature(pbrRootSignature);
     commandList->SetPipelineState(pbrPso);
 
-    // CBV ¹ÙÀÎµù (b0: MVP, b1: Lighting, b2: Material, b3: Global, b4: ShadowMapViewProj)
+    // CBV ë°”ì¸ë”© (b0: MVP, b1: Lighting, b2: Material, b3: Global, b4: ShadowMapViewProj)
     FrameResource* frameResource = renderer->GetCurrentFrameResource();
     commandList->SetGraphicsRootConstantBufferView(
         0, frameResource->cbMVP->GetGPUVirtualAddress(objectIndex));
@@ -193,26 +193,26 @@ void Flight::Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, 
     commandList->SetGraphicsRootConstantBufferView(
         4, frameResource->cbShadowViewProj->GetGPUVirtualAddress(0));
 
-    // SRV ¹× Sampler Å×ÀÌºí ¹ÙÀÎµù (root slot 5~10)
+    // SRV ë° Sampler í…Œì´ë¸” ë°”ì¸ë”© (root slot 5~10)
     {
-        // material textures (t0~t3) ¡æ root 5
+        // material textures (t0~t3) â†’ root 5
         commandList->SetGraphicsRootDescriptorTable(
             5, materialPBR->GetAlbedoTexture()->GetGpuHandle());
 
-        // IBL È¯°æ¸Ê ¹ÙÀÎµù (t4~t6)
+        // IBL í™˜ê²½ë§µ ë°”ì¸ë”© (t4~t6)
         renderer->GetEnvironmentMaps().Bind(
             commandList, 6, 7, 8);
 
-        // sampler (s0, s1) ¡æ root 9
+        // sampler (s0, s1) â†’ root 9
         commandList->SetGraphicsRootDescriptorTable(
             9, renderer->GetDescriptorHeapManager()->GetLinearWrapSamplerGpuHandle());
 
-        // shadow map SRV Å×ÀÌºí ¹ÙÀÎµù (t7~t7+N-1) ¡æ root 10
+        // shadow map SRV í…Œì´ë¸” ë°”ì¸ë”© (t7~t7+N-1) â†’ root 10
         commandList->SetGraphicsRootDescriptorTable(
             10, frameResource->shadowSrv[0].gpuHandle);
     }
 
-    // IA ¼³Á¤ ¹× Draw Call
+    // IA ì„¤ì • ë° Draw Call
     if (auto meshInstance = flightMesh.lock())
     {
         commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

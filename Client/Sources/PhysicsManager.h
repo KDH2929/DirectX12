@@ -7,14 +7,14 @@
 
 using namespace physx;
 
-// ¼³Á¤ »ó¼ö
+// ì„¤ì • ìƒìˆ˜
 constexpr const char* PHYSX_PVD_HOST = "127.0.0.1";
 constexpr int         PHYSX_PVD_PORT = 5425;
 constexpr int         PHYSX_PVD_TIMEOUT = 10;
 constexpr int         PHYSX_NUM_THREADS = 2;
 constexpr float       PHYSX_GRAVITY_Y = -9.81f;
 
-// Ãæµ¹ ÀÀ´ä Å¸ÀÔ
+// ì¶©ëŒ ì‘ë‹µ íƒ€ì…
 enum class CollisionResponse
 {
     Ignore,
@@ -22,7 +22,7 @@ enum class CollisionResponse
     Block
 };
 
-// Äİ¸®Àü ·¹ÀÌ¾î Á¤ÀÇ
+// ì½œë¦¬ì „ ë ˆì´ì–´ ì •ì˜
 enum class CollisionLayer : uint32_t
 {
     Default = 1,
@@ -36,40 +36,40 @@ enum class CollisionLayer : uint32_t
 
 struct CollisionEventHandler
 {
-    // ÇÊÅÍ¸µ Á¶°Ç (¿¹: Æ¯Á¤ ·¹ÀÌ¾î ½Ö, ¿ÀºêÁ§Æ® Å¸ÀÔ µî)
+    // í•„í„°ë§ ì¡°ê±´ (ì˜ˆ: íŠ¹ì • ë ˆì´ì–´ ìŒ, ì˜¤ë¸Œì íŠ¸ íƒ€ì… ë“±)
     std::function<bool(PxActor*, PxActor*)> Matches;
 
-    // Ã³¸®ÇÒ Äİ¹é
+    // ì²˜ë¦¬í•  ì½œë°±
     std::function<void(PxActor*, PxActor*)> Callback;
 };
 
 class PhysicsManager : public PxSimulationEventCallback
 {
 public:
-    // Àü¿ª ÀÎ½ºÅÏ½º Á¢±Ù
+    // ì „ì—­ ì¸ìŠ¤í„´ìŠ¤ ì ‘ê·¼
     static PhysicsManager* GetInstance();
     static void SetInstance(PhysicsManager* instance);
 
-    // »ı¼º & ¼Ò¸ê
+    // ìƒì„± & ì†Œë©¸
     bool Init();
     void Cleanup();
 
     void Simulate(float deltaTime);
     void FetchResults();
 
-    // Á¢±ÙÀÚ
+    // ì ‘ê·¼ì
     PxPhysics* GetPhysics() const { return physics; }
     PxScene* GetScene() const { return scene; }
     PxMaterial* GetDefaultMaterial() const { return defaultMaterial; }
 
-    // ¿ÀºêÁ§Æ® »ı¼º
+    // ì˜¤ë¸Œì íŠ¸ ìƒì„±
     PxRigidStatic* CreateStaticBox(const PxVec3& pos, const PxVec3& halfExtents, CollisionLayer layer = CollisionLayer::Default);
     PxRigidDynamic* CreateDynamicBox(const PxVec3& pos, const PxVec3& halfExtents, const PxVec3& velocity, CollisionLayer layer = CollisionLayer::Default);
     PxRigidDynamic* CreateSphere(const PxVec3& pos, float radius, const PxVec3& velocity, CollisionLayer layer = CollisionLayer::Default);
     PxRigidDynamic* CreateCapsule(const PxVec3& pos, float radius, float halfHeight, const PxVec3& velocity, CollisionLayer layer = CollisionLayer::Default);
     PxRigidDynamic* CreateProjectile(const PxVec3& pos, const PxVec3& dir, float speed, float radius, float mass = 1.0f, CollisionLayer layer = CollisionLayer::Projectile);
 
-    // Ãæµ¹ ÀÀ´ä ¼³Á¤ (Block, Overlap, Ignore)
+    // ì¶©ëŒ ì‘ë‹µ ì„¤ì • (Block, Overlap, Ignore)
     void SetCollisionResponse(CollisionLayer a, CollisionLayer b, CollisionResponse response);
 
 
@@ -77,22 +77,22 @@ public:
     void RegisterOverlapHandler(CollisionEventHandler handler);
 
     
-    // Á¦°Å°ü·ÃÇÔ¼ö
+    // ì œê±°ê´€ë ¨í•¨ìˆ˜
     void RemoveActor(PxActor* actor);
     void ApplyActorRemovals();
 
 private:
-    // ³»ºÎ À¯Æ¿
+    // ë‚´ë¶€ ìœ í‹¸
     void SetShapeCollisionFilter(PxShape* shape, CollisionLayer layer);
 
-    // Ãæµ¹ ÇÊÅÍ ¼ÎÀÌ´õ
+    // ì¶©ëŒ í•„í„° ì…°ì´ë”
     static PxFilterFlags CustomFilterShader(
         PxFilterObjectAttributes attributes0, PxFilterData filterData0,
         PxFilterObjectAttributes attributes1, PxFilterData filterData1,
         PxPairFlags& pairFlags, const void* constantBlock, PxU32 constantBlockSize
     );
 
-    // PxSimulationEventCallback ±¸Çö
+    // PxSimulationEventCallback êµ¬í˜„
     void onContact(const PxContactPairHeader& pairHeader, const PxContactPair* pairs, PxU32 nbPairs) override;
     void onTrigger(PxTriggerPair* pairs, PxU32 count) override;
     void onConstraintBreak(PxConstraintInfo*, PxU32) override {}
@@ -101,10 +101,10 @@ private:
     void onAdvance(const PxRigidBody* const*, const PxTransform*, const PxU32) override {}
 
 private:
-    // Àü¿ª ÀÎ½ºÅÏ½º
+    // ì „ì—­ ì¸ìŠ¤í„´ìŠ¤
     static PhysicsManager* s_instance;
 
-    // PhysX ±¸¼º ¿ä¼Ò
+    // PhysX êµ¬ì„± ìš”ì†Œ
     PxDefaultAllocator      allocator;
     PxDefaultErrorCallback  errorCallback;
     PxFoundation* foundation = nullptr;
@@ -118,13 +118,13 @@ private:
     std::vector<PxActor*> actorsToRemove;
 
 
-    // Ãæµ¹ ÀÀ´ä ¸ÅÆ®¸¯½º
+    // ì¶©ëŒ ì‘ë‹µ ë§¤íŠ¸ë¦­ìŠ¤
     CollisionResponse collisionMatrix[32][32] = {};
 
-    // ¸®¼Ò½º °ü¸®
+    // ë¦¬ì†ŒìŠ¤ ê´€ë¦¬
     std::vector<PxActor*> managedActors;
 
-    // ÀÌº¥Æ® ÇÚµé·¯µé °ü¸®
+    // ì´ë²¤íŠ¸ í•¸ë“¤ëŸ¬ë“¤ ê´€ë¦¬
     std::vector<CollisionEventHandler> hitHandlers;
     std::vector<CollisionEventHandler> overlapHandlers;
 

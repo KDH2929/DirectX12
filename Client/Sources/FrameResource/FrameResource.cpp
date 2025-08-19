@@ -19,10 +19,10 @@ FrameResource::FrameResource(
     InitializeCommandBundles(device, numThreads);
     
 
-    // ªÛºˆ πˆ∆€µÈ √ ±‚»≠
+    // ÏÉÅÏàò Î≤ÑÌçºÎì§ Ï¥àÍ∏∞Ìôî
     InitializeConstantBuffers(device, objectCount);
 
-    // Off-screen, Depth, ShadowMap ∏Æº“Ω∫ + ∫‰ ª˝º∫
+    // Off-screen, Depth, ShadowMap Î¶¨ÏÜåÏä§ + Î∑∞ ÏÉùÏÑ±
     InitializeFrameBuffersAndViews(
         device,
         descriptorHeapManager,
@@ -52,9 +52,9 @@ void FrameResource::InitializeFrameBuffersAndViews(
     UINT frameHeight)
 {
 
-    // 1) Off-screen SceneColor πˆ∆€ ª˝º∫ + RTV/SRV ∫‰
+    // 1) Off-screen SceneColor Î≤ÑÌçº ÏÉùÏÑ± + RTV/SRV Î∑∞
     {
-        // ≈ÿΩ∫√≥ º≥∏Ì¿⁄
+        // ÌÖçÏä§Ï≤ò ÏÑ§Î™ÖÏûê
         D3D12_RESOURCE_DESC textureDesc = {};
         textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
         textureDesc.Width = frameWidth;
@@ -65,7 +65,7 @@ void FrameResource::InitializeFrameBuffersAndViews(
         textureDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
         textureDesc.SampleDesc.Count = 1;
 
-        // ≈¨∏ÆæÓ ∞™
+        // ÌÅ¥Î¶¨Ïñ¥ Í∞í
         D3D12_CLEAR_VALUE clearValue = {};
         clearValue.Format = textureDesc.Format;
         clearValue.Color[0] = 0.0f;
@@ -73,10 +73,10 @@ void FrameResource::InitializeFrameBuffersAndViews(
         clearValue.Color[2] = 0.0f;
         clearValue.Color[3] = 1.0f;
 
-        // »¸ º”º∫ (DEFAULT)
+        // Ìûô ÏÜçÏÑ± (DEFAULT)
         CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_DEFAULT);
 
-        // ∏Æº“Ω∫ ª˝º∫
+        // Î¶¨ÏÜåÏä§ ÏÉùÏÑ±
         THROW_IF_FAILED(device->CreateCommittedResource(
             &heapProperties,
             D3D12_HEAP_FLAG_NONE,
@@ -85,14 +85,14 @@ void FrameResource::InitializeFrameBuffersAndViews(
             &clearValue,
             IID_PPV_ARGS(&sceneColorBuffer)));
 
-        // RTV ª˝º∫
+        // RTV ÏÉùÏÑ±
         sceneColorRtv = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         descriptorHeapManager->CreateRenderTargetView(
             device,
             sceneColorBuffer.Get(),
             sceneColorRtv.index);
 
-        // SRV ª˝º∫
+        // SRV ÏÉùÏÑ±
         sceneColorSrv = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         device->CreateShaderResourceView(
             sceneColorBuffer.Get(),
@@ -100,7 +100,7 @@ void FrameResource::InitializeFrameBuffersAndViews(
             sceneColorSrv.cpuHandle);
     }
 
-    // 2) Depth-Stencil πˆ∆€ ª˝º∫ + DSV ∫‰
+    // 2) Depth-Stencil Î≤ÑÌçº ÏÉùÏÑ± + DSV Î∑∞
     {
         D3D12_RESOURCE_DESC depthDesc = {};
         depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -135,7 +135,7 @@ void FrameResource::InitializeFrameBuffersAndViews(
             depthStencilDsv.index);
     }
 
-    // 3) ShadowMap πˆ∆€µÈ ª˝º∫ + DSV/SRV ∫‰
+    // 3) ShadowMap Î≤ÑÌçºÎì§ ÏÉùÏÑ± + DSV/SRV Î∑∞
     for (UINT i = 0; i < MaxShadowMaps; ++i)
     {
         D3D12_RESOURCE_DESC shadowDesc = {};
@@ -155,7 +155,7 @@ void FrameResource::InitializeFrameBuffersAndViews(
 
         CD3DX12_HEAP_PROPERTIES heapProperties(D3D12_HEAP_TYPE_DEFAULT);
 
-        // ±Ì¿Ã-Ω∫≈ŸΩ« πˆ∆€ ª˝º∫
+        // ÍπäÏù¥-Ïä§ÌÖêÏã§ Î≤ÑÌçº ÏÉùÏÑ±
         THROW_IF_FAILED(device->CreateCommittedResource(
             &heapProperties,
             D3D12_HEAP_FLAG_NONE,
@@ -164,7 +164,7 @@ void FrameResource::InitializeFrameBuffersAndViews(
             &clearValue,
             IID_PPV_ARGS(&shadowMaps[i].depthBuffer)));
 
-        // DSV ∫‰
+        // DSV Î∑∞
         shadowDsv[i] = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
         D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
         dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -175,7 +175,7 @@ void FrameResource::InitializeFrameBuffersAndViews(
             &dsvDesc,
             shadowDsv[i].index);
 
-        // SRV ∫‰
+        // SRV Î∑∞
         shadowSrv[i] = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
@@ -188,14 +188,14 @@ void FrameResource::InitializeFrameBuffersAndViews(
             shadowSrv[i].cpuHandle);
     }
 
-    // 4) per-object SRV/CBV/UAV «Æ √ ±‚»≠
-    // πÃªÁøÎ
+    // 4) per-object SRV/CBV/UAV ÌíÄ Ï¥àÍ∏∞Ìôî
+    // ÎØ∏ÏÇ¨Ïö©
     objectSrvCbvUav.clear();
 }
 
 void FrameResource::InitializeCommandBundles(ID3D12Device* device, UINT numThreads)
 {
-    // ¥‹¿œ Ω∫∑πµÂøÎ ƒø∏«µÂ «“¥Á¿⁄ & ∏ÆΩ∫∆Æ ª˝º∫
+    // Îã®Ïùº Ïä§Î†àÎìúÏö© Ïª§Îß®Îìú Ìï†ÎãπÏûê & Î¶¨Ïä§Ìä∏ ÏÉùÏÑ±
     THROW_IF_FAILED(device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(&commandAllocator)));

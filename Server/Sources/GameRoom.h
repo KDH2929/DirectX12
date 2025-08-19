@@ -9,7 +9,7 @@
 class ClientSession;
 struct Plane;
 
-// ÇÁ·ÎÅä¹öÆÛ Çì´õ¸¦ Çì´õÆÄÀÏ¿¡¼­ Æ÷ÇÔÇÏÁö ¾Ê±â À§ÇØ Àü¹æ ¼±¾ğ
+// í”„ë¡œí† ë²„í¼ í—¤ë”ë¥¼ í—¤ë”íŒŒì¼ì—ì„œ í¬í•¨í•˜ì§€ ì•Šê¸° ìœ„í•´ ì „ë°© ì„ ì–¸
 namespace game { class GameMessage; }
 
 class GameRoom {
@@ -19,16 +19,16 @@ public:
     void AddPlayer(ClientSession* clientSession);
     void RemovePlayer(ClientSession* clientSession);
 
-    // ¹æ ¾ÈÀÇ ¸ğµç ÇÃ·¹ÀÌ¾î¿¡°Ô GameMessage ºê·ÎµåÄ³½ºÆ®
+    // ë°© ì•ˆì˜ ëª¨ë“  í”Œë ˆì´ì–´ì—ê²Œ GameMessage ë¸Œë¡œë“œìºìŠ¤íŠ¸
     void BroadcastGameMessage(const game::GameMessage& message,
         const ClientSession* excludedSession = nullptr);
 
     int GetRoomId() const { return roomId; }
-    std::vector<ClientSession*> GetPlayerList() const;  // ¸íÄª ´Ü¼øÈ­
+    std::vector<ClientSession*> GetPlayerList() const;  // ëª…ì¹­ ë‹¨ìˆœí™”
     int GetPlayerCount() const;
 
 private:
     const int roomId;
     mutable std::mutex roomMutex;
-    std::unordered_set<ClientSession*> players;  // ¼ö¸íÀº ¿ÜºÎ(Client ¸Å´ÏÀú)°¡ °ü¸®
+    std::unordered_set<ClientSession*> players;  // ìˆ˜ëª…ì€ ì™¸ë¶€(Client ë§¤ë‹ˆì €)ê°€ ê´€ë¦¬
 };

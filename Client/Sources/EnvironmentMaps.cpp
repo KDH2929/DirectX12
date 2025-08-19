@@ -21,7 +21,7 @@ void EnvironmentMaps::Bind(
     UINT rootIndexSpecular,
     UINT rootIndexBrdfLut) const
 {
-    // Descriptor Heaps´Â ¹ÙÀÎµùµÈ »óÅÂ¿©¾ß ÇÔ
+    // Descriptor HeapsëŠ” ë°”ì¸ë”©ëœ ìƒíƒœì—¬ì•¼ í•¨
     commandList->SetGraphicsRootDescriptorTable(
         rootIndexIrradiance,
         irradianceMap->GetGpuHandle());

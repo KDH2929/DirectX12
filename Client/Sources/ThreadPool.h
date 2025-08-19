@@ -13,9 +13,9 @@ public:
     ThreadPool(size_t numThreads);
     ~ThreadPool();
 
-    // ÀÛ¾÷À» ½º·¹µåÇ®¿¡ Á¦Ãâ
+    // ì‘ì—…ì„ ìŠ¤ë ˆë“œí’€ì— ì œì¶œ
     void Submit(std::function<void()> task);
-    // ¸ğµç ÀÛ¾÷ÀÌ ³¡³¯ ¶§±îÁö È£Ãâ ½º·¹µå¸¦ ´ë±â
+    // ëª¨ë“  ì‘ì—…ì´ ëë‚  ë•Œê¹Œì§€ í˜¸ì¶œ ìŠ¤ë ˆë“œë¥¼ ëŒ€ê¸°
     void Wait();
 
     size_t GetThreadCount() const;

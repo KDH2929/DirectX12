@@ -3,7 +3,7 @@
 
 bool MessageSerializer::ReadUint32LittleEndian(const char* data, std::size_t size, std::uint32_t& out_value) {
     if (size < 4) return false;
-    std::memcpy(&out_value, data, 4); // Windows ¸®Æ²¿£µð¾ð °¡Á¤
+    std::memcpy(&out_value, data, 4); // Windows ë¦¬í‹€ì—”ë””ì–¸ ê°€ì •
     return true;
 }
 
@@ -15,7 +15,7 @@ bool MessageSerializer::TryExtractMessage(std::string& input_buffer,
     std::string& output_body_bytes,
     std::string* error_message)
 {
-    // NeedMoreData: ±æÀÌ Çì´õ ºÎÁ·
+    // NeedMoreData: ê¸¸ì´ í—¤ë” ë¶€ì¡±
     if (input_buffer.size() < 4) {
         if (error_message) error_message->clear();
         return false;
@@ -33,7 +33,7 @@ bool MessageSerializer::TryExtractMessage(std::string& input_buffer,
     }
 
     const std::size_t total = 4u + static_cast<std::size_t>(body_length);
-    // NeedMoreData: ¹Ùµð ºÎÁ·
+    // NeedMoreData: ë°”ë”” ë¶€ì¡±
     if (input_buffer.size() < total) {
         if (error_message) error_message->clear();
         return false;

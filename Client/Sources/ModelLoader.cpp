@@ -110,7 +110,7 @@ std::shared_ptr<Mesh> ModelLoader::LoadMesh(Renderer* renderer, const std::strin
     }
 
 
-    // Vertex Æ÷¸Ë º¯È¯
+    // Vertex í¬ë§· ë³€í™˜
     std::vector<MeshVertex> meshVertices;
     for (const auto& v : vertices) {
         meshVertices.push_back({ v.position, v.normal, v.texCoords, v.tangent });
@@ -126,10 +126,10 @@ std::shared_ptr<Mesh> ModelLoader::LoadMesh(Renderer* renderer, const std::strin
 }
 
 void ModelLoader::ProcessNode(aiNode* node, const aiScene* scene, const XMMATRIX& parentTransform) {
-    // ³ëµåÀÇ ·ÎÄÃ º¯È¯À» Çà·Ä·Î º¯È¯
+    // ë…¸ë“œì˜ ë¡œì»¬ ë³€í™˜ì„ í–‰ë ¬ë¡œ ë³€í™˜
     XMMATRIX nodeTransform = XMMatrixTranspose(XMLoadFloat4x4(reinterpret_cast<const XMFLOAT4X4*>(&node->mTransformation)));
 
-    // ´©ÀûµÈ º¯È¯ °è»ê
+    // ëˆ„ì ëœ ë³€í™˜ ê³„ì‚°
     XMMATRIX globalTransform = nodeTransform * parentTransform;
 
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
@@ -172,7 +172,7 @@ void ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene, const XMMATRIX
                 mesh->mTangents[i].z);
         }
         else {
-            vertex.tangent = XMFLOAT3(1, 0, 0);    // ±âº»°ªÀ¸·Î Ã¤¿ö³Ö±â
+            vertex.tangent = XMFLOAT3(1, 0, 0);    // ê¸°ë³¸ê°’ìœ¼ë¡œ ì±„ì›Œë„£ê¸°
             needTangentFix = true;
         }
 

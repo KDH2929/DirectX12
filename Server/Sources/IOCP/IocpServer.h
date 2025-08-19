@@ -17,9 +17,9 @@
 #include "../Message/MessageDispatcher.h"
 #include "../Message/MessageSerializer.h"
 
-// IOCP ±â¹İ ³×Æ®¿öÅ© ¼­¹ö
-// - Accept / Recv / Send ¸¦ IOCP ºñµ¿±â·Î Ã³¸®
-// - ´©Àû ¼ö½Å ¹öÆÛ´Â °¢ ClientSession ÀÌ ¼ÒÀ¯
+// IOCP ê¸°ë°˜ ë„¤íŠ¸ì›Œí¬ ì„œë²„
+// - Accept / Recv / Send ë¥¼ IOCP ë¹„ë™ê¸°ë¡œ ì²˜ë¦¬
+// - ëˆ„ì  ìˆ˜ì‹  ë²„í¼ëŠ” ê° ClientSession ì´ ì†Œìœ 
 class IocpServer {
 public:
     explicit IocpServer(MessageDispatcher& messageDispatcherRef);
@@ -31,55 +31,55 @@ public:
     bool IsRunning() const { return running.load(std::memory_order_acquire); }
 
 private:
-    // ÃÊ±âÈ­
+    // ì´ˆê¸°í™”
     bool InitializeWinsock();
     bool CreateListenSocket(const char* bindAddress, unsigned short bindPort);
     bool CreateCompletionPort();
     bool LoadAcceptExFunctions();
     bool PostInitialAccepts();
 
-    // I/O Á¦Ãâ
+    // I/O ì œì¶œ
     bool SubmitAcceptOperation();
     bool SubmitRecvOperation(const std::shared_ptr<ClientSession>& session);
 
-    // ¿öÄ¿
+    // ì›Œì»¤
     void WorkerLoop();
 
-    // ¿Ï·á Ã³¸®
+    // ì™„ë£Œ ì²˜ë¦¬
     void OnAcceptCompleted(IocpIoContext* context, DWORD transferredBytes);
     void OnRecvCompleted(IocpIoContext* context, DWORD transferredBytes);
     void OnSendCompleted(IocpIoContext* context, DWORD transferredBytes);
 
-    // À¯Æ¿
+    // ìœ í‹¸
     void AssociateSocketWithIocp(SOCKET socketHandle);
     void RegisterSession(const std::shared_ptr<ClientSession>& session);
     void UnregisterSession(SOCKET socketHandle);
     void CloseSession(const std::shared_ptr<ClientSession>& session);
 
 private:
-    // ¼ÒÄÏ/IOCP
+    // ì†Œì¼“/IOCP
     SOCKET listenSocket{ INVALID_SOCKET };
     HANDLE completionPort{ nullptr };
 
-    // È®Àå ÇÔ¼ö
+    // í™•ì¥ í•¨ìˆ˜
     LPFN_ACCEPTEX lpfnAcceptEx{ nullptr };
     LPFN_GETACCEPTEXSOCKADDRS lpfnGetAcceptExSockaddrs{ nullptr };
 
-    // ½ÇÇà »óÅÂ
+    // ì‹¤í–‰ ìƒíƒœ
     std::atomic<bool> shuttingDown{ false };
     std::atomic<bool> running{ false };
 
-    // ¿öÄ¿ ½º·¹µå
+    // ì›Œì»¤ ìŠ¤ë ˆë“œ
     std::vector<std::thread> workerThreads;
 
-    // ¼¼¼Ç ·¹Áö½ºÆ®¸®
+    // ì„¸ì…˜ ë ˆì§€ìŠ¤íŠ¸ë¦¬
     std::mutex sessionsMutex;
     std::unordered_map<SOCKET, std::shared_ptr<ClientSession>> sessions;
 
-    // ÀÇÁ¸¼º
+    // ì˜ì¡´ì„±
     MessageDispatcher& messageDispatcher;
 
-    // »ó¼ö
+    // ìƒìˆ˜
     static constexpr int    PrepostedAcceptCount = 64;
     static constexpr size_t AcceptAddressSpaceBytes = 2 * (sizeof(SOCKADDR_IN6) + 16);
     static constexpr size_t DefaultRecvBufferBytes = 16 * 1024;

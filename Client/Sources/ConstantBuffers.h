@@ -48,7 +48,7 @@ static constexpr uint32_t USE_METALLIC_MAP = 1 << 2;
 static constexpr uint32_t USE_ROUGHNESS_MAP = 1 << 3;
 
 
-// PBR Àü¿ë (16B Á¤·Ä)
+// PBR ì „ìš© (16B ì •ë ¬)
 struct CB_MaterialPBR
 {
     XMFLOAT3 baseColor;
@@ -67,7 +67,7 @@ struct CB_MaterialPBR
 
 struct CB_Global {
     float time;
-    float padding[3]; // 16¹ÙÀÌÆ® Á¤·Ä
+    float padding[3]; // 16ë°”ì´íŠ¸ ì •ë ¬
 };
 
 

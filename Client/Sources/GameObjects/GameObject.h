@@ -42,7 +42,7 @@ public:
 protected:
     void UpdateWorldMatrix();
 
-    // º¯È¯ Á¤º¸
+    // ë³€í™˜ ì •ë³´
     XMFLOAT3 position    = {0,0,0};
     XMFLOAT3 scale       = {1,1,1};
     XMVECTOR rotation    = XMQuaternionIdentity();
@@ -50,5 +50,5 @@ protected:
 
     bool transparent = false;
 
-    std::shared_ptr<Mesh> mesh;     // ¸ğµç GameObject´Â 1°³ÀÇ ¸Ş½¬¸¦ °®´Â´Ù°í °¡Á¤
+    std::shared_ptr<Mesh> mesh;     // ëª¨ë“  GameObjectëŠ” 1ê°œì˜ ë©”ì‰¬ë¥¼ ê°–ëŠ”ë‹¤ê³  ê°€ì •
 };

@@ -26,7 +26,7 @@ public:
     ~Mesh() = default;
 
     /**
-     * Uploads vertices/indices into DEFAULT - heap buffers via the renderer¡¯s
+     * Uploads vertices/indices into DEFAULT - heap buffers via the rendererâ€™s
      * dedicated COPY queue & waits for completion. Returns false on failure.
      */
     bool Initialize(Renderer* renderer,

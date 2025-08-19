@@ -31,7 +31,7 @@ void GameRoom::BroadcastGameMessage(const game::GameMessage& message,
             if (player != excludedSession) targets.push_back(player);
         }
     }
-    // Lock ÇØÁ¦ ÈÄ Àü¼Û
+    // Lock í•´ì œ í›„ ì „ì†¡
     for (ClientSession* player : targets) {
         player->SendGameMessage(message);
     }

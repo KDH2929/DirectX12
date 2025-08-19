@@ -16,7 +16,7 @@ PipelineStateManager::~PipelineStateManager() {
 
 bool PipelineStateManager::InitializePSOs()
 {
-    psoMap.clear();         // Ä³½Ã ºñ¿ì±â
+    psoMap.clear();         // ìºì‹œ ë¹„ìš°ê¸°
 
     // 1. Triangle
     {
@@ -46,7 +46,7 @@ bool PipelineStateManager::InitializePSOs()
             return false;
     }
 
-    // 5. ³ë¸» µğ¹ö±×¿ë PSO
+    // 5. ë…¸ë§ ë””ë²„ê·¸ìš© PSO
     {
         PipelineStateDesc desc = CreateDebugNormalPSODesc();
         if (GetOrCreate(desc) == nullptr)
@@ -87,12 +87,12 @@ bool PipelineStateManager::InitializePSOs()
 }
 
 PipelineStateDesc PipelineStateManager::CreateTrianglePSODesc() const {
-    // ·çÆ® ½Ã±×´ÏÃ³
+    // ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜
     auto rs = renderer->GetRootSignatureManager()->Get(L"TriangleRS");
     if (!rs)
         throw std::runtime_error("TriangleRS not created");
 
-    // ÀÔ·Â ·¹ÀÌ¾Æ¿ô
+    // ì…ë ¥ ë ˆì´ì•„ì›ƒ
     std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout = {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
@@ -100,7 +100,7 @@ PipelineStateDesc PipelineStateManager::CreateTrianglePSODesc() const {
          D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
     };
 
-    // ½¦ÀÌ´õ Blob
+    // ì‰ì´ë” Blob
     ComPtr<ID3DBlob> vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"TriangleVS");
     ComPtr<ID3DBlob> psBlob = renderer->GetShaderManager()->GetShaderBlob(L"TrianglePS");
 
@@ -115,20 +115,20 @@ PipelineStateDesc PipelineStateManager::CreateTrianglePSODesc() const {
     desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
-    // ³ª¸ÓÁö »óÅÂ´Â ±âº»°ª À¯Áö
+    // ë‚˜ë¨¸ì§€ ìƒíƒœëŠ” ê¸°ë³¸ê°’ ìœ ì§€
     return desc;
 }
 
 PipelineStateDesc PipelineStateManager::CreatePhongPSODesc() const
 {
 
-    // 1) ·çÆ® ½Ã±×´ÏÃ³ : PhongRS
+    // 1) ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜ : PhongRS
     auto rs = renderer->GetRootSignatureManager()->Get(L"PhongRS");
     if (!rs)
         throw std::runtime_error("PhongRS not created");
 
 
-    // 2) ÀÔ·Â ·¹ÀÌ¾Æ¿ô : Position + Normal + TexCoord + Tangent
+    // 2) ì…ë ¥ ë ˆì´ì•„ì›ƒ : Position + Normal + TexCoord + Tangent
     std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0,
@@ -144,7 +144,7 @@ PipelineStateDesc PipelineStateManager::CreatePhongPSODesc() const
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    // 3) ¼ÎÀÌ´õ : Phong Àü¿ë VS / PS
+    // 3) ì…°ì´ë” : Phong ì „ìš© VS / PS
 
     ComPtr<ID3DBlob> vsBlob =
         renderer->GetShaderManager()->GetShaderBlob(L"PhongVS");
@@ -152,7 +152,7 @@ PipelineStateDesc PipelineStateManager::CreatePhongPSODesc() const
         renderer->GetShaderManager()->GetShaderBlob(L"PhongPS");
 
 
-    // 4) ÆÄÀÌÇÁ¶óÀÎ »óÅÂ ±âº»°ª ±¸¼º
+    // 4) íŒŒì´í”„ë¼ì¸ ìƒíƒœ ê¸°ë³¸ê°’ êµ¬ì„±
 
     PipelineStateDesc desc;
     desc.name = L"PhongPSO";
@@ -161,13 +161,13 @@ PipelineStateDesc PipelineStateManager::CreatePhongPSODesc() const
     desc.psBlob = psBlob;
     desc.inputLayout = std::move(inputLayout);
 
-    // ÇÊ¿ä ½Ã CullMode µîÀ» Á¶Á¤
+    // í•„ìš” ì‹œ CullMode ë“±ì„ ì¡°ì •
     desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
-    // MSAA, RTV/DSV Æ÷¸Ë, SampleMask µîÀº
-    // ÇÁ·ÎÁ§Æ® °øÅë ±âº»°ª ±×´ë·Î µÎ°Å³ª ¿©±â¼­ ¼öÁ¤
+    // MSAA, RTV/DSV í¬ë§·, SampleMask ë“±ì€
+    // í”„ë¡œì íŠ¸ ê³µí†µ ê¸°ë³¸ê°’ ê·¸ëŒ€ë¡œ ë‘ê±°ë‚˜ ì—¬ê¸°ì„œ ìˆ˜ì •
     return desc;
 }
 
@@ -194,13 +194,13 @@ PipelineStateDesc PipelineStateManager::CreatePbrPSODesc() const
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    // 3) Shaders : PBR Àü¿ë VS / PS
+    // 3) Shaders : PBR ì „ìš© VS / PS
     ComPtr<ID3DBlob> vsBlob =
         renderer->GetShaderManager()->GetShaderBlob(L"PbrVS");
     ComPtr<ID3DBlob> psBlob =
         renderer->GetShaderManager()->GetShaderBlob(L"PbrPS");
 
-    // 4) ±âº» ÆÄÀÌÇÁ¶óÀÎ ¼³Á¤
+    // 4) ê¸°ë³¸ íŒŒì´í”„ë¼ì¸ ì„¤ì •
     PipelineStateDesc desc;
     desc.name = L"PbrPSO";
     desc.rootSignature = rs;
@@ -212,7 +212,7 @@ PipelineStateDesc PipelineStateManager::CreatePbrPSODesc() const
     desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
-    // HDR/Åæ¸ÅÇÎÀ» °í·ÁÇØ sRGB ¹é¹öÆÛ¶ó¸é RTV Æ÷¸Ëµµ ¸ÂÃâ °Í
+    // HDR/í†¤ë§¤í•‘ì„ ê³ ë ¤í•´ sRGB ë°±ë²„í¼ë¼ë©´ RTV í¬ë§·ë„ ë§ì¶œ ê²ƒ
     desc.rtvFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     return desc;
@@ -253,7 +253,7 @@ PipelineStateDesc PipelineStateManager::CreateSkyboxPSODesc() const
     desc.sampleMask = UINT_MAX;
     desc.sampleDesc.Count = 1;
 
-    // HDR/Åæ¸ÅÇÎÀ» °í·ÁÇØ sRGB ¹é¹öÆÛ¶ó¸é RTV Æ÷¸Ëµµ ¸ÂÃâ °Í
+    // HDR/í†¤ë§¤í•‘ì„ ê³ ë ¤í•´ sRGB ë°±ë²„í¼ë¼ë©´ RTV í¬ë§·ë„ ë§ì¶œ ê²ƒ
     desc.rtvFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     return desc;
@@ -261,7 +261,7 @@ PipelineStateDesc PipelineStateManager::CreateSkyboxPSODesc() const
 
 PipelineStateDesc PipelineStateManager::CreateDebugNormalPSODesc() const
 {
-    // 1) DebugNormal Àü¿ë ·çÆ® ½Ã±×´ÏÃ³ °¡Á®¿À±â
+    // 1) DebugNormal ì „ìš© ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜ ê°€ì ¸ì˜¤ê¸°
     auto rootSig = renderer->GetRootSignatureManager()->Get(L"DebugNormalRS");
     if (!rootSig)
         throw std::runtime_error("DebugNormalRS not created");
@@ -283,13 +283,13 @@ PipelineStateDesc PipelineStateManager::CreateDebugNormalPSODesc() const
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    // 3) ¼ÎÀÌ´õ ¹ÙÀÌÆ®ÄÚµå
+    // 3) ì…°ì´ë” ë°”ì´íŠ¸ì½”ë“œ
     ComPtr<ID3DBlob> vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"DebugNormalVS");
     ComPtr<ID3DBlob> gsBlob = renderer->GetShaderManager()->GetShaderBlob(L"DebugNormalGS");
     ComPtr<ID3DBlob> psBlob = renderer->GetShaderManager()->GetShaderBlob(L"DebugNormalPS");
 
 
-    // 4) PSO ±â¼úÀÚ ¼¼ÆÃ
+    // 4) PSO ê¸°ìˆ ì ì„¸íŒ…
     PipelineStateDesc desc;
     desc.name = L"DebugNormalPSO";
     desc.rootSignature = rootSig;
@@ -298,20 +298,20 @@ PipelineStateDesc PipelineStateManager::CreateDebugNormalPSODesc() const
     desc.psBlob = psBlob;
     desc.inputLayout = std::move(inputLayout);
 
-    // 5) ·¡½ºÅÍ¶óÀÌÀú: ¹éÆäÀÌ½º ÄÃ¸µ ¾ø¾Ö°í ¿ÍÀÌ¾î³ª ¶óÀÎµµ Àß º¸ÀÌµµ·Ï
+    // 5) ë˜ìŠ¤í„°ë¼ì´ì €: ë°±í˜ì´ìŠ¤ ì»¬ë§ ì—†ì• ê³  ì™€ì´ì–´ë‚˜ ë¼ì¸ë„ ì˜ ë³´ì´ë„ë¡
     desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     desc.rasterizerDesc.CullMode = D3D12_CULL_MODE_NONE;
 
-    // 6) ±íÀÌ-½ºÅÙ½Ç
+    // 6) ê¹Šì´-ìŠ¤í…ì‹¤
     desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     desc.blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     desc.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 
-    // 8) »ùÇÃ¸µ
+    // 8) ìƒ˜í”Œë§
     desc.sampleMask = UINT_MAX;
     desc.sampleDesc.Count = 1;
 
-    // HDR/Åæ¸ÅÇÎÀ» °í·ÁÇØ sRGB ¹é¹öÆÛ¶ó¸é RTV Æ÷¸Ëµµ ¸ÂÃâ °Í
+    // HDR/í†¤ë§¤í•‘ì„ ê³ ë ¤í•´ sRGB ë°±ë²„í¼ë¼ë©´ RTV í¬ë§·ë„ ë§ì¶œ ê²ƒ
     desc.rtvFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     return desc;
@@ -324,7 +324,7 @@ PipelineStateDesc PipelineStateManager::CreateOutlinePostEffectPSODesc() const
         throw std::runtime_error("PostProcessRS not created");
 
 
-    // Ç®½ºÅ©¸° »ï°¢Çü/Äõµå¿ë
+    // í’€ìŠ¤í¬ë¦° ì‚¼ê°í˜•/ì¿¼ë“œìš©
     std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
@@ -357,13 +357,13 @@ PipelineStateDesc PipelineStateManager::CreateOutlinePostEffectPSODesc() const
     desc.blendDesc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
     desc.blendDesc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 
-    // Ç®½ºÅ©¸° ÆĞ½º¶ó DepthStencilÀº ¾²Áö ¾ÊÀ½
+    // í’€ìŠ¤í¬ë¦° íŒ¨ìŠ¤ë¼ DepthStencilì€ ì“°ì§€ ì•ŠìŒ
     desc.depthStencilDesc.DepthEnable = FALSE;
     desc.depthStencilDesc.StencilEnable = FALSE;
 
     desc.rasterizerDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
-    // »ùÇÃ¸µ
+    // ìƒ˜í”Œë§
     desc.sampleMask = UINT_MAX;
     desc.sampleDesc.Count = 1;
 
@@ -372,12 +372,12 @@ PipelineStateDesc PipelineStateManager::CreateOutlinePostEffectPSODesc() const
 
 PipelineStateDesc PipelineStateManager::CreateToneMappingPostEffectPSODesc() const
 {
-    // °øÅë PostProcess Root Signature »ç¿ë
+    // ê³µí†µ PostProcess Root Signature ì‚¬ìš©
     auto rootSig = renderer->GetRootSignatureManager()->Get(L"PostProcessRS");
     if (!rootSig)
         throw std::runtime_error("PostProcessRS not created");
 
-    // Ç®½ºÅ©¸° »ï°¢Çü/Äõµå¿ë ÀÔ·Â ·¹ÀÌ¾Æ¿ô
+    // í’€ìŠ¤í¬ë¦° ì‚¼ê°í˜•/ì¿¼ë“œìš© ì…ë ¥ ë ˆì´ì•„ì›ƒ
     std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout =
     {
         { "POSITION",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
@@ -389,7 +389,7 @@ PipelineStateDesc PipelineStateManager::CreateToneMappingPostEffectPSODesc() con
           D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
-    // Åæ¸ÅÇÎ¿ë ¼ÎÀÌ´õ
+    // í†¤ë§¤í•‘ìš© ì…°ì´ë”
     auto vsBlob = renderer->GetShaderManager()->GetShaderBlob(L"ToneMappingPostEffectVS");
     auto psBlob = renderer->GetShaderManager()->GetShaderBlob(L"ToneMappingPostEffectPS");
 
@@ -437,11 +437,11 @@ PipelineStateDesc PipelineStateManager::CreateShadowMapPassPSODesc() const
     desc.inputLayout = std::move(inputLayout);
     desc.topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-    // ±íÀÌ¸¸ ±â·Ï, RTV ¾øÀ½
+    // ê¹Šì´ë§Œ ê¸°ë¡, RTV ì—†ìŒ
     desc.rtvFormats[0] = DXGI_FORMAT_UNKNOWN;
     desc.numRenderTargets = 0;
 
-    // Depth »ç¿ë
+    // Depth ì‚¬ìš©
     desc.depthStencilDesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     desc.depthStencilDesc.DepthEnable = TRUE;
     desc.depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
@@ -544,7 +544,7 @@ bool PipelineStateManager::CreatePSO(
     psoDesc.DSVFormat = desc.dsvFormat;
     psoDesc.SampleDesc = desc.sampleDesc;
 
-    psoDesc.NodeMask = 1;                          // GPU 0 »ç¿ë
+    psoDesc.NodeMask = 1;                          // GPU 0 ì‚¬ìš©
     psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
     ComPtr<ID3D12PipelineState> pipelineState;
