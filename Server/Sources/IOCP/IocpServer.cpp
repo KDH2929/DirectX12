@@ -50,13 +50,13 @@ void IocpServer::Stop() {
 
     shuttingDown.store(true, std::memory_order_release);
 
-    // »õ·Î¿î ¼ö¶ô Áß´Ü
+    // ìƒˆë¡œìš´ ìˆ˜ë½ ì¤‘ë‹¨
     if (listenSocket != INVALID_SOCKET) {
         closesocket(listenSocket);
         listenSocket = INVALID_SOCKET;
     }
 
-    // ¸ğµç ¼¼¼Ç I/O Ãë¼Ò ¹× ¼ÒÄÏ ´İ±â
+    // ëª¨ë“  ì„¸ì…˜ I/O ì·¨ì†Œ ë° ì†Œì¼“ ë‹«ê¸°
     {
         std::lock_guard<std::mutex> lock(sessionsMutex);
         for (auto& entry : sessions) {
@@ -68,7 +68,7 @@ void IocpServer::Stop() {
         sessions.clear();
     }
 
-    // ¿öÄ¿ ±ú¿ì±â
+    // ì›Œì»¤ ê¹¨ìš°ê¸°
     for (size_t i = 0; i < workerThreads.size(); ++i) {
         PostQueuedCompletionStatus(completionPort, 0, 0, nullptr);
     }
@@ -109,7 +109,7 @@ bool IocpServer::CreateListenSocket(const char* bindAddress, unsigned short bind
 
     sockaddr_in address{};
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = inet_addr(bindAddress); // ¿¹: "0.0.0.0"
+    address.sin_addr.s_addr = inet_addr(bindAddress); // ì˜ˆ: "0.0.0.0"
     address.sin_port = htons(bindPort);
 
     if (bind(listenSocket, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == SOCKET_ERROR) {
@@ -240,23 +240,23 @@ void IocpServer::WorkerLoop() {
 }
 
 void IocpServer::OnAcceptCompleted(IocpIoContext* context, DWORD /*transferredBytes*/) {
-    // IOCP µî·Ï
+    // IOCP ë“±ë¡
     AssociateSocketWithIocp(context->acceptSocket);
 
-    // ¼ö¶ô ÄÁÅØ½ºÆ® »ó¼Ó
+    // ìˆ˜ë½ ì»¨í…ìŠ¤íŠ¸ ìƒì†
     setsockopt(context->acceptSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT,
         reinterpret_cast<const char*>(&listenSocket), sizeof(listenSocket));
 
-    // Áö¿¬ ÃÖ¼ÒÈ­: Nagle ²ô±â
+    // ì§€ì—° ìµœì†Œí™”: Nagle ë„ê¸°
     BOOL disableNagle = TRUE;
     setsockopt(context->acceptSocket, IPPROTO_TCP, TCP_NODELAY,
         reinterpret_cast<const char*>(&disableNagle), sizeof(disableNagle));
 
-    // ¼¼¼Ç »ı¼º ¹× µî·Ï
+    // ì„¸ì…˜ ìƒì„± ë° ë“±ë¡
     auto session = std::make_shared<ClientSession>(context->acceptSocket);
     RegisterSession(session);
 
-    // Ã¹ ¼ö½Å Á¦Ãâ + ´ÙÀ½ Accept ÀçÁ¦Ãâ
+    // ì²« ìˆ˜ì‹  ì œì¶œ + ë‹¤ìŒ Accept ì¬ì œì¶œ
     SubmitRecvOperation(session);
     SubmitAcceptOperation();
 
@@ -294,9 +294,9 @@ void IocpServer::OnRecvCompleted(IocpIoContext* context, DWORD transferredBytes)
 
     session->AppendToReceiveBuffer(context->buffer.data(), static_cast<size_t>(transferredBytes));
 
-    // ´©Àû ¹öÆÛ¿¡¼­ °¡´ÉÇÑ ¸ğµç ¸Ş½ÃÁö¸¦ ÆÄ½ÌÇÏ°í µğ½ºÆĞÄ¡
+    // ëˆ„ì  ë²„í¼ì—ì„œ ê°€ëŠ¥í•œ ëª¨ë“  ë©”ì‹œì§€ë¥¼ íŒŒì‹±í•˜ê³  ë””ìŠ¤íŒ¨ì¹˜
     if (!session->TryExtractAndDispatchAllMessages(messageDispatcher)) {
-        CloseSession(session); // ÆÄ½Ì ¿¡·¯ ¶Ç´Â Á¤Ã¥ À§¹İ ¡æ Á¾·á
+        CloseSession(session); // íŒŒì‹± ì—ëŸ¬ ë˜ëŠ” ì •ì±… ìœ„ë°˜ â†’ ì¢…ë£Œ
         delete context;
         return;
     }
@@ -312,7 +312,7 @@ void IocpServer::OnSendCompleted(IocpIoContext* context, DWORD /*transferredByte
     auto session = context->ownerSession;
     delete context;
     if (!session) return;
-    session->TrySendNext(); // ´ÙÀ½ ¼Û½Å ÀÌ¾î¼­ Ã³¸®
+    session->TrySendNext(); // ë‹¤ìŒ ì†¡ì‹  ì´ì–´ì„œ ì²˜ë¦¬
 }
 
 void IocpServer::RegisterSession(const std::shared_ptr<ClientSession>& session) {

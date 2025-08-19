@@ -4,14 +4,14 @@
 class GameRoom;
 class GameSystem;
 
-// ¸ğµç ½Ã½ºÅÛÀ» µî·Ï/È£ÃâÇÏ´Â ÆÄÀÌÇÁ¶óÀÎ(°íÁ¤ ½ºÅÜ/°¡º¯ ½ºÅÜ)
+// ëª¨ë“  ì‹œìŠ¤í…œì„ ë“±ë¡/í˜¸ì¶œí•˜ëŠ” íŒŒì´í”„ë¼ì¸(ê³ ì • ìŠ¤í…/ê°€ë³€ ìŠ¤í…)
 class SystemPipeline {
 public:
     explicit SystemPipeline(double fixedStepSeconds);
 
-    void RegisterSystem(GameSystem* system);   // system À» systems ÄÁÅ×ÀÌ³Ê¿¡ µî·Ï
-    void FixedUpdate(GameRoom& room);          // ¸ğµç ½Ã½ºÅÛÀÇ FixedUpdate(fixedStepSeconds) È£Ãâ
-    void Update(GameRoom& room, double deltaSeconds); // ¸ğµç ½Ã½ºÅÛÀÇ Update(deltaSeconds) È£Ãâ
+    void RegisterSystem(GameSystem* system);   // system ì„ systems ì»¨í…Œì´ë„ˆì— ë“±ë¡
+    void FixedUpdate(GameRoom& room);          // ëª¨ë“  ì‹œìŠ¤í…œì˜ FixedUpdate(fixedStepSeconds) í˜¸ì¶œ
+    void Update(GameRoom& room, double deltaSeconds); // ëª¨ë“  ì‹œìŠ¤í…œì˜ Update(deltaSeconds) í˜¸ì¶œ
 
 private:
     double fixedStepSeconds;

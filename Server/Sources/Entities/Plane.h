@@ -2,30 +2,30 @@
 #include <cstdint>
 
 struct Plane {
-    std::uint64_t id = 0;       // object_id(ÇÁ·ÎÅäÄİ »óÈ£¿î¿ë)
-    std::uint32_t playerId = 0; // ¼¼¼Ç ½Äº°ÀÚ
+    std::uint64_t id = 0;       // object_id(í”„ë¡œí† ì½œ ìƒí˜¸ìš´ìš©)
+    std::uint32_t playerId = 0; // ì„¸ì…˜ ì‹ë³„ì
 
-    // À§Ä¡/¼Óµµ(¿ùµå ÁÂÇ¥)
+    // ìœ„ì¹˜/ì†ë„(ì›”ë“œ ì¢Œí‘œ)
     float px = 0, py = 0, pz = 0;
     float vx = 0, vy = 0, vz = 0;
 
-    // ÀÚ¼¼(ÄõÅÍ´Ï¾ğ)
+    // ìì„¸(ì¿¼í„°ë‹ˆì–¸)
     float qw = 1, qx = 0, qy = 0, qz = 0;
 
-    // °¢¼Óµµ(rad/s)
+    // ê°ì†ë„(rad/s)
     float wx = 0, wy = 0, wz = 0;
 
-    // ÀÔ·Â(¼­¹ö°¡ ÃÖ½Å ÀÔ·Â º¸°ü)
+    // ì…ë ¥(ì„œë²„ê°€ ìµœì‹  ì…ë ¥ ë³´ê´€)
     float inputPitch = 0;   // -1..+1
     float inputRoll = 0;    // -1..+1
     float inputYaw = 0;     // -1..+1
     float inputThrottle = 0; // 0..1
 
-    // ¼º´É ÆÄ¶ó¹ÌÅÍ(°£´Ü ±âº»°ª)
+    // ì„±ëŠ¥ íŒŒë¼ë¯¸í„°(ê°„ë‹¨ ê¸°ë³¸ê°’)
     float massKg = 3000.0f;
     float wingArea = 20.0f;
-    float cl0 = 0.2f, cla = 5.5f; // ¾ç·Â °è¼ö
-    float cd0 = 0.02f, k = 0.04f; // Ç×·Â °è¼ö
+    float cl0 = 0.2f, cla = 5.5f; // ì–‘ë ¥ ê³„ìˆ˜
+    float cd0 = 0.02f, k = 0.04f; // í•­ë ¥ ê³„ìˆ˜
     float maxThrust = 30000.0f;   // N
 
     float hitPoints = 100.0f;

@@ -48,7 +48,7 @@ static void BuildCube(std::vector<MeshVertex>& outVertices,
     outIndices = {
         // Top face (+Y)
         0, 1, 2,   0, 2, 3,
-        // Bottom face (-Y) ¿ª½Ã ¹İ´ë·Î
+        // Bottom face (-Y) ì—­ì‹œ ë°˜ëŒ€ë¡œ
         4, 5, 6,   4, 6, 7,
         // Back face (-Z)
         8, 9,10,   8,10,11,
@@ -64,7 +64,7 @@ static void BuildCube(std::vector<MeshVertex>& outVertices,
 static void BuildQuad(std::vector<MeshVertex>& outVertices,
     std::vector<uint32_t>& outIndices)
 {
-    // ´Ü¼ø 2D Äõµå - U´Â +X
+    // ë‹¨ìˆœ 2D ì¿¼ë“œ - UëŠ” +X
     outVertices = {
         {{-1,-1,0},{0,0,-1},{0,1},{1,0,0}},
         {{ 1,-1,0},{0,0,-1},{1,1},{1,0,0}},
@@ -86,24 +86,24 @@ static void BuildSphere(
     outVertices.clear();
     outIndices.clear();
 
-    // 1) ¹öÅØ½º »ı¼º
+    // 1) ë²„í…ìŠ¤ ìƒì„±
     for (uint32_t lat = 0; lat <= latitudeSegments; ++lat) {
-        float phi = float(lat) / latitudeSegments * XM_PI;           // 0 ~ ¥ğ
+        float phi = float(lat) / latitudeSegments * XM_PI;           // 0 ~ Ï€
         float y = std::cos(phi);
         float r = std::sin(phi);
         for (uint32_t lon = 0; lon <= longitudeSegments; ++lon) {
-            float theta = float(lon) / longitudeSegments * 2.0f * XM_PI; // 0 ~ 2¥ğ
+            float theta = float(lon) / longitudeSegments * 2.0f * XM_PI; // 0 ~ 2Ï€
             float x = r * std::cos(theta);
             float z = r * std::sin(theta);
 
             MeshVertex v;
             v.position = XMFLOAT3{ x, y, z };
-            v.normal = XMFLOAT3{ x, y, z };  // ´ÜÀ§ ±¸ÀÌ¹Ç·Î À§Ä¡ º¤ÅÍ = ³ë¸Ö
+            v.normal = XMFLOAT3{ x, y, z };  // ë‹¨ìœ„ êµ¬ì´ë¯€ë¡œ ìœ„ì¹˜ ë²¡í„° = ë…¸ë©€
             v.texCoord = XMFLOAT2{
                 float(lon) / longitudeSegments,
                 float(lat) / latitudeSegments
             };
-            // tangent = ¡Óposition/¡Ó¥è normalized
+            // tangent = âˆ‚position/âˆ‚Î¸ normalized
             XMFLOAT3 tan = { -r * std::sin(theta), 0.0f, r * std::cos(theta) };
             float invLen = 1.0f / std::sqrt(
                 tan.x * tan.x + tan.y * tan.y + tan.z * tan.z);
@@ -113,18 +113,18 @@ static void BuildSphere(
         }
     }
 
-    // 2) ÀÎµ¦½º »ı¼º (°¢ »ç°¢ÇüÀ» µÎ °³ÀÇ »ï°¢ÇüÀ¸·Î, CW Àü¸é ±âÁØ)
+    // 2) ì¸ë±ìŠ¤ ìƒì„± (ê° ì‚¬ê°í˜•ì„ ë‘ ê°œì˜ ì‚¼ê°í˜•ìœ¼ë¡œ, CW ì „ë©´ ê¸°ì¤€)
     for (uint32_t lat = 0; lat < latitudeSegments; ++lat) {
         for (uint32_t lon = 0; lon < longitudeSegments; ++lon) {
             uint32_t current = lat * (longitudeSegments + 1) + lon;
             uint32_t next = current + (longitudeSegments + 1);
 
-            // »ï°¢Çü1: (current, current+1, next) ¡æ CW ¼ø¼­
+            // ì‚¼ê°í˜•1: (current, current+1, next) â†’ CW ìˆœì„œ
             outIndices.push_back(current);
             outIndices.push_back(current + 1);
             outIndices.push_back(next);
 
-            // »ï°¢Çü2: (current+1, next+1, next) ¡æ CW ¼ø¼­
+            // ì‚¼ê°í˜•2: (current+1, next+1, next) â†’ CW ìˆœì„œ
             outIndices.push_back(current + 1);
             outIndices.push_back(next + 1);
             outIndices.push_back(next);
@@ -154,7 +154,7 @@ bool Mesh::UploadBuffers(Renderer* renderer,
     const void* vertexData, size_t vertexByteSize,
     const void* indexData, size_t indexByteSize)
 {
-    // 1) DEFAULT-heap ¹öÆÛ »ı¼º (COMMON)
+    // 1) DEFAULT-heap ë²„í¼ ìƒì„± (COMMON)
     ID3D12Device* device = renderer->GetDevice();
     CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
     CD3DX12_RESOURCE_DESC     vbDesc = CD3DX12_RESOURCE_DESC::Buffer(UINT(vertexByteSize));
@@ -170,7 +170,7 @@ bool Mesh::UploadBuffers(Renderer* renderer,
         D3D12_RESOURCE_STATE_COMMON, nullptr,
         IID_PPV_ARGS(&indexBuffer)));
 
-    // 2) UPLOAD-heap ½ºÅ×ÀÌÂ¡ ¹öÆÛ »ı¼º
+    // 2) UPLOAD-heap ìŠ¤í…Œì´ì§• ë²„í¼ ìƒì„±
     CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
     ComPtr<ID3D12Resource> vertexUpload, indexUpload;
 
@@ -184,7 +184,7 @@ bool Mesh::UploadBuffers(Renderer* renderer,
         D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
         IID_PPV_ARGS(&indexUpload)));
 
-    // 3) CPU ¡æ UPLOAD º¹»ç
+    // 3) CPU â†’ UPLOAD ë³µì‚¬
     {
         void* mapped = nullptr;
         CD3DX12_RANGE readRange(0, 0);
@@ -198,14 +198,14 @@ bool Mesh::UploadBuffers(Renderer* renderer,
         indexUpload->Unmap(0, nullptr);
     }
 
-    // 4) Copy Àü¿ë Ä¿¸Çµå ¸®½ºÆ®¿¡ º¹»ç ¸í·É ±â·Ï
+    // 4) Copy ì „ìš© ì»¤ë§¨ë“œ ë¦¬ìŠ¤íŠ¸ì— ë³µì‚¬ ëª…ë ¹ ê¸°ë¡
     auto* copyAlloc = renderer->GetCopyCommandAllocator();
     auto* copyList = renderer->GetCopyCommandList();
 
     THROW_IF_FAILED(copyAlloc->Reset());
     THROW_IF_FAILED(copyList->Reset(copyAlloc, nullptr));
 
-    // 4-1) COMMON ¡æ COPY_DEST
+    // 4-1) COMMON â†’ COPY_DEST
     {
         D3D12_RESOURCE_BARRIER barriers[] = {
             CD3DX12_RESOURCE_BARRIER::Transition(
@@ -220,11 +220,11 @@ bool Mesh::UploadBuffers(Renderer* renderer,
         copyList->ResourceBarrier(_countof(barriers), barriers);
     }
 
-    // 4-2) ½ÇÁ¦ Copy
+    // 4-2) ì‹¤ì œ Copy
     copyList->CopyResource(vertexBuffer.Get(), vertexUpload.Get());
     copyList->CopyResource(indexBuffer.Get(), indexUpload.Get());
 
-    // 4-3) COPY_DEST ¡æ COMMON À¸·Î º¹±¸
+    // 4-3) COPY_DEST â†’ COMMON ìœ¼ë¡œ ë³µêµ¬
     {
         D3D12_RESOURCE_BARRIER barriers[] = {
             CD3DX12_RESOURCE_BARRIER::Transition(
@@ -241,14 +241,14 @@ bool Mesh::UploadBuffers(Renderer* renderer,
 
     THROW_IF_FAILED(copyList->Close());
 
-    // 5) Copy Å¥¿¡ Á¦Ãâ & ¿Ï·á ´ë±â
+    // 5) Copy íì— ì œì¶œ & ì™„ë£Œ ëŒ€ê¸°
     ID3D12CommandList* lists[] = { copyList };
     renderer->GetCopyQueue()->ExecuteCommandLists(_countof(lists), lists);
 
     const UINT64 fenceValue = renderer->SignalCopyFence();
     renderer->WaitCopyFence(fenceValue);
 
-    // 6) VB/IB ºä ¼³Á¤
+    // 6) VB/IB ë·° ì„¤ì •
     vertexView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
     vertexView.SizeInBytes = UINT(vertexByteSize);
     vertexView.StrideInBytes = sizeof(MeshVertex);

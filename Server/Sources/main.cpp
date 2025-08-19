@@ -8,10 +8,10 @@ namespace ServerRuntime {
     static GameServer server;
 }
 
-// Ctrl+C µî Á¾·á ½Ã±×³Î Ã³¸®
+// Ctrl+C ë“± ì¢…ë£Œ ì‹œê·¸ë„ ì²˜ë¦¬
 void SignalHandler(int signal) {
     if (signal == SIGINT) {
-        std::cout << "\n[INFO] Á¾·á ¿äÃ» °¨ÁöµÊ. ¼­¹ö Á¾·á Áß...\n";
+        std::cout << "\n[INFO] ì¢…ë£Œ ìš”ì²­ ê°ì§€ë¨. ì„œë²„ ì¢…ë£Œ ì¤‘...\n";
         ServerRuntime::stopRequested = true;
         ServerRuntime::server.Stop();
     }
@@ -23,16 +23,16 @@ int main() {
     std::signal(SIGINT, SignalHandler);
 
     if (!ServerRuntime::server.Start(port)) {
-        std::cerr << "[ERROR] ¼­¹ö ½ÃÀÛ ½ÇÆĞ\n";
+        std::cerr << "[ERROR] ì„œë²„ ì‹œì‘ ì‹¤íŒ¨\n";
         return 1;
     }
 
-    std::cout << "[INFO] ¼­¹ö°¡ ½ÇÇà ÁßÀÔ´Ï´Ù. Ctrl+C·Î Á¾·áÇÒ ¼ö ÀÖ½À´Ï´Ù.\n";
+    std::cout << "[INFO] ì„œë²„ê°€ ì‹¤í–‰ ì¤‘ì…ë‹ˆë‹¤. Ctrl+Cë¡œ ì¢…ë£Œí•  ìˆ˜ ìˆìŠµë‹ˆë‹¤.\n";
 
     while (!ServerRuntime::stopRequested) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    std::cout << "[INFO] ¼­¹ö°¡ Á¤»óÀûÀ¸·Î Á¾·áµÇ¾ú½À´Ï´Ù.\n";
+    std::cout << "[INFO] ì„œë²„ê°€ ì •ìƒì ìœ¼ë¡œ ì¢…ë£Œë˜ì—ˆìŠµë‹ˆë‹¤.\n";
     return 0;
 }

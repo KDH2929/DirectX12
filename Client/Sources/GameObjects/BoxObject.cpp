@@ -35,7 +35,7 @@ bool BoxObject::Initialize(Renderer* renderer)
 
 void BoxObject::Update(float deltaTime, Renderer* renderer, UINT objectIndex)
 {
-    // ImGui·Î PBR ÆÄ¶ó¹ÌÅÍ Á¶Àý
+    // ImGuië¡œ PBR íŒŒë¼ë¯¸í„° ì¡°ì ˆ
     if (ImGui::Begin("Box Material (PBR)"))
     {
         auto& parameters = materialPBR->parameters;
@@ -48,7 +48,7 @@ void BoxObject::Update(float deltaTime, Renderer* renderer, UINT objectIndex)
     }
     ImGui::End();
 
-    // PBR ¸ÓÆ¼¸®¾ó »ó¼ö ¹öÆÛ ¾÷·Îµå
+    // PBR ë¨¸í‹°ë¦¬ì–¼ ìƒìˆ˜ ë²„í¼ ì—…ë¡œë“œ
     CB_MaterialPBR materialData{};
     auto& params = materialPBR->parameters;
     materialData.baseColor = params.baseColor;
@@ -75,7 +75,7 @@ void BoxObject::Render(ID3D12GraphicsCommandList* commandList, Renderer* rendere
     };
     commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-    // ·çÆ® ½Ã±×´ÏÃ³ ¹× ÆÄÀÌÇÁ¶óÀÎ »óÅÂ ¼³Á¤
+    // ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜ ë° íŒŒì´í”„ë¼ì¸ ìƒíƒœ ì„¤ì •
     commandList->SetGraphicsRootSignature(
         renderer->GetRootSignatureManager()->Get(L"PbrRS")
     );
@@ -85,33 +85,33 @@ void BoxObject::Render(ID3D12GraphicsCommandList* commandList, Renderer* rendere
 
     FrameResource* frameResource = renderer->GetCurrentFrameResource();
 
-    // b0: ¸ðµ¨-ºä-Åõ¿µ »ó¼ö ¹öÆÛ
+    // b0: ëª¨ë¸-ë·°-íˆ¬ì˜ ìƒìˆ˜ ë²„í¼
     commandList->SetGraphicsRootConstantBufferView(
         0, frameResource->cbMVP->GetGPUVirtualAddress(objectIndex)
     );
 
-    // b1: ¶óÀÌÆÃ »ó¼ö ¹öÆÛ
+    // b1: ë¼ì´íŒ… ìƒìˆ˜ ë²„í¼
     commandList->SetGraphicsRootConstantBufferView(
         1, frameResource->cbLighting->GetGPUVirtualAddress(0)
     );
 
-    // b2: ¸ÓÆ¼¸®¾ó »ó¼ö ¹öÆÛ
+    // b2: ë¨¸í‹°ë¦¬ì–¼ ìƒìˆ˜ ë²„í¼
     commandList->SetGraphicsRootConstantBufferView(
         2, frameResource->cbMaterialPbr->GetGPUVirtualAddress(objectIndex)
     );
 
-    // b3: Àü¿ª »ó¼ö ¹öÆÛ
+    // b3: ì „ì—­ ìƒìˆ˜ ë²„í¼
     commandList->SetGraphicsRootConstantBufferView(
         3, frameResource->cbGlobal->GetGPUVirtualAddress(0)
     );
 
-    // b4: ±×¸²ÀÚ ºä¡¤Åõ¿µ »ó¼ö ¹öÆÛ
+    // b4: ê·¸ë¦¼ìž ë·°Â·íˆ¬ì˜ ìƒìˆ˜ ë²„í¼
     commandList->SetGraphicsRootConstantBufferView(
         4, frameResource->cbShadowViewProj->GetGPUVirtualAddress(0)
     );
 
-    // ÅØ½ºÃ³ ¹× »ùÇÃ·¯ Å×ÀÌºí ¹ÙÀÎµù
-    // ÅØ½ºÃÄ°¡ À¯È¿ÇÒ½Ã¿¡¸¸ ¹ÙÀÎµù
+    // í…ìŠ¤ì²˜ ë° ìƒ˜í”ŒëŸ¬ í…Œì´ë¸” ë°”ì¸ë”©
+    // í…ìŠ¤ì³ê°€ ìœ íš¨í• ì‹œì—ë§Œ ë°”ì¸ë”©
     if (materialPBR->GetAlbedoTexture()) {
         commandList->SetGraphicsRootDescriptorTable(
             5, materialPBR->GetAlbedoTexture()->GetGpuHandle()
@@ -124,12 +124,12 @@ void BoxObject::Render(ID3D12GraphicsCommandList* commandList, Renderer* rendere
         9, descriptorManager->GetLinearWrapSamplerGpuHandle()
     );
 
-    // ±×¸²ÀÚ¸Ê SRV Å×ÀÌºí ¹ÙÀÎµù (t7~t7+N-1)
+    // ê·¸ë¦¼ìžë§µ SRV í…Œì´ë¸” ë°”ì¸ë”© (t7~t7+N-1)
     commandList->SetGraphicsRootDescriptorTable(
         10, frameResource->shadowSrv[0].gpuHandle
     );
 
-    // ÀÔ·Â ¾î¼Àºí·¯ ¼³Á¤ ¹× µå·Î¿ì È£Ãâ
+    // ìž…ë ¥ ì–´ì…ˆë¸”ëŸ¬ ì„¤ì • ë° ë“œë¡œìš° í˜¸ì¶œ
     if (cubeMesh)
     {
         commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

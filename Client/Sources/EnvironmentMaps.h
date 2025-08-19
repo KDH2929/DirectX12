@@ -8,12 +8,12 @@
 
 class Renderer;
 
-// EnvironmentMaps: IBL¿ë È¯°æ¸Ê ¸®¼Ò½º °ü¸®
+// EnvironmentMaps: IBLìš© í™˜ê²½ë§µ ë¦¬ì†ŒìŠ¤ ê´€ë¦¬
 class EnvironmentMaps
 {
 public:
-    // ÁöÁ¤µÈ °æ·Î¿¡¼­ IBL ¸®¼Ò½º ·Îµå
-    // °æ·Î°¡ À¯È¿ÇÏ¸é true ¹İÈ¯
+    // ì§€ì •ëœ ê²½ë¡œì—ì„œ IBL ë¦¬ì†ŒìŠ¤ ë¡œë“œ
+    // ê²½ë¡œê°€ ìœ íš¨í•˜ë©´ true ë°˜í™˜
     bool Load(
         Renderer* renderer,
         const std::wstring& irradianceMapPath,
@@ -21,7 +21,7 @@ public:
         const std::wstring& brdfLutPath);
     
 
-    // ¸í½ÃµÈ ·çÆ® ÀÎµ¦½º¿¡ SRV ¹ÙÀÎµù
+    // ëª…ì‹œëœ ë£¨íŠ¸ ì¸ë±ìŠ¤ì— SRV ë°”ì¸ë”©
     void Bind(
         ID3D12GraphicsCommandList* commandList,
         UINT rootIndexIrradiance,
@@ -29,7 +29,7 @@ public:
         UINT rootIndexBrdfLut) const;
 
 private:
-    std::shared_ptr<Texture> irradianceMap;      // È®»ê IBL¿ë Å¥ºê¸Ê
-    std::shared_ptr<Texture> specularMap;        // ½ºÆåÅ§·¯ ÇÁ¸®ÇÊÅÍ Å¥ºê¸Ê
-    std::shared_ptr<Texture> brdfLutTexture;     // BRDF ÅëÇÕ LUT
+    std::shared_ptr<Texture> irradianceMap;      // í™•ì‚° IBLìš© íë¸Œë§µ
+    std::shared_ptr<Texture> specularMap;        // ìŠ¤í™í˜ëŸ¬ í”„ë¦¬í•„í„° íë¸Œë§µ
+    std::shared_ptr<Texture> brdfLutTexture;     // BRDF í†µí•© LUT
 };

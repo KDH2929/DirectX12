@@ -14,20 +14,20 @@ class Renderer;
 
 class PipelineStateManager {
 public:
-    // ·»´õ·¯ Æ÷ÀÎÅÍ ÇÏ³ª¸¸ ³Ñ°Ü¹Şµµ·Ï º¯°æ
+    // ë Œë”ëŸ¬ í¬ì¸í„° í•˜ë‚˜ë§Œ ë„˜ê²¨ë°›ë„ë¡ ë³€ê²½
     explicit PipelineStateManager(Renderer* renderer_);
     ~PipelineStateManager();
 
-    // ÃÊ±âÈ­ ´Ü°è¿¡¼­ Àü¿ë PSO »ı¼º
+    // ì´ˆê¸°í™” ë‹¨ê³„ì—ì„œ ì „ìš© PSO ìƒì„±
     bool InitializePSOs();
 
-    // ÇÊ¿ä ½Ã PSO¸¦ »ı¼ºÇÏ°Å³ª ±âÁ¸ Ä³½Ã ¹İÈ¯
+    // í•„ìš” ì‹œ PSOë¥¼ ìƒì„±í•˜ê±°ë‚˜ ê¸°ì¡´ ìºì‹œ ë°˜í™˜
     ID3D12PipelineState* GetOrCreate(const PipelineStateDesc& desc);
 
-    // Ä³½ÃµÈ PSO Á÷Á¢ Á¶È¸
+    // ìºì‹œëœ PSO ì§ì ‘ ì¡°íšŒ
     ID3D12PipelineState* Get(const std::wstring& name) const;
 
-    // ¾Û Á¾·á ½Ã ¸®¼Ò½º Á¤¸®
+    // ì•± ì¢…ë£Œ ì‹œ ë¦¬ì†ŒìŠ¤ ì •ë¦¬
     void Cleanup();
 
 private:
@@ -43,13 +43,13 @@ private:
     PipelineStateDesc CreateVolumetricCloudPSODesc() const;
 
 
-    // PSO »ı¼º ³»ºÎ ·ÎÁ÷
+    // PSO ìƒì„± ë‚´ë¶€ ë¡œì§
     bool CreatePSO(const PipelineStateDesc& desc);
 
-    Renderer* renderer;  // ·»´õ·¯ ÂüÁ¶
+    Renderer* renderer;  // ë Œë”ëŸ¬ ì°¸ì¡°
     ID3D12Device* device;    // device = renderer->GetDevice()
     std::unordered_map<
         std::wstring,
         ComPtr<ID3D12PipelineState>
-    > psoMap;  // ÀÌ¸§ ¡æ PSO Ä³½Ã
+    > psoMap;  // ì´ë¦„ â†’ PSO ìºì‹œ
 };

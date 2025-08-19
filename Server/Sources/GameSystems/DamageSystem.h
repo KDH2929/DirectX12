@@ -11,10 +11,10 @@ public:
     const char* GetName() const noexcept override;
     int GetOrder() const noexcept override;
 
-    // °íÁ¤ ½ºÅÜ Ã³¸®(´ë¹ÌÁö Àû¿ë µî)
+    // ê³ ì • ìŠ¤í… ì²˜ë¦¬(ëŒ€ë¯¸ì§€ ì ìš© ë“±)
     void FixedUpdate(double fixedDeltaSeconds, GameRoom& room) override;
 
-    // °¡º¯ ½ºÅÜ(ÇöÀç ¹Ì»ç¿ë)
+    // ê°€ë³€ ìŠ¤í…(í˜„ì¬ ë¯¸ì‚¬ìš©)
     void Update(double deltaSeconds, GameRoom& room) override;
 
     struct DamageRequest {

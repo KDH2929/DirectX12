@@ -20,12 +20,12 @@ public:
     void Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer) override;
 
 private:
-    // ImGui¿¡¼­ Á¶ÀıÇÒ °ªµé
+    // ImGuiì—ì„œ ì¡°ì ˆí•  ê°’ë“¤
     float thresholdValue = 5.0f;
     float thicknessValue = 1.0f;
     DirectX::XMFLOAT3 outlineColor{ 0.0f, 0.0f, 0.0f };
     float mixFactor = 1.0f;
 
-    // Ç®½ºÅ©¸° Äõµå ¸Ş½¬
+    // í’€ìŠ¤í¬ë¦° ì¿¼ë“œ ë©”ì‰¬
     std::shared_ptr<Mesh> quadMesh;
 };

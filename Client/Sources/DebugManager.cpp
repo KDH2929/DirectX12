@@ -3,7 +3,7 @@
 #include <time.h>
 #include <iostream>
 
-// »ı¼ºÀÚ
+// ìƒì„±ì
 DebugManager::DebugManager() {
     InitializeLogFile();
 }
@@ -18,7 +18,7 @@ std::wstring DebugManager::Utf8ToWString(const std::string& input) {
     int size = MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, nullptr, 0);
     std::wstring result(size, 0);
     MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, &result[0], size);
-    result.pop_back(); // null Á¦°Å
+    result.pop_back(); // null ì œê±°
     return result;
 }
 

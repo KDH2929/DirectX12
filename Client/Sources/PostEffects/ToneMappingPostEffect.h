@@ -21,10 +21,10 @@ public:
     void Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer) override;
 
 private:
-    // ImGui¿¡¼­ Á¶ÀıÇÒ °ªµé
+    // ImGuiì—ì„œ ì¡°ì ˆí•  ê°’ë“¤
     float exposureValue = 4.0f;
     float gammaValue = 1.0f;
 
-    // Ç®½ºÅ©¸° Äõµå ¸Ş½¬
+    // í’€ìŠ¤í¬ë¦° ì¿¼ë“œ ë©”ì‰¬
     std::shared_ptr<Mesh> quadMesh;
 };

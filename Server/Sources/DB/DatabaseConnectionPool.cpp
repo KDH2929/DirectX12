@@ -5,21 +5,21 @@ static void EnsureMysqlLibraryInitializedOnce()
 {
     static std::once_flag onceFlag;
     std::call_once(onceFlag, []() {
-        // ½ÇÆĞ ½Ã ¿¹¿Ü¸¦ ´øÁöÁö ¾Ê°í, Initialize ÂÊ¿¡¼­ false¸¦ ¹İÈ¯ÇÏ°Ô ÇÏ·Á¸é
-        // »óÅÂ¸¦ ¿ÜºÎ·Î Àü´ŞÇØ¾ß ÇÏÁö¸¸, libmysqlÀº 0ÀÌ¸é ¼º°øÀÌ¶ó ¿©±â¼­ ´Ü¼ø È£Ãâ.
+        // ì‹¤íŒ¨ ì‹œ ì˜ˆì™¸ë¥¼ ë˜ì§€ì§€ ì•Šê³ , Initialize ìª½ì—ì„œ falseë¥¼ ë°˜í™˜í•˜ê²Œ í•˜ë ¤ë©´
+        // ìƒíƒœë¥¼ ì™¸ë¶€ë¡œ ì „ë‹¬í•´ì•¼ í•˜ì§€ë§Œ, libmysqlì€ 0ì´ë©´ ì„±ê³µì´ë¼ ì—¬ê¸°ì„œ ë‹¨ìˆœ í˜¸ì¶œ.
         mysql_library_init(0, nullptr, nullptr);
         });
 }
 
 DatabaseConnectionPool::~DatabaseConnectionPool()
 {
-    // Å¥¿¡ ³²Àº ¿¬°á Á¤¸®
+    // íì— ë‚¨ì€ ì—°ê²° ì •ë¦¬
     while (!availableConnections.empty()) {
         MYSQL* connection = availableConnections.front();
         availableConnections.pop();
         if (connection) mysql_close(connection);
     }
-    // mysql_library_end()´Â ÇÁ·Î¼¼½º Á¾·á ½ÃÁ¡¿¡ È£ÃâÇØµµ µÇ°í »ı·«ÇØµµ µÊ(Àü¿ª »ç¿ë ½Ã ²¿ÀÓ ¹æÁö¿ëÀ¸·Î »ı·«)
+    // mysql_library_end()ëŠ” í”„ë¡œì„¸ìŠ¤ ì¢…ë£Œ ì‹œì ì— í˜¸ì¶œí•´ë„ ë˜ê³  ìƒëµí•´ë„ ë¨(ì „ì—­ ì‚¬ìš© ì‹œ ê¼¬ì„ ë°©ì§€ìš©ìœ¼ë¡œ ìƒëµ)
 }
 
 bool DatabaseConnectionPool::Initialize(const std::string& host_,
@@ -37,7 +37,7 @@ bool DatabaseConnectionPool::Initialize(const std::string& host_,
     password = password_;
     database = database_;
 
-    // ¹Ì¸® N°³ »ı¼º
+    // ë¯¸ë¦¬ Nê°œ ìƒì„±
     for (unsigned int i = 0; i < connectionCount; ++i) {
         MYSQL* connection = CreateConnection(host, port, user, password, database);
         if (!connection) {
@@ -59,7 +59,7 @@ MYSQL* DatabaseConnectionPool::CreateConnection(const std::string& host_,
     MYSQL* connection = mysql_init(nullptr);
     if (!connection) return nullptr;
 
-    // ÀÚµ¿ Àç¿¬°á
+    // ìë™ ì¬ì—°ê²°
 #if defined(MYSQL_VERSION_ID) && (MYSQL_VERSION_ID >= 80000)
     bool reconnect = true;
     mysql_options(connection, MYSQL_OPT_RECONNECT, &reconnect);
@@ -68,7 +68,7 @@ MYSQL* DatabaseConnectionPool::CreateConnection(const std::string& host_,
     mysql_options(connection, MYSQL_OPT_RECONNECT, &reconnect);
 #endif
 
-    // Å¸ÀÓ¾Æ¿ô(ÃÊ)
+    // íƒ€ì„ì•„ì›ƒ(ì´ˆ)
     unsigned int connectTimeout = 5;
     unsigned int readTimeout = 5;
     unsigned int writeTimeout = 5;

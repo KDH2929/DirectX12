@@ -15,18 +15,18 @@ bool TextureManager::Initialize(Renderer* renderer_, DescriptorHeapManager* desc
 
 std::shared_ptr<Texture> TextureManager::LoadTexture(const std::wstring& filePath, bool generateMips)
 {
-    // 1) Ä³½Ã Á¶È¸
+    // 1) ìºì‹œ ì¡°íšŒ
     if (auto it = textureCache.find(filePath); it != textureCache.end())
         return it->second;
 
-    // 2) Texture °´Ã¼ ÁØºñ
+    // 2) Texture ê°ì²´ ì¤€ë¹„
     auto texture = std::make_shared<Texture>();
 
-    // 3) Texture ³»ºÎ¿¡¼­ Copy + Sync ±îÁö ¼öÇà
+    // 3) Texture ë‚´ë¶€ì—ì„œ Copy + Sync ê¹Œì§€ ìˆ˜í–‰
     if (!texture->LoadFromFile(renderer, filePath, generateMips))
         throw std::runtime_error("TextureManager::LoadTexture - load failed");
 
-    // 4) SRV µğ½ºÅ©¸³ÅÍ ½½·Ô È®º¸ & »ı¼º
+    // 4) SRV ë””ìŠ¤í¬ë¦½í„° ìŠ¬ë¡¯ í™•ë³´ & ìƒì„±
     DescriptorHandle handle = descriptorHeapManager->Allocate(
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
 
@@ -41,25 +41,25 @@ std::shared_ptr<Texture> TextureManager::LoadTexture(const std::wstring& filePat
 
     texture->SetDescriptorHandles(handle.cpuHandle, handle.gpuHandle, handle.index);
 
-    // 5) Ä³½Ã¿¡ ÀúÀå
+    // 5) ìºì‹œì— ì €ì¥
     textureCache[filePath] = texture;
     return texture;
 }
 
 std::shared_ptr<Texture> TextureManager::LoadCubeMap(const std::wstring& filePath, bool generateMips)
 {
-    // 1) Ä³½Ã Á¶È¸
+    // 1) ìºì‹œ ì¡°íšŒ
     if (auto it = textureCache.find(filePath); it != textureCache.end())
         return it->second;
 
-    // 2) Texture °´Ã¼ ÁØºñ
+    // 2) Texture ê°ì²´ ì¤€ë¹„
     auto texture = std::make_shared<Texture>();
 
-    // 3) Å¥ºê¸Ê ·Îµå
+    // 3) íë¸Œë§µ ë¡œë“œ
     if (!texture->LoadCubeMapFromFile(renderer, filePath, generateMips))
         throw std::runtime_error("TextureManager::LoadCubeMap - load failed");
 
-    // 4) SRV µğ½ºÅ©¸³ÅÍ ½½·Ô È®º¸ & »ı¼º
+    // 4) SRV ë””ìŠ¤í¬ë¦½í„° ìŠ¬ë¡¯ í™•ë³´ & ìƒì„±
     DescriptorHandle handle = descriptorHeapManager->Allocate(
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
 
@@ -75,7 +75,7 @@ std::shared_ptr<Texture> TextureManager::LoadCubeMap(const std::wstring& filePat
 
     texture->SetDescriptorHandles(handle.cpuHandle, handle.gpuHandle, handle.index);
 
-    // 5) Ä³½Ã¿¡ ÀúÀå
+    // 5) ìºì‹œì— ì €ì¥
     textureCache[filePath] = texture;
     return texture;
 }

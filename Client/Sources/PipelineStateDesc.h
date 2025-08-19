@@ -8,16 +8,16 @@
 using namespace Microsoft::WRL;
 
 
-// PSO ¼³Á¤À» ´ã´Â ±¸Á¶Ã¼
-// »ç½Ç D3D12_GRAPHICS_PIPELINE_STATE_DESC ¿Í °ÅÀÇ ¶È°°Àºµ¥, ÃßÈÄ È®Àå¼ºÀ» °í·ÁÇÏ¸é ÇÊ¿äÇÏÁö ¾ÊÀ»±î »ý°¢ÇØ º½.. 
+// PSO ì„¤ì •ì„ ë‹´ëŠ” êµ¬ì¡°ì²´
+// ì‚¬ì‹¤ D3D12_GRAPHICS_PIPELINE_STATE_DESC ì™€ ê±°ì˜ ë˜‘ê°™ì€ë°, ì¶”í›„ í™•ìž¥ì„±ì„ ê³ ë ¤í•˜ë©´ í•„ìš”í•˜ì§€ ì•Šì„ê¹Œ ìƒê°í•´ ë´„.. 
 
 struct PipelineStateDesc {
-    std::wstring                          name;           // PSO ½Äº° Å°
-    ComPtr<ID3DBlob>                      vsBlob;         // ÄÄÆÄÀÏµÈ VS Blob
+    std::wstring                          name;           // PSO ì‹ë³„ í‚¤
+    ComPtr<ID3DBlob>                      vsBlob;         // ì»´íŒŒì¼ëœ VS Blob
     ComPtr<ID3DBlob>                      gsBlob;
-    ComPtr<ID3DBlob>                      psBlob;         // ÄÄÆÄÀÏµÈ PS Blob
-    ComPtr<ID3D12RootSignature>           rootSignature;      // ÀÌ¹Ì »ý¼ºµÈ ·çÆ® ½Ã±×´ÏÃ³
-    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;    // ÀÔ·Â ·¹ÀÌ¾Æ¿ô
+    ComPtr<ID3DBlob>                      psBlob;         // ì»´íŒŒì¼ëœ PS Blob
+    ComPtr<ID3D12RootSignature>           rootSignature;      // ì´ë¯¸ ìƒì„±ëœ ë£¨íŠ¸ ì‹œê·¸ë‹ˆì²˜
+    std::vector<D3D12_INPUT_ELEMENT_DESC> inputLayout;    // ìž…ë ¥ ë ˆì´ì•„ì›ƒ
     D3D12_RASTERIZER_DESC                 rasterizerDesc = D3D12_RASTERIZER_DESC{};
     D3D12_BLEND_DESC                      blendDesc = D3D12_BLEND_DESC{};
     D3D12_DEPTH_STENCIL_DESC              depthStencilDesc = D3D12_DEPTH_STENCIL_DESC{};

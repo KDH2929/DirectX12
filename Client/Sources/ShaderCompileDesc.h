@@ -6,8 +6,8 @@
 #include <d3dcompiler.h>
 
 struct ShaderCompileDesc {
-    std::wstring           name;        // Ä³½Ã ¸ÊÀÇ Å°
-    std::wstring           path;        // HLSL ÆÄÀÏ °æ·Î
+    std::wstring           name;        // ìºì‹œ ë§µì˜ í‚¤
+    std::wstring           path;        // HLSL íŒŒì¼ ê²½ë¡œ
     std::string            entryPoint;  // e.g. "VSMain"
     std::string            profile;     // e.g. "vs_5_0"
     UINT                   compileFlags = D3DCOMPILE_OPTIMIZATION_LEVEL3;

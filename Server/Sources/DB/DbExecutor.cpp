@@ -27,7 +27,7 @@ void DbExecutor::Stop() {
     if (!running.exchange(false)) return;
 
 
-    // ¸¸¾à ³²Àº ÀÛ¾÷ ³¡³¯ ¶§±îÁö ±â´Ù¸®Áö ¾Ê°í ¹Ù·Î ³¡³»¾ßÇÑ´Ù¸é ÁÖ¼®ÇØÁ¦
+    // ë§Œì•½ ë‚¨ì€ ìž‘ì—… ëë‚  ë•Œê¹Œì§€ ê¸°ë‹¤ë¦¬ì§€ ì•Šê³  ë°”ë¡œ ëë‚´ì•¼í•œë‹¤ë©´ ì£¼ì„í•´ì œ
     /*
     {
         std::lock_guard<std::mutex> lock(queueMutex);
@@ -65,13 +65,13 @@ void DbExecutor::WorkerLoop() {
             });
 
         if (!running.load(std::memory_order_relaxed) && taskQueue.empty()) {
-            lock.unlock();           // ¸í½ÃÀûÀ¸·Î ÇØÁ¦
-            break;                   //  break ·Î ¹Ýº¹¹® ºüÁ®³ª¿À±â
+            lock.unlock();           // ëª…ì‹œì ìœ¼ë¡œ í•´ì œ
+            break;                   //  break ë¡œ ë°˜ë³µë¬¸ ë¹ ì ¸ë‚˜ì˜¤ê¸°
         }
 
         task = std::move(taskQueue.front());
         taskQueue.pop_front();
-        lock.unlock();               // ÀÛ¾÷ ½ÇÇà Àü ¸í½ÃÀû ÇØÁ¦
+        lock.unlock();               // ìž‘ì—… ì‹¤í–‰ ì „ ëª…ì‹œì  í•´ì œ
 
         try {
             auto guard = connectionPool->Acquire();

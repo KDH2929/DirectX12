@@ -4,31 +4,31 @@
 #pragma comment(lib, "ws2_32.lib")
 
 bool NetworkManager::Connect(const std::string& ip, int port) {
-    // Winsock ÃÊ±âÈ­
+    // Winsock ì´ˆê¸°í™”
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        std::cerr << "[¿À·ù] WSAStartup ½ÇÆÐ\n";
+        std::cerr << "[ì˜¤ë¥˜] WSAStartup ì‹¤íŒ¨\n";
         return false;
     }
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET) {
-        std::cerr << "[¿À·ù] ¼ÒÄÏ »ý¼º ½ÇÆÐ\n";
+        std::cerr << "[ì˜¤ë¥˜] ì†Œì¼“ ìƒì„± ì‹¤íŒ¨\n";
         return false;
     }
 
     sockaddr_in serverAddr = {};
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
-    serverAddr.sin_addr.s_addr = inet_addr(ip.c_str());  // ºñÃßÃµµÈ ¹æ½ÄÀÌÁö¸¸ ÀÏ´Ü »ç¿ë
+    serverAddr.sin_addr.s_addr = inet_addr(ip.c_str());  // ë¹„ì¶”ì²œëœ ë°©ì‹ì´ì§€ë§Œ ì¼ë‹¨ ì‚¬ìš©
 
     if (connect(sock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        std::cerr << "[¿À·ù] ¼­¹ö ¿¬°á ½ÇÆÐ\n";
+        std::cerr << "[ì˜¤ë¥˜] ì„œë²„ ì—°ê²° ì‹¤íŒ¨\n";
         closesocket(sock);
         return false;
     }
 
-    std::cout << "[¼º°ø] ¼­¹ö¿¡ ¿¬°áµÊ\n";
+    std::cout << "[ì„±ê³µ] ì„œë²„ì— ì—°ê²°ë¨\n";
     return true;
 }
 
@@ -42,13 +42,13 @@ void NetworkManager::RecvLoop() {
     while (running) {
         int bytesReceived = recv(sock, buffer, sizeof(buffer) - 1, 0);
         if (bytesReceived <= 0) {
-            std::cerr << "[¼­¹ö ¿¬°á ²÷±è or ¿À·ù]\n";
+            std::cerr << "[ì„œë²„ ì—°ê²° ëŠê¹€ or ì˜¤ë¥˜]\n";
             running = false;
             break;
         }
 
         buffer[bytesReceived] = '\0';
-        std::cout << "[¼­¹ö] " << buffer << std::endl;
+        std::cout << "[ì„œë²„] " << buffer << std::endl;
     }
 }
 

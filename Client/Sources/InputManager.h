@@ -19,30 +19,30 @@ public:
 
     void Initialize(HWND hwnd);
 
-    // Å°ÀÔ·Â °ü·Ã
+    // í‚¤ì…ë ¥ ê´€ë ¨
     void OnKeyDown(UINT nChar);
     void OnKeyUp(UINT nChar);
 
     bool IsKeyHeld(UINT nChar) const;
     bool IsKeyJustPressed(UINT nChar) const;
 
-    // ÁÂ¿ìÅ°¿¡ ´ëÇØ double press ¿©ºÎ ¹İÈ¯
+    // ì¢Œìš°í‚¤ì— ëŒ€í•´ double press ì—¬ë¶€ ë°˜í™˜
     bool IsDoublePressedLeft() const;
     bool IsDoublePressedRight() const;
 
-    // ¸¶¿ì½º ÀÔ·Â Ã³¸®
+    // ë§ˆìš°ìŠ¤ ì…ë ¥ ì²˜ë¦¬
     void OnMouseMove(int x, int y);
-    void OnMouseDown(MouseButton button);   // button: 0-ÁÂÅ¬¸¯, 1-¿ìÅ¬¸¯, 2-ÈÙ
+    void OnMouseDown(MouseButton button);   // button: 0-ì¢Œí´ë¦­, 1-ìš°í´ë¦­, 2-íœ 
     void OnMouseUp(MouseButton button);
 
     void OnRawMouseMove(int dx, int dy);
 
-    // ¸¶¿ì½º »óÅÂ È®ÀÎ ¸Ş¼­µå
+    // ë§ˆìš°ìŠ¤ ìƒíƒœ í™•ì¸ ë©”ì„œë“œ
     int GetMouseX() const;
     int GetMouseY() const;
     bool IsMouseButtonDown(MouseButton button) const;
     bool IsMouseButtonUp(MouseButton button) const;
-    bool IsMouseButtonReleased(MouseButton button) const;       // "´­·¶´Ù ¶¼¾ú´ÂÁö" È®ÀÎÇÏ´Â ÇÔ¼ö
+    bool IsMouseButtonReleased(MouseButton button) const;       // "ëˆŒë €ë‹¤ ë–¼ì—ˆëŠ”ì§€" í™•ì¸í•˜ëŠ” í•¨ìˆ˜
 
     int GetMouseDeltaX() const;
     int GetMouseDeltaY() const;
@@ -61,11 +61,11 @@ private:
 
     HWND hwnd = nullptr;
 
-    // Å° ÀÔ·Â »óÅÂ
+    // í‚¤ ì…ë ¥ ìƒíƒœ
     bool keyStates[256] = { false };
     bool prevKeyStates[256] = { false };
 
-    // ¸¶¿ì½º ÀÔ·Â »óÅÂ
+    // ë§ˆìš°ìŠ¤ ì…ë ¥ ìƒíƒœ
     int mouseX = 0;
     int mouseY = 0;
     bool mouseButtonStates[3] = { false, false, false };
@@ -74,7 +74,7 @@ private:
     int mouseDeltaX = 0;
     int mouseDeltaY = 0;
 
-    // ¸¶¿ì½º ÀÌµ¿°¨Áö¸¦ À§ÇÑ Raw Input °ü·Ã º¯¼ö
+    // ë§ˆìš°ìŠ¤ ì´ë™ê°ì§€ë¥¼ ìœ„í•œ Raw Input ê´€ë ¨ ë³€ìˆ˜
     int rawMouseDeltaX = 0;
     int rawMouseDeltaY = 0;
 
@@ -82,7 +82,7 @@ private:
     bool ignoreNextMouseDelta = false;
 
 
-    // ÁÂ¿ì Å°¿¡ ´ëÇÑ double press Å¸ÀÌ¸Ó (ms ´ÜÀ§)
+    // ì¢Œìš° í‚¤ì— ëŒ€í•œ double press íƒ€ì´ë¨¸ (ms ë‹¨ìœ„)
     float leftKeyTimer = 0.0f;
     float rightKeyTimer = 0.0f;
 
@@ -94,6 +94,6 @@ private:
     bool rightKeyDoublePressed = false;
 
 
-    // ¿¬¼ÓÀÔ·Â ÀÓ°èÄ¡ (ms ´ÜÀ§)
+    // ì—°ì†ì…ë ¥ ì„ê³„ì¹˜ (ms ë‹¨ìœ„)
     static constexpr float DOUBLE_PRESS_THRESHOLD = 200.0f;
 };

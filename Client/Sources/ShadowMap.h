@@ -16,6 +16,6 @@ constexpr INT MAX_SHADOW_DSV_COUNT = NUM_DIR_LIGHTS + NUM_SPOT_LIGHTS + 6 * NUM_
 struct ShadowMap
 {
     ComPtr<ID3D12Resource> depthBuffer;
-    DescriptorHandle dsvHandle; // CPU Handle¸¸ ÇÊ¿ä
-    DescriptorHandle srvHandle;  // CPU + GPU µÑ ´Ù ÇÊ¿ä
+    DescriptorHandle dsvHandle; // CPU Handleë§Œ í•„ìš”
+    DescriptorHandle srvHandle;  // CPU + GPU ë‘˜ ë‹¤ í•„ìš”
 };

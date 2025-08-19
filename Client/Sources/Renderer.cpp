@@ -14,7 +14,7 @@ Renderer::Renderer()
 {
     threadPool = std::make_unique<ThreadPool>(std::thread::hardware_concurrency());
 
-    // (³» ³ëÆ®ºÏ ±âÁØ)   numWorkerThreads = 8
+    // (ë‚´ ë…¸íŠ¸ë¶ ê¸°ì¤€)   numWorkerThreads = 8
     numWorkerThreads = threadPool->GetThreadCount();
 
     useMultiThreadedRendering = false;
@@ -93,7 +93,7 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
     mainCamera->SetPerspective(XM_PIDIV4, float(width) / height, 0.1f, 1000.f);
 
 
-    // LightingManager ÃÊ±âÈ­
+    // LightingManager ì´ˆê¸°í™”
     {
         lightingManager = std::make_unique<LightingManager>();
 
@@ -146,7 +146,7 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
         frameResources.emplace_back(std::make_unique<FrameResource>(
             device.Get(),
             descriptorHeapManager.get(),
-            static_cast<UINT>(/*GameObject ÃÖ´ë ¼ö=*/1000),
+            static_cast<UINT>(/*GameObject ìµœëŒ€ ìˆ˜=*/1000),
             GetViewportWidth(),
             GetViewportHeight(),
             threadPool->GetThreadCount(),
@@ -158,7 +158,7 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
     currentFrameResource = frameResources[currentFrameIndex].get();
 
 
-    // ·»´õÆĞ½º ÃÊ±âÈ­
+    // ë Œë”íŒ¨ìŠ¤ ì´ˆê¸°í™”
     renderPasses[static_cast<size_t>(RenderPass::PassIndex::ShadowMap)] = std::make_unique<ShadowMapPass>();
     renderPasses[static_cast<size_t>(RenderPass::PassIndex::ForwardOpaque)] = std::make_unique<ForwardOpaquePass>();
     renderPasses[static_cast<size_t>(RenderPass::PassIndex::ForwardTransparent)] = std::make_unique<ForwardTransparentPass>();
@@ -206,7 +206,7 @@ void Renderer::RemoveGameObject(std::shared_ptr<GameObject> object) {
         std::remove(gameObjects.begin(), gameObjects.end(), object),
         gameObjects.end());
 
-    // Åõ¸í/ºÒÅõ¸í ¸®½ºÆ®¿¡¼­µµ Á¦°Å
+    // íˆ¬ëª…/ë¶ˆíˆ¬ëª… ë¦¬ìŠ¤íŠ¸ì—ì„œë„ ì œê±°
     auto removeFrom = [&](auto& list) {
         list.erase(
             std::remove(list.begin(), list.end(), object),
@@ -243,7 +243,7 @@ void Renderer::Update(float deltaTime) {
 
     currentFrameResource = frameResources[currentFrameIndex].get();
 
-    // currentFrmaeResourceÀÇ fence¸¦ ÅëÇØ currentFrameResource°¡ Á¦ÃâÇÑ GPUÀÛ¾÷ÀÌ ³¡³µ´ÂÁö¸¦ ÆÇ´ÜÇÏ°í ´ë±âÇÑ´Ù.
+    // currentFrmaeResourceì˜ fenceë¥¼ í†µí•´ currentFrameResourceê°€ ì œì¶œí•œ GPUì‘ì—…ì´ ëë‚¬ëŠ”ì§€ë¥¼ íŒë‹¨í•˜ê³  ëŒ€ê¸°í•œë‹¤.
     UINT64 lastCompleted = directFence->GetCompletedValue();
     if (currentFrameResource->fenceValue > lastCompleted) {
         ThrowIfFailed(directFence->SetEventOnCompletion(
@@ -297,13 +297,13 @@ void Renderer::RenderMultiThreaded()
     FrameResource* frameResource = frameResources[currentFrameIndex].get();
     frameResource->ResetCommandBundles();
 
-    // Worker Thread + ¸ŞÀÎ ½º·¹µå
+    // Worker Thread + ë©”ì¸ ìŠ¤ë ˆë“œ
     std::barrier<>& syncPoint = frameResource->syncPoint;
 
     for (UINT i = 0; i < numWorkerThreads; ++i)
     {
-        // ¿ÜºÎ°ªÀº ±âº»ÀûÀ¸·Î value(°ª) À¸·Î Ä¸Ã³
-        // syncPoint ´Â ÂüÁ¶(&) ·Î Ä¸Ã³
+        // ì™¸ë¶€ê°’ì€ ê¸°ë³¸ì ìœ¼ë¡œ value(ê°’) ìœ¼ë¡œ ìº¡ì²˜
+        // syncPoint ëŠ” ì°¸ì¡°(&) ë¡œ ìº¡ì²˜
 
         threadPool->Submit([=, &syncPoint]() {
             WorkerThread(i, frameResource, syncPoint);
@@ -315,7 +315,7 @@ void Renderer::RenderMultiThreaded()
     // Pre-Frame
     ID3D12GraphicsCommandList* preFrameCommandList = frameResource->preFrameCommandList.Get();
 
-    // ¹é¹öÆÛ Transition: PRESENT ¡æ RENDER_TARGET
+    // ë°±ë²„í¼ Transition: PRESENT â†’ RENDER_TARGET
     CD3DX12_RESOURCE_BARRIER toRenderTarget =
         CD3DX12_RESOURCE_BARRIER::Transition(
             backBuffers[backBufferIndex].Get(),
@@ -336,13 +336,13 @@ void Renderer::RenderMultiThreaded()
         pass->RecordPreCommand(passPreCommandList, this);
         pass->RecordPostCommand(passPostCommandList, this);
 
-        // Command Execute Àü µ¿±âÈ­
+        // Command Execute ì „ ë™ê¸°í™”
         syncPoint.arrive_and_wait();
 
         preFrameCommandList->Close();
         passCommandBundle.CloseAll();
 
-        // ShadowMap Record ÈÄ Command Á¦Ãâ
+        // ShadowMap Record í›„ Command ì œì¶œ
         std::vector<ID3D12CommandList*> commandLists;
         commandLists.push_back(preFrameCommandList);
         commandLists.push_back(passPreCommandList);
@@ -393,7 +393,7 @@ void Renderer::RenderMultiThreaded()
 
     }
 
-    // Imgui µå·Î¿ì
+    // Imgui ë“œë¡œìš°
     {
         ID3D12DescriptorHeap* heaps[] = {
             descriptorHeapManager->GetImGuiSrvHeap(),
@@ -404,7 +404,7 @@ void Renderer::RenderMultiThreaded()
     }
 
 
-    // RENDER_TARGET ¡æ PRESENT ÀüÈ¯
+    // RENDER_TARGET â†’ PRESENT ì „í™˜
     CD3DX12_RESOURCE_BARRIER toPresent =
         CD3DX12_RESOURCE_BARRIER::Transition(
             backBuffers[backBufferIndex].Get(),
@@ -413,15 +413,15 @@ void Renderer::RenderMultiThreaded()
     postFrameCommandList->ResourceBarrier(1, &toPresent);
 
 
-    // Command Execute Àü µ¿±âÈ­
+    // Command Execute ì „ ë™ê¸°í™”
     syncPoint.arrive_and_wait();
 
 
-    // ÃÖÁ¾ Execute
+    // ìµœì¢… Execute
     {
         std::vector<ID3D12CommandList*> commandLists;
 
-        // Opaque Record Á¦Ãâ
+        // Opaque Record ì œì¶œ
         {
             size_t opaquePassIndex = static_cast<size_t>(RenderPass::PassIndex::ForwardOpaque);
 
@@ -440,7 +440,7 @@ void Renderer::RenderMultiThreaded()
         }
 
         
-        // postFrameCommnadList Á¦Ãâ
+        // postFrameCommnadList ì œì¶œ
 
         postFrameCommandList->Close();
         frameResource->CloseCommandLists();
@@ -472,7 +472,7 @@ void Renderer::WorkerThread(UINT threadIndex, FrameResource* frameResource, std:
         RenderPass* pass = renderPasses[passIndex].get();
         auto& passCommandBundle = frameResource->shadowPassCommandBundle;
 
-        // º´·ÄÃ³¸® ½ÃÀÛ
+        // ë³‘ë ¬ì²˜ë¦¬ ì‹œì‘
         ID3D12GraphicsCommandList* commandList = nullptr;
 
         commandList = passCommandBundle.threadCommandLists[threadIndex].Get();
@@ -490,7 +490,7 @@ void Renderer::WorkerThread(UINT threadIndex, FrameResource* frameResource, std:
         RenderPass* pass = renderPasses[passIndex].get();
         auto& passCommandBundle = frameResource->opaquePassCommandBundle;
 
-        // º´·ÄÃ³¸® ½ÃÀÛ
+        // ë³‘ë ¬ì²˜ë¦¬ ì‹œì‘
         ID3D12GraphicsCommandList* commandList = nullptr;
 
         commandList = passCommandBundle.threadCommandLists[threadIndex].Get();
@@ -606,13 +606,13 @@ bool Renderer::InitImGui(HWND hwnd)
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
 
-    // 1) Win32 ÃÊ±âÈ­
+    // 1) Win32 ì´ˆê¸°í™”
     if (!ImGui_ImplWin32_Init(hwnd))
         return false;
 
     descriptorHeapManager->InitializeImGuiDescriptorHeaps(device.Get());
 
-    // 2) DX12 ÃÊ±âÈ­
+    // 2) DX12 ì´ˆê¸°í™”
     auto srvHeap = descriptorHeapManager->GetImGuiSrvHeap();
     return ImGui_ImplDX12_Init(
         device.Get(),
@@ -650,14 +650,14 @@ FrameResource* Renderer::GetCurrentFrameResource()
 bool Renderer::InitD3D(HWND hwnd, int width, int height)
 {
 #ifdef _DEBUG
-    // GPU ±â¹İ °ËÁõ ¹× µğ¹ö±× ·¹ÀÌ¾îÈ°¼ºÈ­
+    // GPU ê¸°ë°˜ ê²€ì¦ ë° ë””ë²„ê·¸ ë ˆì´ì–´í™œì„±í™”
     if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)))) {
         debugInterface->SetEnableGPUBasedValidation(FALSE);
         debugInterface->EnableDebugLayer();
     }
 #endif
 
-    // ÆÑÅä¸® ¹× ¾î´ğÅÍ »ı¼º
+    // íŒ©í† ë¦¬ ë° ì–´ëŒ‘í„° ìƒì„±
     ComPtr<IDXGIFactory4> factory;
     THROW_IF_FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
 
@@ -668,13 +668,13 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         THROW_IF_FAILED(warpAdapter.As(&adapter));
     }
 
-    // µğ¹ÙÀÌ½º »ı¼º
+    // ë””ë°”ì´ìŠ¤ ìƒì„±
     THROW_IF_FAILED(D3D12CreateDevice(
         adapter.Get(),
         D3D_FEATURE_LEVEL_11_0,
         IID_PPV_ARGS(&device)));
 
-    // Direct Ä¿¸Çµå Å¥ »ı¼º
+    // Direct ì»¤ë§¨ë“œ í ìƒì„±
     {
         D3D12_COMMAND_QUEUE_DESC desc = {};
         desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -682,7 +682,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         THROW_IF_FAILED(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&directQueue)));
     }
 
-    // Copy Ä¿¸Çµå Å¥ »ı¼º
+    // Copy ì»¤ë§¨ë“œ í ìƒì„±
     {
         D3D12_COMMAND_QUEUE_DESC desc = {};
         desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
@@ -690,7 +690,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         THROW_IF_FAILED(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&copyQueue)));
     }
 
-    // 5) Copy Ä¿¸Çµå ÇÒ´çÀÚ & ¸®½ºÆ®
+    // 5) Copy ì»¤ë§¨ë“œ í• ë‹¹ì & ë¦¬ìŠ¤íŠ¸
     THROW_IF_FAILED(device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_COPY,
         IID_PPV_ARGS(&copyCommandAllocator)));
@@ -702,13 +702,13 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         IID_PPV_ARGS(&copyCommandList)));
     copyCommandList->Close();
 
-    // Copy Å¥¿ë Ææ½º & ÀÌº¥Æ®
+    // Copy íìš© íœìŠ¤ & ì´ë²¤íŠ¸
     THROW_IF_FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&copyFence)));
     copyFenceValue = 0;
     copyFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (!copyFenceEvent) return false;
 
-    // ½º¿ÒÃ¼ÀÎ »ı¼º (Flip Discard)
+    // ìŠ¤ì™‘ì²´ì¸ ìƒì„± (Flip Discard)
     {
         DXGI_SWAP_CHAIN_DESC1 scDesc = {};
         scDesc.BufferCount = BackBufferCount;
@@ -728,7 +728,7 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         backBufferIndex = swapChain->GetCurrentBackBufferIndex();
     }
 
-    // Descriptor Heap »ı¼º
+    // Descriptor Heap ìƒì„±
     descriptorHeapManager = std::make_unique<DescriptorHeapManager>();
     if (!descriptorHeapManager->Initialize(
         device.Get(),
@@ -741,12 +741,12 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
         return false;
     }
 
-    // Swap-Chain BackBuffer¿ë RTV »ı¼º
+    // Swap-Chain BackBufferìš© RTV ìƒì„±
     swapChainRtvs.resize(BackBufferCount);
     for (UINT i = 0; i < BackBufferCount; ++i) {
         THROW_IF_FAILED(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
 
-        // RTV ½½·Ô ÇÒ´ç + ºä »ı¼º
+        // RTV ìŠ¬ë¡¯ í• ë‹¹ + ë·° ìƒì„±
         swapChainRtvs[i] = descriptorHeapManager->Allocate(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         descriptorHeapManager->CreateRenderTargetView(
             device.Get(),
@@ -755,13 +755,13 @@ bool Renderer::InitD3D(HWND hwnd, int width, int height)
     }
 
 
-    // Direct Å¥¿ë Ææ½º & ÀÌº¥Æ®
+    // Direct íìš© íœìŠ¤ & ì´ë²¤íŠ¸
     THROW_IF_FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&directFence)));
     directFenceValue = 1;
     directFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     if (!directFenceEvent) return false;
 
-    // Viewport & Scissor ¼³Á¤
+    // Viewport & Scissor ì„¤ì •
     viewport = { 0.0f, 0.0f, float(width), float(height), 0.0f, 1.0f };
     scissorRect = { 0, 0, width, height };
 
@@ -774,7 +774,7 @@ void Renderer::RecordCommandList_SingleThreaded()
 
     ID3D12GraphicsCommandList* commandList = currentFrameResource->commandList.Get();
 
-    // ¹é¹öÆÛ Transition: PRESENT ¡æ RENDER_TARGET
+    // ë°±ë²„í¼ Transition: PRESENT â†’ RENDER_TARGET
     CD3DX12_RESOURCE_BARRIER toRenderTarget =
         CD3DX12_RESOURCE_BARRIER::Transition(
             backBuffers[backBufferIndex].Get(),
@@ -788,7 +788,7 @@ void Renderer::RecordCommandList_SingleThreaded()
         renderPasses[i]->RenderSingleThreaded(this);
     }
 
-    // Imgui µå·Î¿ì
+    // Imgui ë“œë¡œìš°
     {
         ID3D12DescriptorHeap* heaps[] = {
             descriptorHeapManager->GetImGuiSrvHeap(),
@@ -799,7 +799,7 @@ void Renderer::RecordCommandList_SingleThreaded()
     }
 
 
-    // RENDER_TARGET ¡æ PRESENT ÀüÈ¯
+    // RENDER_TARGET â†’ PRESENT ì „í™˜
     CD3DX12_RESOURCE_BARRIER toPresent =
         CD3DX12_RESOURCE_BARRIER::Transition(
             backBuffers[backBufferIndex].Get(),
@@ -807,7 +807,7 @@ void Renderer::RecordCommandList_SingleThreaded()
             D3D12_RESOURCE_STATE_PRESENT);
     commandList->ResourceBarrier(1, &toPresent);
 
-    // Ä¿¸Çµå ¸®½ºÆ® Á¾·á
+    // ì»¤ë§¨ë“œ ë¦¬ìŠ¤íŠ¸ ì¢…ë£Œ
     currentFrameResource->CloseCommandLists();
 }
 
@@ -815,16 +815,16 @@ void Renderer::WaitForDirectQueue() {
 
     const UINT64 fenceToWait = directFenceValue;
 
-    // SignalÀº ¹Ù·Î ¼öÇàµÇÁö´Â ¾Ê°í, directQueue°¡ ¸ğµç ÀÛ¾÷À» ¸¶Ä¡¸é Signal À» ¼öÇà½ÃÄÑ 
-    // directFence °ªÀ» ÁöÁ¤ÇÑ fenceToWait·Î ¹Ù²Û´Ù.
+    // Signalì€ ë°”ë¡œ ìˆ˜í–‰ë˜ì§€ëŠ” ì•Šê³ , directQueueê°€ ëª¨ë“  ì‘ì—…ì„ ë§ˆì¹˜ë©´ Signal ì„ ìˆ˜í–‰ì‹œì¼œ 
+    // directFence ê°’ì„ ì§€ì •í•œ fenceToWaitë¡œ ë°”ê¾¼ë‹¤.
 
     directQueue->Signal(directFence.Get(), fenceToWait);
 
-    // ´ÙÀ½ ¹ø Signal¿¡¼­ Áßº¹ ¾øÀÌ »õ·Î¿î Ææ½º °ªÀ» ¾²±â À§ÇÑ ÀÛ¾÷
+    // ë‹¤ìŒ ë²ˆ Signalì—ì„œ ì¤‘ë³µ ì—†ì´ ìƒˆë¡œìš´ íœìŠ¤ ê°’ì„ ì“°ê¸° ìœ„í•œ ì‘ì—…
     directFenceValue++;     
 
 
-    // ¸¸¾à if¹® ¼öÇàÀü¿¡ ÀÛ¾÷ÀÌ ³¡³ª¸é Waitµµ ¾ÈÇÏ°í ¹Ù·Î ÇÁ·¹ÀÓÀ¸·Î ³Ñ¾î°£´Ù.
+    // ë§Œì•½ ifë¬¸ ìˆ˜í–‰ì „ì— ì‘ì—…ì´ ëë‚˜ë©´ Waitë„ ì•ˆí•˜ê³  ë°”ë¡œ í”„ë ˆì„ìœ¼ë¡œ ë„˜ì–´ê°„ë‹¤.
     if (directFence->GetCompletedValue() < fenceToWait) {
         directFence->SetEventOnCompletion(fenceToWait, directFenceEvent);
         WaitForSingleObject(directFenceEvent, INFINITE);

@@ -12,7 +12,7 @@ public:
     int GetOrder() const noexcept override;
 
     void FixedUpdate(double fixedDeltaSeconds, GameRoom& room) override;
-    void Update(double deltaSeconds, GameRoom& room) override; // ÇöÀç ¹Ì»ç¿ë
+    void Update(double deltaSeconds, GameRoom& room) override; // í˜„ìž¬ ë¯¸ì‚¬ìš©
 
     void RequestRespawn(std::uint32_t playerId, double delaySeconds);
 

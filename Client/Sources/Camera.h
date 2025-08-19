@@ -8,8 +8,8 @@ public:
     Camera();
 
     void SetPosition(const XMFLOAT3& position);
-    void SetRotationEuler(const XMFLOAT3& euler);      // ¿ÀÀÏ·¯ -> ÄõÅÍ´Ï¾ð º¯È¯
-    void SetRotationQuat(const XMVECTOR& quat);        // ÄõÅÍ´Ï¾ð ¼³Á¤
+    void SetRotationEuler(const XMFLOAT3& euler);      // ì˜¤ì¼ëŸ¬ -> ì¿¼í„°ë‹ˆì–¸ ë³€í™˜
+    void SetRotationQuat(const XMVECTOR& quat);        // ì¿¼í„°ë‹ˆì–¸ ì„¤ì •
 
     XMFLOAT3 GetPosition() const;
     XMFLOAT3 GetRotationEuler() const;

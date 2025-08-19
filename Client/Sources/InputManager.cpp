@@ -7,8 +7,8 @@ void InputManager::Initialize(HWND hwnd)
     this->hwnd = hwnd;
 
     RAWINPUTDEVICE rid;
-    rid.usUsagePage = 0x01; // ÀÏ¹İ µ¥½ºÅ©Å¾
-    rid.usUsage = 0x02;     // ¸¶¿ì½º
+    rid.usUsagePage = 0x01; // ì¼ë°˜ ë°ìŠ¤í¬íƒ‘
+    rid.usUsage = 0x02;     // ë§ˆìš°ìŠ¤
     rid.dwFlags = RIDEV_INPUTSINK;
     rid.hwndTarget = hwnd;
 
@@ -32,14 +32,14 @@ bool InputManager::IsKeyJustPressed(UINT nChar) const {
     if (nChar >= 256)
         return false;
 
-    // »õ·Ó°Ô ´­¸°Áö ÆÄ¾Ç
+    // ìƒˆë¡­ê²Œ ëˆŒë¦°ì§€ íŒŒì•…
     return keyStates[nChar] && !prevKeyStates[nChar];
 }
 
 void InputManager::Update(float deltaTime) {
 
-    // ´ÙÀ½ ÇÁ·¹ÀÓ¿¡¼­ ÃÊ±âÈ­Ã³¸®
-    // ÇöÀç Ä³¸¯ÅÍ Update -> InputMangaer Update ¼øÀ¸·Î Ã³¸®µÊÀ» À¯ÀÇÇÏ¸é µÊ
+    // ë‹¤ìŒ í”„ë ˆì„ì—ì„œ ì´ˆê¸°í™”ì²˜ë¦¬
+    // í˜„ì¬ ìºë¦­í„° Update -> InputMangaer Update ìˆœìœ¼ë¡œ ì²˜ë¦¬ë¨ì„ ìœ ì˜í•˜ë©´ ë¨
 
     mouseDeltaX = rawMouseDeltaX;
     mouseDeltaY = rawMouseDeltaY;
@@ -52,7 +52,7 @@ void InputManager::Update(float deltaTime) {
     rightKeyDoublePressed = false;
 
 
-    // ÁÂÃø Å°(VK_LEFT) ¿¬¼Ó ÀÔ·Â È®ÀÎ
+    // ì¢Œì¸¡ í‚¤(VK_LEFT) ì—°ì† ì…ë ¥ í™•ì¸
     if (IsKeyJustPressed(VK_LEFT)) {
 
         if (leftKeyComboInputActive && leftKeyTimer < DOUBLE_PRESS_THRESHOLD)
@@ -82,7 +82,7 @@ void InputManager::Update(float deltaTime) {
     }
 
 
-    // ¿ìÃø Å°(VK_RIGHT) ¿¬¼Ó ÀÔ·Â È®ÀÎ
+    // ìš°ì¸¡ í‚¤(VK_RIGHT) ì—°ì† ì…ë ¥ í™•ì¸
     if (IsKeyJustPressed(VK_RIGHT)) {
 
         if (rightKeyComboInputActive && rightKeyTimer < DOUBLE_PRESS_THRESHOLD)
@@ -114,13 +114,13 @@ void InputManager::Update(float deltaTime) {
 
 
 
-    // ÀÌÀü ÇÁ·¹ÀÓÀÇ Å° »óÅÂ ¾÷µ¥ÀÌÆ®
+    // ì´ì „ í”„ë ˆì„ì˜ í‚¤ ìƒíƒœ ì—…ë°ì´íŠ¸
     for (int i = 0; i < 256; ++i)
     {
         prevKeyStates[i] = keyStates[i];
     }
 
-    // ÀÌÀü ÇÁ·¹ÀÓÀÇ ¸¶¿ì½º »óÅÂ ÀúÀå
+    // ì´ì „ í”„ë ˆì„ì˜ ë§ˆìš°ìŠ¤ ìƒíƒœ ì €ì¥
     for (int i = 0; i < 3; ++i)
     {
         prevMouseButtonStates[i] = mouseButtonStates[i];
@@ -211,16 +211,16 @@ XMFLOAT2 InputManager::GetMouseDirectionFromCenter()
     int screenHeight = rect.bottom - rect.top;
 
     POINT mousePos = { 0 };
-    GetCursorPos(&mousePos);               // ¸¶¿ì½º À§Ä¡¸¦ ½ºÅ©¸° ÁÂÇ¥ ±âÁØÀ¸·Î
-    ScreenToClient(hwnd, &mousePos);       // ¡æ Å¬¶óÀÌ¾ğÆ®(À©µµ¿ì ³»ºÎ) ÁÂÇ¥·Î º¯È¯
+    GetCursorPos(&mousePos);               // ë§ˆìš°ìŠ¤ ìœ„ì¹˜ë¥¼ ìŠ¤í¬ë¦° ì¢Œí‘œ ê¸°ì¤€ìœ¼ë¡œ
+    ScreenToClient(hwnd, &mousePos);       // â†’ í´ë¼ì´ì–¸íŠ¸(ìœˆë„ìš° ë‚´ë¶€) ì¢Œí‘œë¡œ ë³€í™˜
 
     float centerX = screenWidth * 0.5f;
     float centerY = screenHeight * 0.5f;
 
     float normX = (mousePos.x - centerX) / centerX;
-    float normY = (centerY - mousePos.y) / centerY;  // Y ¹İÀü
+    float normY = (centerY - mousePos.y) / centerY;  // Y ë°˜ì „
 
-    // Å¬·¥ÇÎ (ÃÖ´ë ¹üÀ§ ÃÊ°ú ¹æÁö)
+    // í´ë¨í•‘ (ìµœëŒ€ ë²”ìœ„ ì´ˆê³¼ ë°©ì§€)
     normX = std::clamp(normX, -1.0f, 1.0f);
     normY = std::clamp(normY, -1.0f, 1.0f);
 

@@ -7,14 +7,14 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
-// ÆÄÀÏÀ» ·ÎµåÇÏ¿© GPU ÅØ½ºÃ³ »ı¼º ÈÄ COMMON »óÅÂ·Î ÀüÈ¯
-// (Copy ¸í·É Close ¡æ Execute ¡æ Fence Wait¸¦ ³»ºÎ¿¡¼­ Ã³¸®)
+// íŒŒì¼ì„ ë¡œë“œí•˜ì—¬ GPU í…ìŠ¤ì²˜ ìƒì„± í›„ COMMON ìƒíƒœë¡œ ì „í™˜
+// (Copy ëª…ë ¹ Close â†’ Execute â†’ Fence Waitë¥¼ ë‚´ë¶€ì—ì„œ ì²˜ë¦¬)
 
 bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, bool generateMips)
 {
     name = filePath;
 
-    // ·»´õ·¯¿¡¼­ Copy Àü¿ë Ä¿¸Çµå ¸®½ºÆ®/ÇÒ´çÀÚ/Å¥/Ææ½º Á¤º¸ °¡Á®¿À±â
+    // ë Œë”ëŸ¬ì—ì„œ Copy ì „ìš© ì»¤ë§¨ë“œ ë¦¬ìŠ¤íŠ¸/í• ë‹¹ì/í/íœìŠ¤ ì •ë³´ ê°€ì ¸ì˜¤ê¸°
     ID3D12Device* device = renderer->GetDevice();
     auto         copyList = renderer->GetCopyCommandList();
     auto         copyAllocator = renderer->GetCopyCommandAllocator();
@@ -22,7 +22,7 @@ bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, boo
     auto         copyFence = renderer->GetCopyFence();
     UINT64& copyFenceValue = renderer->GetCopyFenceValue();
 
-    // 1) ÀÌ¹ÌÁö ·Îµå (DDS / WIC)
+    // 1) ì´ë¯¸ì§€ ë¡œë“œ (DDS / WIC)
     ScratchImage scratchImage;
     TexMetadata  metadata;
     UINT         arraySize = 1;
@@ -31,7 +31,7 @@ bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, boo
     std::wstring ext = filePath.substr(filePath.find_last_of(L'.'));
     if (_wcsicmp(ext.c_str(), L".dds") == 0)
     {
-        // DDS´Â ÀÌ¹Ì MIP ·¹º§ Æ÷ÇÔ
+        // DDSëŠ” ì´ë¯¸ MIP ë ˆë²¨ í¬í•¨
         if (FAILED(LoadFromDDSFile(filePath.c_str(), DDS_FLAGS_NONE, &metadata, scratchImage)))
             return false;
 
@@ -40,11 +40,11 @@ bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, boo
     }
     else
     {
-        // WIC ·Îµå: ¿øº» ·¹º§¸¸
+        // WIC ë¡œë“œ: ì›ë³¸ ë ˆë²¨ë§Œ
         if (FAILED(LoadFromWICFile(filePath.c_str(), WIC_FLAGS_FORCE_RGB, &metadata, scratchImage)))
             return false;
 
-        // ¹Ó¸Ê Ã¼ÀÎ »ı¼º
+        // ë°‰ë§µ ì²´ì¸ ìƒì„±
         {
             ScratchImage mipChain;
             HRESULT hr = GenerateMipMaps(
@@ -52,7 +52,7 @@ bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, boo
                 scratchImage.GetImageCount(),
                 scratchImage.GetMetadata(),
                 TEX_FILTER_DEFAULT,
-                0,            // 0ÀÌ¸é ÃÖ´ë ·¹º§±îÁö
+                0,            // 0ì´ë©´ ìµœëŒ€ ë ˆë²¨ê¹Œì§€
                 mipChain
             );
             if (FAILED(hr))
@@ -66,7 +66,7 @@ bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, boo
         mipLevels = static_cast<UINT>(metadata.mipLevels);
     }
 
-    // 2) GPU ¸®¼Ò½º »ı¼º (Default heap, COMMON »óÅÂ)
+    // 2) GPU ë¦¬ì†ŒìŠ¤ ìƒì„± (Default heap, COMMON ìƒíƒœ)
     CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
     CD3DX12_RESOURCE_DESC   desc = CD3DX12_RESOURCE_DESC::Tex2D(
         metadata.format,
@@ -84,7 +84,7 @@ bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, boo
         IID_PPV_ARGS(&texture))))
         return false;
 
-    // 3) Upload heap (staging) ¹öÆÛ »ı¼º
+    // 3) Upload heap (staging) ë²„í¼ ìƒì„±
     UINT64 uploadSize = GetRequiredIntermediateSize(texture.Get(), 0, arraySize * mipLevels);
     CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
     auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadSize);
@@ -99,7 +99,7 @@ bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, boo
         IID_PPV_ARGS(&uploadResource))))
         return false;
 
-    // 4) Copy ¸®½ºÆ® ÁØºñ: COMMON -> COPY_DEST
+    // 4) Copy ë¦¬ìŠ¤íŠ¸ ì¤€ë¹„: COMMON -> COPY_DEST
     copyAllocator->Reset();
     copyList->Reset(copyAllocator, nullptr);
     {
@@ -110,7 +110,7 @@ bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, boo
         copyList->ResourceBarrier(1, &barrier);
     }
 
-    // 5) ¼­ºê¸®¼Ò½º µ¥ÀÌÅÍ ÁØºñ & º¹»ç
+    // 5) ì„œë¸Œë¦¬ì†ŒìŠ¤ ë°ì´í„° ì¤€ë¹„ & ë³µì‚¬
     UINT                   subCount = arraySize * mipLevels;
     std::vector<D3D12_SUBRESOURCE_DATA> subresources(subCount);
     auto images = scratchImage.GetImages();
@@ -140,7 +140,7 @@ bool Texture::LoadFromFile(Renderer* renderer, const std::wstring& filePath, boo
     }
     copyList->Close();
 
-    // 7) Copy Å¥ Á¦Ãâ ¹× µ¿±âÈ­
+    // 7) Copy í ì œì¶œ ë° ë™ê¸°í™”
     ID3D12CommandList* lists[] = { copyList };
     copyQueue->ExecuteCommandLists(_countof(lists), lists);
     ++copyFenceValue;
@@ -160,7 +160,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
 {
     name = filePath;
 
-    // º¹»ç¿ë Ä¿¸Çµå Á¤º¸
+    // ë³µì‚¬ìš© ì»¤ë§¨ë“œ ì •ë³´
     ID3D12Device* device = renderer->GetDevice();
     ID3D12GraphicsCommandList* copyList = renderer->GetCopyCommandList();
     ID3D12CommandAllocator* copyAllocator = renderer->GetCopyCommandAllocator();
@@ -168,7 +168,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
     ID3D12Fence* copyFence = renderer->GetCopyFence();
     UINT64& fenceValue = renderer->GetCopyFenceValue();
 
-    // 1) DDS Å¥ºê¸Ê ·Îµå
+    // 1) DDS íë¸Œë§µ ë¡œë“œ
     ScratchImage scratchImage;
     TexMetadata metadata;
     if (FAILED(LoadFromDDSFile(filePath.c_str(), DDS_FLAGS_NONE, &metadata, scratchImage)))
@@ -184,7 +184,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
             scratchImage.GetImageCount(),
             scratchImage.GetMetadata(),
             TEX_FILTER_DEFAULT,
-            0,              // 0 = ÀÚµ¿À¸·Î ÃÖ´ë ·¹º§±îÁö
+            0,              // 0 = ìë™ìœ¼ë¡œ ìµœëŒ€ ë ˆë²¨ê¹Œì§€
             mipChain
         );
         if (FAILED(hr))
@@ -193,7 +193,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
         metadata = scratchImage.GetMetadata();
     }
 
-    // 2) ¸®¼Ò½º ¼³¸í ±¸¼º (6 faces)
+    // 2) ë¦¬ì†ŒìŠ¤ ì„¤ëª… êµ¬ì„± (6 faces)
     D3D12_RESOURCE_DESC textureDesc{};
     textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     textureDesc.Width = static_cast<UINT>(metadata.width);
@@ -206,7 +206,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
     textureDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-    // 3) GPU ¸®¼Ò½º »ı¼º (ÃÊ±â »óÅÂ = COMMON)
+    // 3) GPU ë¦¬ì†ŒìŠ¤ ìƒì„± (ì´ˆê¸° ìƒíƒœ = COMMON)
     CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
     if (FAILED(device->CreateCommittedResource(
         &defaultHeap,
@@ -219,7 +219,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
         return false;
     }
 
-    // 4) staging ¹öÆÛ ¹× ¼­ºê¸®¼Ò½º °³¼ö °è»ê
+    // 4) staging ë²„í¼ ë° ì„œë¸Œë¦¬ì†ŒìŠ¤ ê°œìˆ˜ ê³„ì‚°
     UINT   subresourceCount = textureDesc.MipLevels * textureDesc.DepthOrArraySize;
     UINT64 requiredSize = GetRequiredIntermediateSize(texture.Get(), 0, subresourceCount);
 
@@ -238,7 +238,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
         return false;
     }
 
-    // 5) ¼­ºê¸®¼Ò½º µ¥ÀÌÅÍ ÁØºñ
+    // 5) ì„œë¸Œë¦¬ì†ŒìŠ¤ ë°ì´í„° ì¤€ë¹„
     auto images = scratchImage.GetImages();
     size_t imageCount = scratchImage.GetImageCount();
 
@@ -253,7 +253,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
         subresources.push_back(data);
     }
 
-    // 6) copy Ä¿¸Çµå ±â·Ï
+    // 6) copy ì»¤ë§¨ë“œ ê¸°ë¡
     copyAllocator->Reset();
     copyList->Reset(copyAllocator, nullptr);
 
@@ -266,7 +266,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
         copyList->ResourceBarrier(1, &barrier);
     }
 
-    // 6-2) ½ÇÁ¦ º¹»ç
+    // 6-2) ì‹¤ì œ ë³µì‚¬
     UpdateSubresources(
         copyList,
         texture.Get(),
@@ -288,7 +288,7 @@ bool Texture::LoadCubeMapFromFile(Renderer* renderer, const std::wstring& filePa
     ID3D12CommandList* lists[] = { copyList };
     copyQueue->ExecuteCommandLists(_countof(lists), lists);
 
-    // 7) µ¿±âÈ­
+    // 7) ë™ê¸°í™”
     ++fenceValue;
     copyQueue->Signal(copyFence, fenceValue);
     if (copyFence->GetCompletedValue() < fenceValue)

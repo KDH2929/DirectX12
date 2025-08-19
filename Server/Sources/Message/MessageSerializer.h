@@ -4,30 +4,30 @@
 #include <cstdint>
 #include "Message/game_message.pb.h"  // game::GameMessage
 
-// °íÁ¤ 4¹ÙÀÌÆ® ±æÀÌ + GameMessage Á÷·ÄÈ­/¿ªÁ÷·ÄÈ­
+// ê³ ì • 4ë°”ì´íŠ¸ ê¸¸ì´ + GameMessage ì§ë ¬í™”/ì—­ì§ë ¬í™”
 class MessageSerializer {
 public:
-    // ¾ÈÀü ÇÑµµ
+    // ì•ˆì „ í•œë„
     static constexpr std::size_t MAX_MESSAGE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
-    // ´©Àû ¹öÆÛ¿¡¼­ [len(4)][body] ÇÏ³ª¸¦ ²¨³» body ¹ÙÀÌÆ®¸¦ ¹İÈ¯
-    // - ¼º°ø ½Ã input_buffer¿¡¼­ ¼ÒºñµÈ ¸¸Å­ Áö¿ò
-    // - NeedMoreDataÀÎ °æ¿ì false, ±× ¿Ü Ä¡¸í ¿À·ù´Â error_message¿¡ »çÀ¯ ±â·Ï
+    // ëˆ„ì  ë²„í¼ì—ì„œ [len(4)][body] í•˜ë‚˜ë¥¼ êº¼ë‚´ body ë°”ì´íŠ¸ë¥¼ ë°˜í™˜
+    // - ì„±ê³µ ì‹œ input_bufferì—ì„œ ì†Œë¹„ëœ ë§Œí¼ ì§€ì›€
+    // - NeedMoreDataì¸ ê²½ìš° false, ê·¸ ì™¸ ì¹˜ëª… ì˜¤ë¥˜ëŠ” error_messageì— ì‚¬ìœ  ê¸°ë¡
     static bool TryExtractMessage(std::string& input_buffer,
         std::string& output_body_bytes,
         std::string* error_message = nullptr);
 
-    // GameMessage ¡æ body ¹ÙÀÌÆ®·Î Á÷·ÄÈ­
+    // GameMessage â†’ body ë°”ì´íŠ¸ë¡œ ì§ë ¬í™”
     static bool Serialize(const game::GameMessage& message,
         std::string& out_body_bytes,
         std::string* error_message = nullptr);
 
-    // body ¹ÙÀÌÆ® ¡æ GameMessage ¿ªÁ÷·ÄÈ­
+    // body ë°”ì´íŠ¸ â†’ GameMessage ì—­ì§ë ¬í™”
     static bool Deserialize(std::string_view body_bytes,
         game::GameMessage& out_message,
         std::string* error_message = nullptr);
 
-    // [len(4)][body] ¿Ï¼º (¼Û½Å Á÷Àü »ç¿ë)
+    // [len(4)][body] ì™„ì„± (ì†¡ì‹  ì§ì „ ì‚¬ìš©)
     static std::string BuildSerializedMessage(const game::GameMessage& message);
 
 private:

@@ -13,13 +13,13 @@
 class Game {
 public:
     bool Initialize(HINSTANCE hInstance, int nCmdShow);
-    int Run();          // ¸Ş½ÃÁö ·çÇÁ + ·»´õ¸µ ·çÇÁ
+    int Run();          // ë©”ì‹œì§€ ë£¨í”„ + ë Œë”ë§ ë£¨í”„
     void Cleanup();
 
 private:
     HWND hwnd;
     
-    // À©µµ¿ì °ü·Ã Á¤º¸
+    // ìœˆë„ìš° ê´€ë ¨ ì •ë³´
     int windowWidth = 1280;
     int windowHeight = 720;
     int windowPosX = 100;
@@ -27,9 +27,9 @@ private:
     LPCWSTR windowClassName = L"D3DWindowClass";
     LPCWSTR windowTitle = L"Direct3D Game Window";
 
-    LARGE_INTEGER prevTime;     // ÀÌÀü ÇÁ·¹ÀÓÀÇ ½Ã°£
-    LARGE_INTEGER frequency;    // ¼º´É Ä«¿îÅÍÀÇ ÁÖÆÄ¼ö
-    float deltaTime = 0.0f;         // ÇÁ·¹ÀÓ °£ ½Ã°£ °£°İ
+    LARGE_INTEGER prevTime;     // ì´ì „ í”„ë ˆì„ì˜ ì‹œê°„
+    LARGE_INTEGER frequency;    // ì„±ëŠ¥ ì¹´ìš´í„°ì˜ ì£¼íŒŒìˆ˜
+    float deltaTime = 0.0f;         // í”„ë ˆì„ ê°„ ì‹œê°„ ê°„ê²©
     float totalTime = 0.0f;
 
     NetworkManager network;
@@ -64,8 +64,8 @@ private:
     bool InitWindow(HINSTANCE hInstance, int nCmdShow);
     void Update(float deltaTime);
     void Render();
-    void HandleInput(float deltaTime);      // ¼­¹ö¿¡ Å°º¸µå¿Í ¸¶¿ì½º ÀÔ·Â°ª Àü´Ş
-    void ProcessNetwork();                   // ¼­¹ö°¡ º¸³½ ÆĞÅ¶ Ã³¸®
+    void HandleInput(float deltaTime);      // ì„œë²„ì— í‚¤ë³´ë“œì™€ ë§ˆìš°ìŠ¤ ì…ë ¥ê°’ ì „ë‹¬
+    void ProcessNetwork();                   // ì„œë²„ê°€ ë³´ë‚¸ íŒ¨í‚· ì²˜ë¦¬
 
     void SetupCollisionResponse();
 };

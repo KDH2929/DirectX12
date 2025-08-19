@@ -9,13 +9,13 @@ void MessageDispatcher::RegisterHandler(int payloadCase, std::function<void(std:
 }
 
 void MessageDispatcher::Dispatch(std::shared_ptr<ClientSession> session, const game::GameMessage& message) const {
-    int payloadCase = message.payload_case();  // oneof¿¡¼­ payload_case ÃßÃâ
+    int payloadCase = message.payload_case();  // oneofì—ì„œ payload_case ì¶”ì¶œ
 
     auto it = handlerMap.find(payloadCase);
     if (it != handlerMap.end()) {
-        it->second(session, message);  // ÇØ´ç ÇÚµé·¯ È£Ãâ
+        it->second(session, message);  // í•´ë‹¹ í•¸ë“¤ëŸ¬ í˜¸ì¶œ
     }
     else {
-        // ÇÚµé·¯°¡ ¾ø´Ù¸é Ã³¸® ¾ÈÇÔ (È¤Àº ¿¡·¯ Ã³¸®)
+        // í•¸ë“¤ëŸ¬ê°€ ì—†ë‹¤ë©´ ì²˜ë¦¬ ì•ˆí•¨ (í˜¹ì€ ì—ëŸ¬ ì²˜ë¦¬)
     }
 }

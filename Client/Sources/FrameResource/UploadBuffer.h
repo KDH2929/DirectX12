@@ -5,21 +5,21 @@
 
 using Microsoft::WRL::ComPtr;
 
-// Microsoft Sample Code ¹× Frank Luna DX12 Code Âü°í
+// Microsoft Sample Code ë° Frank Luna DX12 Code ì°¸ê³ 
 
-// UploadBuffer: CPU¡æGPU ¾÷·Îµå¿ë ¹öÆÛ Wrapper
-// T: ¹öÆÛ ¿ä¼Ò Å¸ÀÔ
+// UploadBuffer: CPUâ†’GPU ì—…ë¡œë“œìš© ë²„í¼ Wrapper
+// T: ë²„í¼ ìš”ì†Œ íƒ€ì…
 template<typename T>
 class UploadBuffer {
 public:
-    // device: D3D12 µğ¹ÙÀÌ½º
-    // elementCount: ÃÑ ¿ä¼Ò °³¼ö
-    // isConstantBuffer: true¸é 256¹ÙÀÌÆ® Á¤·Ä
+    // device: D3D12 ë””ë°”ì´ìŠ¤
+    // elementCount: ì´ ìš”ì†Œ ê°œìˆ˜
+    // isConstantBuffer: trueë©´ 256ë°”ì´íŠ¸ ì •ë ¬
     UploadBuffer(ID3D12Device* device, UINT elementCount, bool isConstantBuffer)
         : elementCount(elementCount)
         , isConstantBuffer(isConstantBuffer)
     {
-        // ¿ä¼Ò Å©±â °è»ê (»ó¼ö ¹öÆÛ¸é 256¹ÙÀÌÆ® Á¤·Ä)
+        // ìš”ì†Œ í¬ê¸° ê³„ì‚° (ìƒìˆ˜ ë²„í¼ë©´ 256ë°”ì´íŠ¸ ì •ë ¬)
         UINT rawSize = sizeof(T);
         if (isConstantBuffer) {
             elementSize = (rawSize + 255) & ~255;
@@ -28,7 +28,7 @@ public:
             elementSize = rawSize;
         }
 
-        // ¸®¼Ò½º »ı¼º
+        // ë¦¬ì†ŒìŠ¤ ìƒì„±
         D3D12_RESOURCE_DESC desc = {};
         desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
         desc.Alignment = 0;
@@ -58,8 +58,8 @@ public:
         );
         assert(SUCCEEDED(hr) && "UploadBuffer: CreateCommittedResource failed");
 
-        // ¸ÅÇÎ
-        D3D12_RANGE readRange = { 0, 0 }; // CPU°¡ ÀĞÁö ¾ÊÀ½
+        // ë§¤í•‘
+        D3D12_RANGE readRange = { 0, 0 }; // CPUê°€ ì½ì§€ ì•ŠìŒ
         hr = uploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&mappedData));
         assert(SUCCEEDED(hr) && "UploadBuffer: Map failed");
     }
@@ -74,21 +74,21 @@ public:
         }
     }
 
-    // ¿ä¼Ò µ¥ÀÌÅÍ º¹»ç
+    // ìš”ì†Œ ë°ì´í„° ë³µì‚¬
     void CopyData(UINT elementIndex, const T& data) {
         assert(elementIndex < elementCount);
         memcpy(&mappedData[elementIndex * (elementSize / sizeof(T))], &data, sizeof(T));
     }
 
-    // GPU °¡»ó ÁÖ¼Ò ¹İÈ¯
+    // GPU ê°€ìƒ ì£¼ì†Œ ë°˜í™˜
     D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress(UINT elementIndex) const {
         assert(elementIndex < elementCount);
         return uploadBuffer->GetGPUVirtualAddress() + UINT64(elementIndex) * elementSize;
     }
 
-    // ÇÊ¿ä ½Ã Reset È£Ãâ
+    // í•„ìš” ì‹œ Reset í˜¸ì¶œ
     void Reset() {
-        // Upload heapÀº Àç»ı¼º ¾øÀÌ µ¤¾î¾²±â¸¸ ÇÏ¸é µÇ¹Ç·Î Æ¯º°ÇÑ µ¿ÀÛ ¾øÀ½
+        // Upload heapì€ ì¬ìƒì„± ì—†ì´ ë®ì–´ì“°ê¸°ë§Œ í•˜ë©´ ë˜ë¯€ë¡œ íŠ¹ë³„í•œ ë™ì‘ ì—†ìŒ
     }
 
 private:

@@ -16,7 +16,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
     LPARAM lParam);
 
 
-// Àü¿ª À©µµ¿ì ÇÁ·Î½ÃÀú
+// ì „ì—­ ìœˆë„ìš° í”„ë¡œì‹œì €
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 
     if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
@@ -49,7 +49,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 
     case WM_KEYDOWN:
-        if (!(lParam & 0x40000000)) {  // Áßº¹ÀÔ·Â ¹æÁö
+        if (!(lParam & 0x40000000)) {  // ì¤‘ë³µì…ë ¥ ë°©ì§€
             InputManager::GetInstance().OnKeyDown(static_cast<UINT>(wParam));
         }
         break;
@@ -97,7 +97,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
 
-    // À©µµ¿ì »ı¼º
+    // ìœˆë„ìš° ìƒì„±
     if (!InitWindow(hInstance, nCmdShow)) {
         MessageBox(nullptr, L"Failed to create window.", L"Error", MB_OK | MB_ICONERROR);
         return false;
@@ -110,26 +110,26 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
 
     renderer.InitImGui(hwnd);
 
-    // PhysX ÃÊ±âÈ­
+    // PhysX ì´ˆê¸°í™”
     if (!physicsManager.Init()) {
         MessageBoxA(nullptr, "PhysX initialization failed", "Error", MB_OK);
         return false;
     }
     PhysicsManager::SetInstance(&physicsManager);
 
-    // ¼­¹ö ¿¬°á ½Ãµµ
+    // ì„œë²„ ì—°ê²° ì‹œë„
     if (!network.Connect("127.0.0.1", 9999)) {
         MessageBox(nullptr, L"Failed to connect to server.", L"Error", MB_OK | MB_ICONERROR);
         return false;
     }
 
-    // ¼ö½Å ½º·¹µå ½ÃÀÛ
+    // ìˆ˜ì‹  ìŠ¤ë ˆë“œ ì‹œì‘
     network.StartRecvThread();
 
     InputManager::GetInstance().Initialize(hwnd);
     
     
-    // ¸ğµ¨ ·Îµå
+    // ëª¨ë¸ ë¡œë“œ
     LoadModel();
     LoadTexture();
     
@@ -149,7 +149,7 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
 
 
 
-    // °´Ã¼ ÃÊ±âÈ­ (Å×½ºÆ® ¿ëµµ)
+    // ê°ì²´ ì´ˆê¸°í™” (í…ŒìŠ¤íŠ¸ ìš©ë„)
     
     /*
     auto triangleObject = std::make_shared<TriangleObject>();
@@ -173,7 +173,7 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
     renderer.AddGameObject(boxObject);
     
 
-    // Flight °´Ã¼ »ı¼º
+    // Flight ê°ì²´ ìƒì„±
     /*
     flightMaterial = std::make_shared<Material>();
     flightMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
@@ -202,15 +202,15 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
     renderer.AddGameObject(sphereObject);
     */
 
-    // ¼º´É Å×½ºÆ®¸¦ À§ÇÑ ±¸ 529°³ ´ë·®¹èÄ¡
+    // ì„±ëŠ¥ í…ŒìŠ¤íŠ¸ë¥¼ ìœ„í•œ êµ¬ 529ê°œ ëŒ€ëŸ‰ë°°ì¹˜
     {
         auto sphereMaterial = std::make_shared<Material>();
         sphereMaterial->parameters.baseColor = { 1.f, 1.f, 1.f };
         sphereMaterial->parameters.ambientOcclusion = 1.0f;
 
-        const int   gridCount = 23;      // 23¡¿23 = 529Ä­
-        const float spacing = 2.0f;    // °¢ ±¸ ÁÂÇ¥ »çÀÌ °£°İ
-        const float baseY = 0.5f;    // ¹Ú½º À§¿¡ ¶° ÀÖµµ·Ï Y À§Ä¡
+        const int   gridCount = 23;      // 23Ã—23 = 529ì¹¸
+        const float spacing = 2.0f;    // ê° êµ¬ ì¢Œí‘œ ì‚¬ì´ ê°„ê²©
+        const float baseY = 0.5f;    // ë°•ìŠ¤ ìœ„ì— ë–  ìˆë„ë¡ Y ìœ„ì¹˜
         const int maxCount = 529;
 
         int created = 0;
@@ -218,7 +218,7 @@ bool Game::Initialize(HINSTANCE hInstance, int nCmdShow) {
         {
             for (int x = 0; x < gridCount && created < maxCount; ++x)
             {
-                // SphereObject ÀÎ½ºÅÏ½º
+                // SphereObject ì¸ìŠ¤í„´ìŠ¤
                 auto sphereObj = std::make_shared<SphereObject>(sphereMaterial, 32, 32);
                 if (!sphereObj->Initialize(&renderer))
                     throw std::runtime_error("Failed to initialize SphereObject");
@@ -322,7 +322,7 @@ bool Game::InitWindow(HINSTANCE hInstance, int nCmdShow) {
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
-    // Å¸ÀÌ¸Ó ÃÊ±âÈ­
+    // íƒ€ì´ë¨¸ ì´ˆê¸°í™”
     QueryPerformanceFrequency(&frequency);
     QueryPerformanceCounter(&prevTime);
 
@@ -346,9 +346,9 @@ int Game::Run() {
 
             renderer.ImGuiNewFrame();
 
-            HandleInput(deltaTime);  // Å°º¸µå¿Í ¸¶¿ì½º ÀÔ·Â Ã³¸®
-            ProcessNetwork();  // ¼­¹ö¿¡¼­ ¹ŞÀº µ¥ÀÌÅÍ ¹İ¿µ
-            Update(deltaTime);      // °ÔÀÓ ·ÎÁ÷ °»½Å
+            HandleInput(deltaTime);  // í‚¤ë³´ë“œì™€ ë§ˆìš°ìŠ¤ ì…ë ¥ ì²˜ë¦¬
+            ProcessNetwork();  // ì„œë²„ì—ì„œ ë°›ì€ ë°ì´í„° ë°˜ì˜
+            Update(deltaTime);      // ê²Œì„ ë¡œì§ ê°±ì‹ 
 
             ImGui::Render();
 
@@ -357,7 +357,7 @@ int Game::Run() {
             physicsManager.ApplyActorRemovals();
 
 
-            Render();      // D3D ·»´õ¸µ
+            Render();      // D3D ë Œë”ë§
         }
     }
 
@@ -384,7 +384,7 @@ void Game::Update(float deltaTime) {
 
 void Game::Render() {
 
-    renderer.Render();          // D3D ·»´õ¸µ
+    renderer.Render();          // D3D ë Œë”ë§
 }
 
 void Game::HandleInput(float deltaTime) {
@@ -396,32 +396,32 @@ void Game::HandleInput(float deltaTime) {
 }
 
 void Game::ProcessNetwork() {
-    // ¼­¹ö ÆĞÅ¶ Ã³¸®
+    // ì„œë²„ íŒ¨í‚· ì²˜ë¦¬
 }
 
 void Game::SetupCollisionResponse()
 {
-    // Player ¡ê Enemy Ãæµ¹
+    // Player â†” Enemy ì¶©ëŒ
     physicsManager.SetCollisionResponse(CollisionLayer::Player, CollisionLayer::Enemy, CollisionResponse::Block);
 
-    // Player ¡ê EnemyProjectile Ãæµ¹
+    // Player â†” EnemyProjectile ì¶©ëŒ
     physicsManager.SetCollisionResponse(CollisionLayer::Player, CollisionLayer::EnemyProjectile, CollisionResponse::Block);
     physicsManager.SetCollisionResponse(CollisionLayer::EnemyProjectile, CollisionLayer::Player, CollisionResponse::Block);
 
-    // Enemy ¡ê PlayerProjectile Ãæµ¹
+    // Enemy â†” PlayerProjectile ì¶©ëŒ
     physicsManager.SetCollisionResponse(CollisionLayer::Enemy, CollisionLayer::PlayerProjectile, CollisionResponse::Block);
     physicsManager.SetCollisionResponse(CollisionLayer::PlayerProjectile, CollisionLayer::Enemy, CollisionResponse::Block);
 
-    // Ignore ÀÚ±â ÆÀ ÅºÈ¯°ú º»Ã¼
+    // Ignore ìê¸° íŒ€ íƒ„í™˜ê³¼ ë³¸ì²´
     physicsManager.SetCollisionResponse(CollisionLayer::PlayerProjectile, CollisionLayer::Player, CollisionResponse::Ignore);
     physicsManager.SetCollisionResponse(CollisionLayer::EnemyProjectile, CollisionLayer::Enemy, CollisionResponse::Ignore);
 
-    // Ignore ÅºÈ¯³¢¸® Ãæµ¹
+    // Ignore íƒ„í™˜ë¼ë¦¬ ì¶©ëŒ
     physicsManager.SetCollisionResponse(CollisionLayer::PlayerProjectile, CollisionLayer::EnemyProjectile, CollisionResponse::Ignore);
     physicsManager.SetCollisionResponse(CollisionLayer::PlayerProjectile, CollisionLayer::PlayerProjectile, CollisionResponse::Ignore);
     physicsManager.SetCollisionResponse(CollisionLayer::EnemyProjectile, CollisionLayer::EnemyProjectile, CollisionResponse::Ignore);
 
-    // Default ¡æ Projectile Ãæµ¹µµ ¿øÇÏ¸é ¼³Á¤
+    // Default â†’ Projectile ì¶©ëŒë„ ì›í•˜ë©´ ì„¤ì •
     physicsManager.SetCollisionResponse(CollisionLayer::Default, CollisionLayer::PlayerProjectile, CollisionResponse::Block);
     physicsManager.SetCollisionResponse(CollisionLayer::Default, CollisionLayer::EnemyProjectile, CollisionResponse::Block);
 }

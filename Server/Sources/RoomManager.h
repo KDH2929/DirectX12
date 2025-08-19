@@ -7,7 +7,7 @@
 #include "GameRoom.h"
 #include "ClientSession.h"
 
-// Çì´õ ÀÇÁ¸ ÃÖ¼ÒÈ­¸¦ ¿øÇÏ¸é Àü¹æ ¼±¾ğ »ç¿ë °¡´É
+// í—¤ë” ì˜ì¡´ ìµœì†Œí™”ë¥¼ ì›í•˜ë©´ ì „ë°© ì„ ì–¸ ì‚¬ìš© ê°€ëŠ¥
 namespace game { class GameMessage; }
 
 class RoomManager {

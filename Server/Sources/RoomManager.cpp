@@ -1,5 +1,5 @@
 #include "RoomManager.h"
-#include "Message/game_message.pb.h"  // ±¸ÇöºÎ¿¡¼­¸¸ Æ÷ÇÔ
+#include "Message/game_message.pb.h"  // êµ¬í˜„ë¶€ì—ì„œë§Œ í¬í•¨
 #include <vector>
 
 GameRoom* RoomManager::GetRoom(int roomId) {

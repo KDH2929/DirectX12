@@ -19,7 +19,7 @@ void ShaderManager::Cleanup() {
     device = nullptr;
 }
 
-// ShaderCompiler¸¦ È°¿ëÇÑ ´ÜÀÏ ÄÄÆÄÀÏ
+// ShaderCompilerë¥¼ í™œìš©í•œ ë‹¨ì¼ ì»´íŒŒì¼
 bool ShaderManager::Compile(
     const ShaderCompileDesc& desc,
     ComPtr<ID3DBlob>& outBlob)
@@ -39,7 +39,7 @@ bool ShaderManager::Compile(
     return true;
 }
 
-// ¿©·¯ ½¦ÀÌ´õ¸¦ ÇÑ ¹ø¿¡ ÄÄÆÄÀÏ
+// ì—¬ëŸ¬ ì‰ì´ë”ë¥¼ í•œ ë²ˆì— ì»´íŒŒì¼
 bool ShaderManager::CompileAll(
     const std::vector<ShaderCompileDesc>& shaderDescs)
 {
@@ -62,7 +62,7 @@ ComPtr<ID3DBlob> ShaderManager::GetShaderBlob(const std::wstring& shaderName) co
             "Shader not found: " +
             std::string(shaderName.begin(), shaderName.end()));
     }
-    return it->second; // ComPtr<ID3DBlob> º¹»ç(·¹ÆÛ·±½º Ä«¿îÆ® Áõ°¡)
+    return it->second; // ComPtr<ID3DBlob> ë³µì‚¬(ë ˆí¼ëŸ°ìŠ¤ ì¹´ìš´íŠ¸ ì¦ê°€)
 }
 
 

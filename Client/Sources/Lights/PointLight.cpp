@@ -6,7 +6,7 @@ using namespace DirectX;
 PointLight::PointLight()
 {
     lightData.type = static_cast<int>(LightType::Point);
-    shadowViewProjMatrices.resize(6); // Å¥ºê¸Ê 6¸é
+    shadowViewProjMatrices.resize(6); // íë¸Œë§µ 6ë©´
 }
 
 LightType PointLight::GetType() const
@@ -30,13 +30,13 @@ void PointLight::Update(Camera* camera)
 
     XMVECTOR lightPos = XMLoadFloat3(&lightData.position);
 
-    // °¨¼è°¡ 1% ÀÌÇÏ·Î ¶³¾îÁö´Â °Å¸®¸¦ farZ·Î
+    // ê°ì‡ ê°€ 1% ì´í•˜ë¡œ ë–¨ì–´ì§€ëŠ” ê±°ë¦¬ë¥¼ farZë¡œ
     float nearZ = 0.1f;
     float farZ = ComputeShadowFarZ(lightData.constant, lightData.linear, lightData.quadratic, 0.01f); 
 
     XMMATRIX proj = XMMatrixPerspectiveFovLH(
-        XM_PIDIV2,    // 90µµ
-        1.0f,         // Á¤»ç°¢
+        XM_PIDIV2,    // 90ë„
+        1.0f,         // ì •ì‚¬ê°
         nearZ,
         farZ
     );
@@ -49,11 +49,11 @@ void PointLight::Update(Camera* camera)
 
 float PointLight::ComputeShadowFarZ(float constant, float linear, float quadratic, float threshold)
 {
-    // 1/(C + L¡¤d + Q¡¤d©÷) = threshold  ¢¡  C + L¡¤d + Q¡¤d©÷ = 1/threshold
+    // 1/(C + LÂ·d + QÂ·dÂ²) = threshold  â‡’  C + LÂ·d + QÂ·dÂ² = 1/threshold
     float target = 1.0f / threshold - constant;
-    // Q¡¤d©÷ + L¡¤d - target = 0
+    // QÂ·dÂ² + LÂ·d - target = 0
     float discr = linear * linear + 4.0f * quadratic * target;
     if (discr < 0) discr = 0;
-    // ¾çÀÇ ÇØ¸¸ ÃëÇÔ
+    // ì–‘ì˜ í•´ë§Œ ì·¨í•¨
     return (-linear + sqrtf(discr)) / (2.0f * quadratic);
 }

@@ -14,7 +14,7 @@ public:
     virtual void RenderSingleThreaded(Renderer* renderer) = 0;
 
 
-    // ¸ÖÆ¼½º·¹µå¿ë API
+    // ë©€í‹°ìŠ¤ë ˆë“œìš© API
     virtual void RecordPreCommand(ID3D12GraphicsCommandList* commandList, Renderer* renderer) {};
     virtual void RecordParallelCommand(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT threadIndex) {};
     virtual void RecordPostCommand(ID3D12GraphicsCommandList* commandList, Renderer* renderer) {};

@@ -19,7 +19,7 @@ public:
     bool Init(ID3D12Device* device);
     void Cleanup();
 
-    // ¿©·¯ ShaderCompileDesc¸¦ ¹Ş¾Æ¼­ ÇÑ ¹ø¿¡ ÄÄÆÄÀÏ
+    // ì—¬ëŸ¬ ShaderCompileDescë¥¼ ë°›ì•„ì„œ í•œ ë²ˆì— ì»´íŒŒì¼
     bool CompileAll(const std::vector<ShaderCompileDesc>& shaderDescs);
 
     ComPtr<ID3DBlob> GetShaderBlob(const std::wstring& shaderName) const;
@@ -27,7 +27,7 @@ public:
 
 
 private:
-    // ÇÑ °³ÀÇ ShaderCompileDesc¸¦ ShaderCompiler·Î ÄÄÆÄÀÏ
+    // í•œ ê°œì˜ ShaderCompileDescë¥¼ ShaderCompilerë¡œ ì»´íŒŒì¼
     bool Compile(const ShaderCompileDesc& desc, ComPtr<ID3DBlob>& outBlob);
 
     ID3D12Device* device = nullptr;

@@ -16,10 +16,10 @@ class DatabaseConnectionPool;
 
 class DbExecutor {
 public:
-    using Task = std::function<void(MYSQL*)>; // 窜老 目池记阑 罐酒 累诀 荐青
+    using Task = std::function<void(MYSQL*)>; // 雼澕 旎る劌靺橃潉 氚涭晞 鞛戩梾 靾橅枆
 
     DbExecutor() = default;
-    ~DbExecutor(); // Stop() 龋免
+    ~DbExecutor(); // Stop() 順胳稖
 
     DbExecutor(const DbExecutor&) = delete;
     DbExecutor& operator=(const DbExecutor&) = delete;

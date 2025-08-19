@@ -47,7 +47,7 @@ void Skybox::Update(float /*deltaTime*/, Renderer* renderer, UINT objectIndex)
 
 void Skybox::Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT objectIndex)
 {
-    // Descriptor Heaps ¹ÙÀÎµù (CBV_SRV_UAV + SAMPLER)
+    // Descriptor Heaps ë°”ì¸ë”© (CBV_SRV_UAV + SAMPLER)
     auto* heapManager = renderer->GetDescriptorHeapManager();
     ID3D12DescriptorHeap* descriptorHeaps[] = {
         heapManager->GetDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
@@ -55,27 +55,27 @@ void Skybox::Render(ID3D12GraphicsCommandList* commandList, Renderer* renderer, 
     };
     commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-    // RS & PSO ¹ÙÀÎµù
+    // RS & PSO ë°”ì¸ë”©
     commandList->SetGraphicsRootSignature(rootSignature.Get());
     commandList->SetPipelineState(pipelineState.Get());
 
-    // b0: ¸ðµ¨-ºä-Åõ¿µ »ó¼ö ¹öÆÛ
+    // b0: ëª¨ë¸-ë·°-íˆ¬ì˜ ìƒìˆ˜ ë²„í¼
     FrameResource* frameResource = renderer->GetCurrentFrameResource();
     commandList->SetGraphicsRootConstantBufferView(
         0, frameResource->cbMVP->GetGPUVirtualAddress(objectIndex)
     );
 
-    // t0: Å¥ºê¸Ê SRV
+    // t0: íë¸Œë§µ SRV
     commandList->SetGraphicsRootDescriptorTable(
         1, cubeMapTexture->GetGpuHandle()
     );
 
-    // s0: »ùÇÃ·¯
+    // s0: ìƒ˜í”ŒëŸ¬
     commandList->SetGraphicsRootDescriptorTable(
         2, heapManager->GetLinearWrapSamplerGpuHandle()
     );
 
-    // IA ¼³Á¤ ¹× µå·Î¿ì È£Ãâ
+    // IA ì„¤ì • ë° ë“œë¡œìš° í˜¸ì¶œ
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     commandList->IASetVertexBuffers(0, 1, &cubeMesh->GetVertexBufferView());
     commandList->IASetIndexBuffer(&cubeMesh->GetIndexBufferView());

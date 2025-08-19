@@ -18,12 +18,12 @@ static inline void FillMessageHeader(game::GameMessage& message,
     header->set_server_time_ms(serverTimeMilliseconds);
 }
 
-// ·Î±×ÀÎ Ã³¸®
+// ë¡œê·¸ì¸ ì²˜ë¦¬
 void MessageHandler::HandleLogin(const std::shared_ptr<ClientSession>& session,
     const game::LoginRequest& request)
 {
     if (request.username().empty()) {
-        // Àß¸øµÈ ¿äÃ» (ÇÊµå ´©¶ô)
+        // ì˜ëª»ëœ ìš”ì²­ (í•„ë“œ ëˆ„ë½)
         game::LoginResponse response;
         auto* result = response.mutable_result();
         result->set_status_code(game::StatusCode::BAD_REQUEST);
@@ -37,7 +37,7 @@ void MessageHandler::HandleLogin(const std::shared_ptr<ClientSession>& session,
         return;
     }
 
-    // ´Ü¼ø ·Î±×ÀÎ Ã³¸®: »ç¿ëÀÚ¸í ±â·Ï
+    // ë‹¨ìˆœ ë¡œê·¸ì¸ ì²˜ë¦¬: ì‚¬ìš©ìëª… ê¸°ë¡
     session->nickname = request.username();
 
     game::LoginResponse response;
@@ -58,7 +58,7 @@ void MessageHandler::HandleLogin(const std::shared_ptr<ClientSession>& session,
     std::cout << "[Login] username=" << request.username() << " ok\n";
 }
 
-// ¹æ ÀÔÀå Ã³¸®
+// ë°© ì…ì¥ ì²˜ë¦¬
 void MessageHandler::HandleJoinRoom(const std::shared_ptr<ClientSession>& session,
     const game::JoinRoomRequest& request)
 {
@@ -74,7 +74,7 @@ void MessageHandler::HandleJoinRoom(const std::shared_ptr<ClientSession>& sessio
     result->set_message("OK");
     response.set_room_id(request.room_id());
 
-    // ¹æ ÇÃ·¹ÀÌ¾î ¸ñ·Ï Ã¤¿ì±â (player_list)
+    // ë°© í”Œë ˆì´ì–´ ëª©ë¡ ì±„ìš°ê¸° (player_list)
     for (ClientSession* player : room.GetPlayerList()) {
         if (!player) continue;
         game::PlayerInfo* info = response.add_player_list();
@@ -98,7 +98,7 @@ void MessageHandler::HandleJoinRoom(const std::shared_ptr<ClientSession>& sessio
         << " room=" << request.room_id() << "\n";
 }
 
-// Ã¤ÆÃ Ã³¸®
+// ì±„íŒ… ì²˜ë¦¬
 void MessageHandler::HandleChatSend(const std::shared_ptr<ClientSession>& session,
     const game::ChatSend& request)
 {
@@ -121,14 +121,14 @@ void MessageHandler::HandleChatSend(const std::shared_ptr<ClientSession>& sessio
     room->BroadcastGameMessage(message, nullptr);
 }
 
-// ÀÌµ¿ ÀÔ·Â Ã³¸®
+// ì´ë™ ì…ë ¥ ì²˜ë¦¬
 void MessageHandler::HandleMoveInput(const std::shared_ptr<ClientSession>& session,
     const game::MoveInput& request)
 {
     GameRoom* room = gameServer->GetRoomManager()->GetRoom(session->roomId);
     if (!room) return;
 
-    // ´Ü¼ø ±ÇÀ§: Å¬¶óÀÌ¾ğÆ®°¡ º¸³½ À§Ä¡¸¦ ±×´ë·Î Àû¿ë
+    // ë‹¨ìˆœ ê¶Œìœ„: í´ë¼ì´ì–¸íŠ¸ê°€ ë³´ë‚¸ ìœ„ì¹˜ë¥¼ ê·¸ëŒ€ë¡œ ì ìš©
     session->position = { request.position().x(),
                           request.position().y(),
                           request.position().z() };
@@ -151,7 +151,7 @@ void MessageHandler::HandleMoveInput(const std::shared_ptr<ClientSession>& sessi
     room->BroadcastGameMessage(message, nullptr);
 }
 
-// ¹ß»ç ÀÔ·Â Ã³¸®
+// ë°œì‚¬ ì…ë ¥ ì²˜ë¦¬
 void MessageHandler::HandleFireInput(const std::shared_ptr<ClientSession>& session,
     const game::FireInput& request)
 {
@@ -162,7 +162,7 @@ void MessageHandler::HandleFireInput(const std::shared_ptr<ClientSession>& sessi
     eventMessage.set_player_id(static_cast<std::uint32_t>(session->playerId));
     eventMessage.mutable_origin()->CopyFrom(request.origin());
     eventMessage.mutable_direction()->CopyFrom(request.direction());
-    eventMessage.set_bullet_id(request.weapon_id()); // ÀÓ½Ã: ¼­¹ö ¹ß±ŞÀ¸·Î º¯°æ ±ÇÀå
+    eventMessage.set_bullet_id(request.weapon_id()); // ì„ì‹œ: ì„œë²„ ë°œê¸‰ìœ¼ë¡œ ë³€ê²½ ê¶Œì¥
     eventMessage.set_server_time_ms(gameServer->NowMillis());
 
     game::GameMessage message;
@@ -175,7 +175,7 @@ void MessageHandler::HandleFireInput(const std::shared_ptr<ClientSession>& sessi
     room->BroadcastGameMessage(message, nullptr);
 }
 
-// ÇÇ°İ ÀÌº¥Æ® Ã³¸®
+// í”¼ê²© ì´ë²¤íŠ¸ ì²˜ë¦¬
 void MessageHandler::HandleHitEvent(const std::shared_ptr<ClientSession>& session,
     const game::HitEvent& request)
 {
@@ -186,10 +186,10 @@ void MessageHandler::HandleHitEvent(const std::shared_ptr<ClientSession>& sessio
         if (!player) continue;
         if (static_cast<std::uint32_t>(player->playerId) != request.target_id()) continue;
 
-        // ´Ü¼ø ¼­¹ö ÆÇÁ¤: µ¥¹ÌÁö Àû¿ë
+        // ë‹¨ìˆœ ì„œë²„ íŒì •: ë°ë¯¸ì§€ ì ìš©
         player->ApplyDamage(static_cast<float>(request.damage()));
 
-        game::HitEvent eventMessage = request; // º¹»ç ÈÄ Ã¼·Â/½Ã°£¸¸ °»½Å
+        game::HitEvent eventMessage = request; // ë³µì‚¬ í›„ ì²´ë ¥/ì‹œê°„ë§Œ ê°±ì‹ 
         eventMessage.set_target_hp(static_cast<std::uint32_t>(player->healthPoints));
         eventMessage.set_server_time_ms(gameServer->NowMillis());
 

@@ -25,11 +25,11 @@ void DirectionalLight::Update(Camera* camera)
 
     XMVECTOR lightDir = XMLoadFloat3(&lightData.direction);
 
-    // ±æÀÌ ÀÛÀ¸¸é ¾Æ·¡ ¹æÇâÀ¸·Î ´ëÃ¼, ¾Æ´Ï¸é Á¤±ÔÈ­
+    // ê¸¸ì´ ì‘ìœ¼ë©´ ì•„ë˜ ë°©í–¥ìœ¼ë¡œ ëŒ€ì²´, ì•„ë‹ˆë©´ ì •ê·œí™”
     float lengthSq = XMVectorGetX(XMVector3Dot(lightDir, lightDir));
     if (lengthSq < epsilon)
     {
-        // ±âº» ÅÂ¾çºûÀº À§¿¡¼­ ¾Æ·¡·Î
+        // ê¸°ë³¸ íƒœì–‘ë¹›ì€ ìœ„ì—ì„œ ì•„ë˜ë¡œ
         lightDir = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
     }
     else
@@ -42,7 +42,7 @@ void DirectionalLight::Update(Camera* camera)
     XMVECTOR lightPos = camPos - lightDir * shadowDistance;
     XMVECTOR target = lightPos + lightDir;
 
-    // up º¤ÅÍ: ±âº» YÃà, ³Ê¹« ÆòÇàÇÏ¸é XÃàÀ¸·Î
+    // up ë²¡í„°: ê¸°ë³¸ Yì¶•, ë„ˆë¬´ í‰í–‰í•˜ë©´ Xì¶•ìœ¼ë¡œ
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     if (fabsf(XMVectorGetX(XMVector3Dot(up, lightDir))) > 0.99f)
     {

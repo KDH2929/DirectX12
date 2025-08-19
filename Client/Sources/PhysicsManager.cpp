@@ -35,7 +35,7 @@ bool PhysicsManager::Init()
 
     defaultMaterial = physics->createMaterial(0.5f, 0.5f, 0.6f);
 
-    // Default ¸ğµç Ãæµ¹ BlockÀ¸·Î ÃÊ±âÈ­
+    // Default ëª¨ë“  ì¶©ëŒ Blockìœ¼ë¡œ ì´ˆê¸°í™”
     for (int i = 0; i < 32; ++i)
         for (int j = 0; j < 32; ++j)
             collisionMatrix[i][j] = CollisionResponse::Block;
@@ -109,7 +109,7 @@ void PhysicsManager::ApplyActorRemovals()
 void PhysicsManager::SetShapeCollisionFilter(PxShape* shape, CollisionLayer layer)
 {
     PxFilterData filterData;
-    filterData.word0 = uint32_t(layer);   // ·¹ÀÌ¾î µî·Ï
+    filterData.word0 = uint32_t(layer);   // ë ˆì´ì–´ ë“±ë¡
     shape->setSimulationFilterData(filterData);
 }
 
@@ -170,11 +170,11 @@ void PhysicsManager::onTrigger(PxTriggerPair* pairs, PxU32 count)
     {
         PxTriggerPair& pair = pairs[i];
 
-        // µÑ ´Ù À¯È¿ÇÑ °æ¿ì¸¸ Ã³¸®
+        // ë‘˜ ë‹¤ ìœ íš¨í•œ ê²½ìš°ë§Œ ì²˜ë¦¬
         if (!pair.triggerActor || !pair.otherActor)
             continue;
 
-        // Overlap ÀÌº¥Æ®¸¸ ÇÊÅÍ¸µ
+        // Overlap ì´ë²¤íŠ¸ë§Œ í•„í„°ë§
         if (pair.status & PxPairFlag::eNOTIFY_TOUCH_FOUND)
         {
             for (auto& handler : overlapHandlers)

@@ -5,13 +5,13 @@
 
 void PostProcessPass::Initialize(Renderer* renderer)
 {
-	// ÇöÀç´Â PostProcess ÇÏ³ª¸¸ Ã³¸®ÇÏµµ·Ï ÇßÀ¸¹Ç·Î ÃßÈÄ ±¸Á¶ ¼öÁ¤ÇÊ¿ä
+	// í˜„ì¬ëŠ” PostProcess í•˜ë‚˜ë§Œ ì²˜ë¦¬í•˜ë„ë¡ í–ˆìœ¼ë¯€ë¡œ ì¶”í›„ êµ¬ì¡° ìˆ˜ì •í•„ìš”
 	auto outline = std::make_shared<OutlinePostEffect>();
 	outline->Initialize(renderer);
 	// postEffects.push_back(outline);
 
-	// Tone Mapping È¿°ú
-	// Tone Mapping À» Á¦´ë·Î »ì¸®±â À§ÇØ¼­´Â HDR ÀÌ¹ÌÁö, Áï Float16 ·»´õÅ¸°Ù¿¡ ·»´õ¸µÀ» ÇØ¾ßÇÔ
+	// Tone Mapping íš¨ê³¼
+	// Tone Mapping ì„ ì œëŒ€ë¡œ ì‚´ë¦¬ê¸° ìœ„í•´ì„œëŠ” HDR ì´ë¯¸ì§€, ì¦‰ Float16 ë Œë”íƒ€ê²Ÿì— ë Œë”ë§ì„ í•´ì•¼í•¨
 	auto toneMapping = std::make_shared<ToneMappingPostEffect>();
 	toneMapping->Initialize(renderer);
 	postEffects.push_back(toneMapping);
@@ -35,7 +35,7 @@ void PostProcessPass::RenderSingleThreaded(Renderer* renderer)
 
 	auto& swapChainRtvs = renderer->GetSwapChainRtvs();
 
-	// Resource Barrier ·Î ¿ëµµº¯°æ
+	// Resource Barrier ë¡œ ìš©ë„ë³€ê²½
 	{
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 			frameResource->sceneColorBuffer.Get(),
@@ -57,7 +57,7 @@ void PostProcessPass::RenderSingleThreaded(Renderer* renderer)
 	}
 
 
-	// Resource Barrier ·Î ¿ëµµº¯°æ
+	// Resource Barrier ë¡œ ìš©ë„ë³€ê²½
 	{
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 			frameResource->sceneColorBuffer.Get(),
@@ -73,7 +73,7 @@ void PostProcessPass::RecordPreCommand(ID3D12GraphicsCommandList* commandList, R
 {
 	FrameResource* frameResource = renderer->GetCurrentFrameResource();
 
-	// Resource Barrier ·Î ¿ëµµº¯°æ
+	// Resource Barrier ë¡œ ìš©ë„ë³€ê²½
 	{
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 			frameResource->sceneColorBuffer.Get(),
@@ -86,7 +86,7 @@ void PostProcessPass::RecordPreCommand(ID3D12GraphicsCommandList* commandList, R
 
 void PostProcessPass::RecordParallelCommand(ID3D12GraphicsCommandList* commandList, Renderer* renderer, UINT threadIndex)
 {
-	// º´·ÄÃ³¸® ¼öÇàX
+	// ë³‘ë ¬ì²˜ë¦¬ ìˆ˜í–‰X
 
 	FrameResource* frameResource = renderer->GetCurrentFrameResource();
 
@@ -100,7 +100,7 @@ void PostProcessPass::RecordParallelCommand(ID3D12GraphicsCommandList* commandLi
 	const FLOAT clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
-	// ºäÆ÷Æ® ¼³Á¤
+	// ë·°í¬íŠ¸ ì„¤ì •
 	D3D12_VIEWPORT viewport{};
 	viewport.TopLeftX = 0;
 	viewport.TopLeftY = 0;
@@ -110,7 +110,7 @@ void PostProcessPass::RecordParallelCommand(ID3D12GraphicsCommandList* commandLi
 	viewport.MaxDepth = 1.0f;
 	commandList->RSSetViewports(1, &viewport);
 
-	// ½ÃÀú(rect) ¼³Á¤
+	// ì‹œì €(rect) ì„¤ì •
 	D3D12_RECT scissorRect{ 0, 0,
 		static_cast<LONG>(renderer->GetViewportWidth()),
 		static_cast<LONG>(renderer->GetViewportHeight()) };
@@ -127,7 +127,7 @@ void PostProcessPass::RecordPostCommand(ID3D12GraphicsCommandList* commandList, 
 {
 	FrameResource* frameResource = renderer->GetCurrentFrameResource();
 
-	// Resource Barrier ·Î ¿ëµµº¯°æ
+	// Resource Barrier ë¡œ ìš©ë„ë³€ê²½
 	{
 		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 			frameResource->sceneColorBuffer.Get(),
