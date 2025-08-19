@@ -18,9 +18,9 @@ using Microsoft::WRL::ComPtr;
 
 static constexpr UINT MaxShadowMaps = MAX_SHADOW_DSV_COUNT;
 
-    class FrameResource
-    {
-    public:
+class FrameResource
+{
+public:
     FrameResource(
         ID3D12Device* device,
         DescriptorHeapManager* descriptorHeapManager,
