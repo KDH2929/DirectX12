@@ -16,13 +16,13 @@ GameServer::~GameServer() { Stop(); }
 bool GameServer::Start(unsigned short bindPort) {
     if (runningFlag.load(std::memory_order_acquire)) return true;
 
-    // 1) 메시지 핸들러 생성(의존성: GameServer*)
+    // 메시지 핸들러 생성(의존성: GameServer*)
     messageHandler = std::make_unique<MessageHandler>(this);
 
-    // 2) 디스패처에 핸들러 등록
+    // 디스패처에 핸들러 등록
     RegisterMessageHandlers();
 
-    // 3) IOCP 서버 생성/초기화
+    // IOCP 서버 생성/초기화
     iocpServer = std::make_unique<IocpServer>(messageDispatcher);
     const char* bindAddress = "0.0.0.0";
     const int workerThreadCount = 0; // 0이면 CPU*2 기본
@@ -31,7 +31,7 @@ bool GameServer::Start(unsigned short bindPort) {
         return false;
     }
 
-    // 3.5) 게임 시스템 구성 및 등록(소유: unique_ptr, 호출: 파이프라인)
+    // 게임 시스템 구성 및 등록
     flightSystem = std::make_unique<FlightSystem>();
     weaponSystem = std::make_unique<WeaponSystem>();
     damageSystem = std::make_unique<DamageSystem>();
@@ -48,7 +48,7 @@ bool GameServer::Start(unsigned short bindPort) {
     if (!damageSystem->Initialize())  return false;
     if (!respawnSystem->Initialize()) return false;
 
-    // 4) 게임 루프 시작
+    // 게임 루프 시작
     runningFlag.store(true, std::memory_order_release);
     gameLoopThread = std::thread(&GameServer::GameLoop, this);
 

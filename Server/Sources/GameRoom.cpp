@@ -1,6 +1,6 @@
 #include "GameRoom.h"
 #include "ClientSession.h"
-#include "Message/game_message.pb.h"   // 구현부에서만 포함
+#include "Message/game_message.pb.h"
 #include <iostream>
 
 GameRoom::GameRoom(int roomIdValue)
@@ -31,7 +31,7 @@ void GameRoom::BroadcastGameMessage(const game::GameMessage& message,
             if (player != excludedSession) targets.push_back(player);
         }
     }
-    // 락 해제 후 전송
+    // Lock 해제 후 전송
     for (ClientSession* player : targets) {
         player->SendGameMessage(message);
     }
