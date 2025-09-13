@@ -20,6 +20,8 @@
 
 - **PBR Rendering**
 - **Shadow Mapping**
+- **Post Process Outline (Laplacian Filter)**
+- **Post Process ToneMapping**
 - **Frames in Flight**  
-- **Multithreaded Rendering**  
+- **Multithreaded Rendering**
 
