@@ -61,10 +61,6 @@ bool Renderer::Initialize(HWND hwnd, int width, int height) {
         { L"ShadowMapPassVS", L"Shaders/ShadowMapPass.hlsl", "VSMain", "vs_5_0" },
         { L"ShadowMapPassPS", L"Shaders/ShadowMapPass.hlsl", "PSMain", "ps_5_0" },
 
-        { L"VolumetricCloudVS",    L"Shaders/VolumetricCloudVS.hlsl",   "VSMain", "vs_5_0" },
-        { L"VolumetricCloudGS",    L"Shaders/VolumetricCloudGS.hlsl",   "GSMain", "gs_5_0" },
-        { L"VolumetricCloudPS",    L"Shaders/VolumetricCloudPS.hlsl",   "PSMain", "ps_5_0" },
-    
     };
 
     if (!shaderManager->CompileAll(shaderDescs))
