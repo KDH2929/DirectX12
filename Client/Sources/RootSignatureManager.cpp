@@ -344,60 +344,6 @@ bool RootSignatureManager::InitializeDescs()
     }
 
 
-
-    // CloudVolume 렌더링용 루트 시그니처
-    {
-        // b1 : CB_CloudParameters
-        // t2 : (선택) 3D 노이즈 볼륨 텍스처 SRV
-        D3D12_ROOT_PARAMETER params[2] = {};
-
-        // CBV b1 → CloudParameters
-        params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        params[0].Descriptor.ShaderRegister = 1;    // b1
-        params[0].Descriptor.RegisterSpace = 0;
-        params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-        // SRV 테이블 t2 → Noise Texture
-        D3D12_DESCRIPTOR_RANGE srvRange = {};
-        srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srvRange.NumDescriptors = 1;    // t2 하나
-        srvRange.BaseShaderRegister = 2;    // t2
-        srvRange.RegisterSpace = 0;
-        srvRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-        params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        params[1].DescriptorTable.NumDescriptorRanges = 1;
-        params[1].DescriptorTable.pDescriptorRanges = &srvRange;
-        params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-        // 2) Static Sampler (NoiseSampler : register(s2))
-        D3D12_STATIC_SAMPLER_DESC staticSampler = {};
-        staticSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-        staticSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-        staticSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-        staticSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-        staticSampler.MipLODBias = 0;
-        staticSampler.MaxAnisotropy = 1;
-        staticSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
-        staticSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
-        staticSampler.MinLOD = 0.0f;
-        staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
-        staticSampler.ShaderRegister = 2;    // s2
-        staticSampler.RegisterSpace = 0;
-        staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-        // 3) Create Root Signature
-        D3D12_ROOT_SIGNATURE_DESC rsDesc = {};
-        rsDesc.NumParameters = _countof(params);
-        rsDesc.pParameters = params;
-        rsDesc.NumStaticSamplers = 1;
-        rsDesc.pStaticSamplers = &staticSampler;
-        rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-        if (!Create(L"VolumetricCloudRS", rsDesc))
-            throw std::runtime_error("RootSignatureManager::Create(\"VolumetricCloudRS\") failed");
-    }
-
     return true;
 }
 

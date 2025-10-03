@@ -74,15 +74,6 @@ bool PipelineStateManager::InitializePSOs()
             return false;
     }
 
-    // 9. VolumetricCloud PSO
-    /*
-    {
-        PipelineStateDesc desc = CreateVolumetricCloudPSODesc();
-        if (GetOrCreate(desc) == nullptr)
-            return false;
-    }
-    */
-
     return true;
 }
 

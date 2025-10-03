@@ -323,9 +323,6 @@
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\OutlinePostEffect.hlsl" />
-    <FxCompile Include="Shaders\VolumetricCloudPS.hlsl" />
-    <FxCompile Include="Shaders\VolumetricCloudVS.hlsl" />
-    <FxCompile Include="Shaders\VolumetricCloudGS.hlsl" />
     <FxCompile Include="Shaders\ToneMappingPostEffect.hlsl" />
     <FxCompile Include="Shaders\ShadowMapPass.hlsl" />
   </ItemGroup>
@@ -340,7 +337,5 @@
     <None Include="Shaders\PbrLighting.hlsli">
       <Filter>Shader</Filter>
     </None>
-    <None Include="Shaders\Noise3D.hlsli" />
-    <None Include="Shaders\CloudCommon.hlsli" />
   </ItemGroup>
 </Project>

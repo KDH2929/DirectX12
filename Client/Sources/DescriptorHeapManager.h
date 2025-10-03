@@ -76,9 +76,9 @@ public:
 private:
     struct DescriptorHeapInfo
     {
-        ComPtr<ID3D12DescriptorHeap> descriptorHeap;    // 실제 ID3D12DescriptorHeap 객체
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuStart;           // 힙의 첫 번째 CPU 핸들
-        D3D12_GPU_DESCRIPTOR_HANDLE gpuStart;           // 힙의 첫 번째 GPU 핸들
+        ComPtr<ID3D12DescriptorHeap> descriptorHeap;
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuStart; 
+        D3D12_GPU_DESCRIPTOR_HANDLE gpuStart;
         UINT descriptorSize = 0;                     // 한 슬롯당 바이트 오프셋(= GetDescriptorHandleIncrementSize)
         UINT maxDescriptors = 0;                     // NumDescriptors
         UINT nextFreeIndex = 0;                     // Allocate() 시 사용할 다음 인덱스
