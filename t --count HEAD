@@ -1,0 +1,253 @@
+[33mcommit 9cada736c30bde49c5ae4ad2f1430213874ab6b4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Thu Oct 2 23:16:01 2025 +0900
+
+    Update README.md
+
+[33mcommit b2b4794012374b3b65ed202487a3fcc7900e71f6[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Sat Sep 13 12:19:56 2025 +0900
+
+    Update README.md
+
+[33mcommit 4c06f88441ed28851812626834a81ebd80c20ba1[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Sat Sep 13 11:58:28 2025 +0900
+
+    Update README.md
+
+[33mcommit 9172ea4ea4d8a34c65e2e14fd9d8b463367b7929[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Sat Sep 13 05:59:24 2025 +0900
+
+    Update README.md
+
+[33mcommit 61cd5484b06d86252cca587a88acaf1ddb9416ea[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Sat Sep 13 03:58:51 2025 +0900
+
+    Update README.md
+
+[33mcommit 99736c64fc1009b191fad077b6997f0d9a58b2e1[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Sat Sep 13 03:58:20 2025 +0900
+
+    Update README.md
+
+[33mcommit ca26abe511b013ed581e607aaf35dc2e5bf3d190[m[33m ([m[1;31morigin/server-test[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 20 06:39:38 2025 +0900
+
+    chore(encoding): convert all Server/Client .h/.cpp files to UTF-8
+
+[33mcommit c68d288e533b35794e7f25d137ac3760a7938fa7[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 20 06:32:27 2025 +0900
+
+    chore(encoding): convert source files to UTF-8
+
+[33mcommit 46505c0b5e71bd9b9758d8db914e336b2799c5bb[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 20 06:26:28 2025 +0900
+
+    chore(encoding): convert source files to UTF-8
+
+[33mcommit 0ea69dd29299589a14be06887749d78d0d08cff3[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 20 01:09:26 2025 +0900
+
+    chore(client): commit client changes (incl. logs)
+
+[33mcommit 7435856d4b9a4f22618daa2c83e281d1576f01cd[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 20 01:31:18 2025 +0900
+
+    chore(server): remove legacy server code
+    feat(server): migrate server code into Server/Sources directory#    edit 1e78203 chore(server): remove legacy Server code in preparation for rewrite
+
+[33mcommit f6245ceebc4e41c68cc494f326b429163cc5814a[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 20 01:29:52 2025 +0900
+
+    feat(network): add IOCP server implementation
+
+[33mcommit c28af5a60408c0e83c911158eba50e919197989a[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 20 01:29:46 2025 +0900
+
+    feat(gamesystems): add basic systems (Flight, Damage, Respawn, Weapon)
+
+[33mcommit 5d19cdd31e2b04a9e56569f6cb00db7acd26edd4[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 20 01:29:39 2025 +0900
+
+    feat(db): introduce DB layer (AccountDao, ConnectionPool, DbExecutor)
+
+[33mcommit d566d56a8992612bd4f8d270ea6ce76154181691[m[33m ([m[1;31morigin/09-multithread-rendering[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Thu Aug 7 04:37:59 2025 +0900
+
+    multithread performance test
+
+[33mcommit 69cedd79f97fae6aa7744affccb3c804611bc23b[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 6 15:09:45 2025 +0900
+
+    Complete multithreaded rendering
+
+[33mcommit d1ce4c39eb22402ff5b299854e217f3ab78dfa40[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Aug 6 14:10:52 2025 +0900
+
+    Working on multithreaded rendering
+
+[33mcommit fcfbde8b1f15580e22c710afaa1214768cc6c87e[m[33m ([m[1;31morigin/08-frames-in-flight[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Mon Aug 4 23:44:18 2025 +0900
+
+    Implement triple buffering with FrameResource
+
+[33mcommit 9d5a9c6c66a771f273f012a75daa8b7ec5a758bd[m[33m ([m[1;31morigin/07-shadowmap[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Mon Jul 28 02:37:41 2025 +0900
+
+    ShadowMap work is finished
+
+[33mcommit cf581d539274c248a8e73da9de2a99c9f9c09fd3[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Sat Jul 26 21:56:00 2025 +0900
+
+    ShadowMap test
+
+[33mcommit cb596c04803534f6eef2e725d265d4e077b309d1[m[33m ([m[1;31morigin/06-postprocess-outline[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Fri Jul 18 18:16:54 2025 +0900
+
+    PostProcess Pass is added
+
+[33mcommit 940ba7bd46b32ed1924efd78c890dfa1a167fb2e[m[33m ([m[1;31morigin/05-cook-torrance-brdf[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Jul 16 23:41:30 2025 +0900
+
+    PBR work is completed
+
+[33mcommit d635c981dc611f60d891be6fbcf92f20d768f150[m[33m ([m[1;31morigin/ibl-test[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Sat Jul 12 17:53:26 2025 +0900
+
+    ibl-test
+
+[33mcommit 9561f939dc893ebe5a93fbdbc041f32969a35c1c[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Sat Jul 5 17:58:45 2025 +0900
+
+    Start integrating Cook–Torrance BRDF
+
+[33mcommit 93a07b931db00e72bd888515fe0b13bbaa47386e[m[33m ([m[1;31morigin/04-normal-mapping[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Thu Jul 3 18:55:21 2025 +0900
+
+    Add normal mapping
+
+[33mcommit 3ec1f8317b59545c1b54f81d1769916277dcce23[m[33m ([m[1;31morigin/03-asset-import-texturing[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Thu Jul 3 15:45:01 2025 +0900
+
+    Implement model loading and texture mapping
+
+[33mcommit 9cc4ae3bfd28a146baeed9f0d56c5c1621bc4338[m[33m ([m[1;31morigin/02-draw-box[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Jul 2 02:52:19 2025 +0900
+
+    Add draw-box rendering
+
+[33mcommit 2b5d7193d4869adb28e1aa6af619645a8699d52f[m[33m ([m[1;31morigin/01-draw-triangle[m[33m)[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Mon Jun 30 03:37:20 2025 +0900
+
+    update read.md
+
+[33mcommit 0afa535cf83d48492eeefc32333466508213371d[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Mon Jun 30 03:34:59 2025 +0900
+
+    first commit
+
+[33mcommit a519be216e2087fd1b2d531866c56058e90a6a93[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Mon Jun 30 03:33:41 2025 +0900
+
+    first commit
+
+[33mcommit 19d3e99b17e912d89eed032c5555a198dbba3654[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed Jun 4 00:17:50 2025 +0900
+
+    HeightMap Logic is fixed
+
+[33mcommit e521b6df07c2b331c00265d63ebe8f31eba914ba[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Sun Jun 1 22:26:28 2025 +0900
+
+    Billboard Logic is modified
+
+[33mcommit 040936d12182b90301270151bb27c9cdf4019dff[m
+Merge: 195ecac 4a50381
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Fri May 30 19:01:53 2025 +0900
+
+    Restore README.md from remote
+
+[33mcommit 195ecacdd280b3fef2660fea68a7bfbe3051dce7[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Fri May 30 18:58:56 2025 +0900
+
+    height map normal calculation is modified
+
+[33mcommit 4a503818ed06be709ba201eaadb47a8dfe99f4d5[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Wed May 28 11:19:21 2025 +0900
+
+    Update BillboardMuzzleSmoke.cpp
+
+[33mcommit ac59fa3319b4fad58883856a4417aa1ec9dc50f6[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Wed May 14 16:34:22 2025 +0900
+
+    Update README.md
+
+[33mcommit 38974a61813a41921b1d14fa21596f246d1efe24[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Wed May 14 13:50:25 2025 +0900
+
+    Update README.md
+
+[33mcommit 8e9cc5a74d21d9a49f4657c8996fd429488552d2[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Wed May 14 13:49:09 2025 +0900
+
+    Update README.md
+
+[33mcommit a5f86e4fea3a8063c0bcda245c0dc526e0706db2[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Wed May 14 13:38:00 2025 +0900
+
+    Update README.md
+
+[33mcommit ca6da303c482a19a376416136793dcc0a36fedce[m
+Author: KDH2929 <165474536+KDH2929@users.noreply.github.com>
+Date:   Wed May 14 13:35:35 2025 +0900
+
+    Update README.md
+
+[33mcommit 8bc94cb8706648bc852f0ee185810a35aecb9cb9[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed May 14 11:55:12 2025 +0900
+
+    Add Source codes
+
+[33mcommit aea47fa819cd9169ae75f0aaae06a141b9a504f9[m
+Author: wlffjt2929 <wlffjt2929@naver.com>
+Date:   Wed May 14 11:50:45 2025 +0900
+
+    first commit
