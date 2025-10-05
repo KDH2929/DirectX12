@@ -8,7 +8,7 @@
 
 ## 구현 목록
 
-- **PBR Rendering**
+- **PBR**
 - **Shadow Mapping**
 - **Post Process Outline (Laplacian Filter)**
 - **Post Process ToneMapping**
