@@ -8,7 +8,7 @@
 
 ## 참고 자료
 
-- **PBR (Physically Based Rendering) 구현은  
+- **PBR (Physically Based Rendering)** 구현은  
   [홍정모 교수님 DirectX 11 강의](https://honglab.co.kr) 내용을 기반으로 개발하였습니다.
 
 <br>
