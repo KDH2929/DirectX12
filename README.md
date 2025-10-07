@@ -6,6 +6,20 @@
 
 <br>
 
+## 참고 자료
+
+- **PBR (Physically Based Rendering)** 및 **Shadow Mapping** 구현은  
+  [홍정모 교수님 DirectX 11 강의](https://honglab.co.kr) 내용을 기반으로 개발하였습니다.
+
+<br>
+
+- **멀티스레드 렌더링 (Multi-Threaded Rendering)** 과  **Frames-in-Flight**는  
+  [Microsoft DirectX 12 공식 샘플 (D3D12Multithreading)](https://github.com/microsoft/DirectX-Graphics-Samples/tree/master/Samples/Desktop/D3D12Multithreading) 코드를 참고하여 구현하였습니다.
+
+
+<br>
+
+
 ## 구현 목록
 
 - **PBR**
