@@ -13,7 +13,7 @@
 
 <br>
 
-- **멀티스레드 렌더링 (Multi-Threaded Rendering)** 과  **Frames-in-Flight**는  
+- **멀티스레드 렌더링 (Multi-Threaded Rendering)** 과  **Frames-in-Flight** 는  
   [Microsoft DirectX 12 공식 샘플 (D3D12Multithreading)](https://github.com/microsoft/DirectX-Graphics-Samples/tree/master/Samples/Desktop/D3D12Multithreading) 코드를 참고하여 구현하였습니다.
 
 
