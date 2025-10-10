@@ -4,6 +4,10 @@
 - 개발인원 : 개인 프로젝트
 - 개발기간 : 7월 초 ~ 7월 말 (약 4주)
 
+---
+- [DirectX11 Renderer](https://github.com/KDH2929/DirectX11) 를 DirectX12 로 포팅 
+---
+
 <br>
 
 ## 참고 자료
