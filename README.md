@@ -7,7 +7,6 @@
 <br>
 
 - [비행기 쉐이딩 발전 과정](https://wandering-rumba-865.notion.site/227aba645d3280afbfbbd014fd699dd9?pvs=74)
-- [DirectX12 구현 중 겪은 문제들과 해결과정](https://wandering-rumba-865.notion.site/DX12-26baba645d328061aeffe7122b04008b?pvs=74)
 - [멀티스레드 렌더링 성능측정](https://wandering-rumba-865.notion.site/247aba645d32809c9af8cbe2723fd9e9)
 <br>
 
