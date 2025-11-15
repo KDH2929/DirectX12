@@ -3,6 +3,13 @@
 ## 개요
 - 개발인원 : 개인 프로젝트
 - 개발목표 : 그래픽스 학습 및 멀티스레드 렌더링 개념 이해
+
+## 기능
+- MultiThread Rendering
+- Frames in Flight
+- PBR
+- ShadowMap
+- PostProcess
   
 <br>
 
